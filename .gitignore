@@ -1,0 +1,15 @@
+/.idea/
+/.vscode/
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+/src/*.egg-info/
+/dist/
+/build/
+/docs/_build/
+.pytest_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
