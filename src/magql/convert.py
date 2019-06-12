@@ -29,120 +29,7 @@ def get_tables(db):
         print("Could not find database tables")
 
 
-table_to_gql_object_types = {}
 GraphQLObjectTypes = namedtuple('GQLObjectTypes', ['object', 'filter', 'sort', 'input', 'required_input', 'payload', 'schema'])
-
-
-def build_fields_from_column(table):
-    fields = {}
-    required_input_fields = {}
-    input_fields = {}
-    filter_fields = {}
-    sort_fields = {}
-    for column_name, column in table.c.items():
-        if column.foreign_keys:
-            pass
-        else:
-            column_name = js_camelize(column_name)
-
-            base_type = get_type(column)
-            fields[column_name] = GraphQLField(base_type)
-
-            # TODO: Refactor how enums are handled
-            if isinstance(base_type, GraphQLEnumType):
-                fields[column_name].resolve = EnumResolver()
-            required_input_fields[column_name] = GraphQLInputField(get_required_type(column, base_type))
-            input_fields[column_name] = GraphQLInputField(base_type)
-            filter_fields[column_name] = get_filter_type(column, base_type)
-            sort_fields[column_name + "_asc"] = column_name + "_asc",
-            sort_fields[column_name + "_desc"] = column_name + "_desc",
-
-    return fields, filter_fields, sort_fields, required_input_fields, input_fields
-
-
-def generate_mutations(table_name, table):
-
-    required_input = table_to_gql_object_types[table].required_input
-    input = table_to_gql_object_types[table].input
-    payload = table_to_gql_object_types[table].payload
-    schema = table_to_gql_object_types[table].schema
-    fields = {}
-
-    id_arg = GraphQLArgument(GraphQLNonNull(GraphQLID))
-    input_arg = GraphQLArgument(GraphQLNonNull(input))
-    required_input_arg = GraphQLArgument(GraphQLNonNull(required_input))
-
-    create_args = {
-        "input": required_input_arg
-    }
-
-    update_args = {
-        "id": id_arg,
-        "input": input_arg
-    }
-
-    delete_args = {
-        "id": id_arg,
-    }
-    camelized = js_camelize(table_name)
-    fields["create" + camelized] = GraphQLField(payload, create_args, CreateResolver(table, schema))
-    fields["update" + camelized] = GraphQLField(payload, update_args, UpdateResolver(table, schema))
-    fields["delete" + camelized] = GraphQLField(payload, delete_args, DeleteResolver(table, schema))
-
-    return fields
-
-
-def generate_column_queries(table_name, table):
-
-    table_gql_object = table_to_gql_object_types[table].object
-    filter_obj = table_to_gql_object_types[table].filter
-    sort_obj = table_to_gql_object_types[table].sort
-    fields = {
-        js_camelize(table_name): GraphQLField(
-            table_gql_object,
-            {"id": GraphQLArgument(GraphQLNonNull(GraphQLID))},
-            SingleResolver(table)
-        ),
-        js_camelize(pluralize(table_name)): GraphQLField(
-            GraphQLList(table_gql_object),
-            {
-                "filter": GraphQLArgument(filter_obj),
-                "sort": GraphQLArgument(GraphQLList(GraphQLNonNull(sort_obj)))
-            },
-            ManyResolver(table)
-        )
-    }
-    return fields
-
-
-def generate_column_object_types(table_name, table):
-    fields, filter_fields, sort_fields, required_input_fields, input_fields = build_fields_from_column(table)
-
-    try:
-        table_class = get_mapper(table).class_
-    except ValueError:
-        print(table)
-        return
-
-    schema_overrides = get_validator_overrides(table_class)
-    schema_overrides["Meta"] = type("Meta", (object, ), {
-                "model": table_class,
-            })
-
-    camelized = camelize(table.name)
-    gql_object = GraphQLObjectType(camelized, fields)
-    table_to_gql_object_types[table] = GraphQLObjectTypes(
-        object=gql_object,
-        filter=GraphQLInputObjectType(camelized + "Filter", filter_fields),
-        sort=GraphQLEnumType(camelized + 'Sort', sort_fields),
-        input=GraphQLInputObjectType(camelized + "Input", input_fields),
-        required_input=GraphQLInputObjectType(camelized + "InputRequired", required_input_fields),
-        payload=GraphQLNonNull(GraphQLObjectType(camelized + "Payload", {
-            'error': GraphQLList(GraphQLString),
-            table_name: gql_object
-        })),
-        schema=type(camelized + "Schema", (ModelSchema,), schema_overrides)
-    )
 
 
 def is_rel_required(rel):
@@ -152,6 +39,185 @@ def is_rel_required(rel):
 
 class GeneratedGraphQLSchema(GraphQLSchema):
     """
+     Creates a subclass of GraphQLSchema which has been extended to
+     provide the capability to override resolvers. Takes in SQLAlchemy
+     tables, taken from the metadata of a SQLAlchemy declarative base.
+
+    :param tables: A dict with values of each table to generate a Schema
+            for and keys of the tablename
+    """
+    def __init__(self, tables):
+        query_fields = {}
+        mutation_fields = {}
+        self.table_types = {}
+
+        # make query columns and mutations
+        for table_name, table in tables.items():
+            try:
+                get_mapper(table)
+            except ValueError:
+                print(f"No Mapper for table {table.name}")
+                continue
+            # Build only columns first so GQLObjectTypes are built for all tables
+            self.generate_column_object_types(table_name, table)
+
+            # Then add resolvers
+            mutation_fields = {**mutation_fields, **self.generate_mutations(table_name, table)}
+
+            query_fields = {**query_fields, **self.generate_column_queries(table_name, table)}
+
+        for table_name, table in tables.items():
+            try:
+                table_mapper = get_mapper(table)
+            except ValueError:
+                print(f"No Mapper for table {table.name}")
+                continue
+
+            for relationship_name, rel in table_mapper.relationships.items():
+                direction = rel.direction.name
+                required = is_rel_required(rel)
+
+                object = self.table_types[table].object
+                input = self.table_types[table].input
+                required_input = self.table_types[table].required_input
+                filter_ = self.table_types[table].filter
+
+                # rel_object is used for queries so it must be recursive
+                rel_object = self.table_types[rel.target].object
+
+                # inputs are for mutations so should not be recursive
+                rel_input = GraphQLID
+                rel_required_input = GraphQLID
+
+                if 'TOMANY' in direction:
+                    rel_object = GraphQLList(rel_object)
+                    rel_input = GraphQLList(rel_input)
+                    rel_required_input = GraphQLList(rel_required_input)
+                # 'TOMANY' cannot be required
+                elif required:
+                    rel_required_input = GraphQLNonNull(rel_required_input)
+
+                relationship_name = js_camelize(relationship_name)
+
+                required_input.fields[relationship_name] = GraphQLInputField(rel_required_input)
+                input.fields[relationship_name] = GraphQLInputField(rel_input)
+                object.fields[relationship_name] = GraphQLField(rel_object, None, Resolver())
+                filter_.fields[relationship_name] = GraphQLInputField(RelFilter)
+        query = GraphQLObjectType("Query", query_fields)
+        mutation = GraphQLObjectType("Mutation", mutation_fields)
+
+        super(GeneratedGraphQLSchema, self).__init__(query, mutation)
+
+    def generate_column_object_types(self, table_name, table):
+        fields, filter_fields, sort_fields, required_input_fields, input_fields = self.build_fields_from_column(table)
+
+        try:
+            table_class = get_mapper(table).class_
+        except ValueError:
+            print(table)
+            return
+
+        schema_overrides = get_validator_overrides(table_class)
+        schema_overrides["Meta"] = type("Meta", (object,), {
+            "model": table_class,
+        })
+
+        camelized = camelize(table.name)
+        gql_object = GraphQLObjectType(camelized, fields)
+        self.table_types[table] = GraphQLObjectTypes(
+            object=gql_object,
+            filter=GraphQLInputObjectType(camelized + "Filter", filter_fields),
+            sort=GraphQLEnumType(camelized + 'Sort', sort_fields),
+            input=GraphQLInputObjectType(camelized + "Input", input_fields),
+            required_input=GraphQLInputObjectType(camelized + "InputRequired", required_input_fields),
+            payload=GraphQLNonNull(GraphQLObjectType(camelized + "Payload", {
+                'error': GraphQLList(GraphQLString),
+                table_name: gql_object
+            })),
+            schema=type(camelized + "Schema", (ModelSchema,), schema_overrides)
+        )
+
+
+    def build_fields_from_column(self, table):
+        fields = {}
+        required_input_fields = {}
+        input_fields = {}
+        filter_fields = {}
+        sort_fields = {}
+        for column_name, column in table.c.items():
+            if column.foreign_keys:
+                pass
+            else:
+                column_name = js_camelize(column_name)
+
+                base_type = get_type(column)
+                fields[column_name] = GraphQLField(base_type)
+
+                # TODO: Refactor how enums are handled
+                if isinstance(base_type, GraphQLEnumType):
+                    fields[column_name].resolve = EnumResolver()
+                required_input_fields[column_name] = GraphQLInputField(get_required_type(column, base_type))
+                input_fields[column_name] = GraphQLInputField(base_type)
+                filter_fields[column_name] = get_filter_type(column, base_type)
+                sort_fields[column_name + "_asc"] = column_name + "_asc",
+                sort_fields[column_name + "_desc"] = column_name + "_desc",
+
+        return fields, filter_fields, sort_fields, required_input_fields, input_fields
+
+    def generate_mutations(self, table_name, table):
+
+        required_input = self.table_types[table].required_input
+        input = self.table_types[table].input
+        payload = self.table_types[table].payload
+        schema = self.table_types[table].schema
+        fields = {}
+
+        id_arg = GraphQLArgument(GraphQLNonNull(GraphQLID))
+        input_arg = GraphQLArgument(GraphQLNonNull(input))
+        required_input_arg = GraphQLArgument(GraphQLNonNull(required_input))
+
+        create_args = {
+            "input": required_input_arg
+        }
+
+        update_args = {
+            "id": id_arg,
+            "input": input_arg
+        }
+
+        delete_args = {
+            "id": id_arg,
+        }
+        camelized = js_camelize(table_name)
+        fields["create" + camelized] = GraphQLField(payload, create_args, CreateResolver(table, schema))
+        fields["update" + camelized] = GraphQLField(payload, update_args, UpdateResolver(table, schema))
+        fields["delete" + camelized] = GraphQLField(payload, delete_args, DeleteResolver(table, schema))
+
+        return fields
+
+    def generate_column_queries(self, table_name, table):
+
+        table_gql_object = self.table_types[table].object
+        filter_obj = self.table_types[table].filter
+        sort_obj = self.table_types[table].sort
+        fields = {
+            js_camelize(table_name): GraphQLField(
+                table_gql_object,
+                {"id": GraphQLArgument(GraphQLNonNull(GraphQLID))},
+                SingleResolver(table)
+            ),
+            js_camelize(pluralize(table_name)): GraphQLField(
+                GraphQLList(table_gql_object),
+                {
+                    "filter": GraphQLArgument(filter_obj),
+                    "sort": GraphQLArgument(GraphQLList(GraphQLNonNull(sort_obj)))
+                },
+                ManyResolver(table)
+            )
+        }
+        return fields
+
+    """
     Subclass of GraphQLSchema that allows the overriding of
     """
     def override_resolver(self, field_name, resolver):
@@ -159,76 +225,3 @@ class GeneratedGraphQLSchema(GraphQLSchema):
             self.mutation_type.fields[field_name].resolve = resolver
         elif field_name in self.query_type.fields:
             self.query_type.fields[field_name].resolve = resolver
-
-
-def convert(tables):
-    """
-     Returns a subclass of GraphQLSchema which has been extended to
-     provide the capability to override resolvers. Takes in SQLAlchemy
-     tables, taken form the metadata of a SQLAlchemy declarative base.
-
-    :param tables: A dict with values of each table to generate a Schema
-            for and keys of the tablename
-    :return: An autogenerated GQLSchema
-    """
-    # tables = get_tables(db)
-
-    query_fields = {}
-    mutation_fields = {}
-
-    # make query columns and mutations
-    for table_name, table in tables.items():
-        try:
-            get_mapper(table)
-        except ValueError:
-            print(f"No Mapper for table {table.name}")
-            continue
-        # Build only columns first so GQLObjectTypes are built for all tables
-        generate_column_object_types(table_name, table)
-
-        # Then add resolvers
-        mutation_fields = {**mutation_fields, **generate_mutations(table_name, table)}
-
-        query_fields = {**query_fields, **generate_column_queries(table_name, table)}
-
-    for table_name, table in tables.items():
-        try:
-            table_mapper = get_mapper(table)
-        except ValueError:
-            print(f"No Mapper for table {table.name}")
-            continue
-
-        for relationship_name, rel in table_mapper.relationships.items():
-            direction = rel.direction.name
-            required = is_rel_required(rel)
-
-            object = table_to_gql_object_types[table].object
-            input = table_to_gql_object_types[table].input
-            required_input = table_to_gql_object_types[table].required_input
-            filter_ = table_to_gql_object_types[table].filter
-
-            # rel_object is used for queries so it must be recursive
-            rel_object = table_to_gql_object_types[rel.target].object
-
-            # inputs are for mutations so should not be recursive
-            rel_input = GraphQLID
-            rel_required_input = GraphQLID
-
-            if 'TOMANY' in direction:
-                rel_object = GraphQLList(rel_object)
-                rel_input = GraphQLList(rel_input)
-                rel_required_input = GraphQLList(rel_required_input)
-            # 'TOMANY' cannot be required
-            elif required:
-                rel_required_input = GraphQLNonNull(rel_required_input)
-
-            relationship_name = js_camelize(relationship_name)
-
-            required_input.fields[relationship_name] = GraphQLInputField(rel_required_input)
-            input.fields[relationship_name] = GraphQLInputField(rel_input)
-            object.fields[relationship_name] = GraphQLField(rel_object, None, Resolver())
-            filter_.fields[relationship_name] = GraphQLInputField(RelFilter)
-    query = GraphQLObjectType("Query", query_fields)
-    mutation = GraphQLObjectType("Mutation", mutation_fields)
-
-    return GeneratedGraphQLSchema(query, mutation)
