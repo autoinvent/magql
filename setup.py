@@ -14,12 +14,12 @@ setup(
     package_dir={"": "src"},
     include_package_data=True,
     install_requires=[
-        "graphql-core-next",
         "sqlalchemy",
         "sqlalchemy_utils",
         "marshmallow",
         "marshmallow_sqlalchemy",
         "inflection",
+        "graphql-core-next"
     ],
     extras_require={
         "dev": ["pytest", "coverage", "tox", "sphinx", "Pallets-Sphinx-Themes"]

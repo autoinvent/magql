@@ -11,10 +11,15 @@ from graphql import GraphQLSchema, GraphQLField, GraphQLObjectType, GraphQLList,
 from marshmallow_sqlalchemy import ModelSchema
 from sqlalchemy_utils import get_mapper
 from magql.get_type import get_type, get_required_type, get_filter_type
-from magql.resolver_factory import Resolver, ManyResolver, SingleResolver, CreateResolver, UpdateResolver, DeleteResolver
+from magql.resolver_factory import Resolver, ManyResolver, SingleResolver, CreateResolver, UpdateResolver, DeleteResolver, EnumResolver
 from magql.filter import RelFilter
 from inflection import pluralize, camelize
 from collections import namedtuple
+
+
+def js_camelize(word):
+    # add config check
+    return camelize(word, False)
 
 
 def get_tables(db):
@@ -38,10 +43,17 @@ def build_fields_from_column(table):
         if column.foreign_keys:
             pass
         else:
-            fields[column_name] = GraphQLField(get_type(column.type))
-            required_input_fields[column_name] = GraphQLInputField(get_required_type(column))
-            input_fields[column_name] = GraphQLInputField(get_type(column.type))
-            filter_fields[column_name] = get_filter_type(column.type)
+            column_name = js_camelize(column_name)
+
+            base_type = get_type(column)
+            fields[column_name] = GraphQLField(base_type)
+
+            # TODO: Refactor how enums are handled
+            if isinstance(base_type, GraphQLEnumType):
+                fields[column_name].resolve = EnumResolver()
+            required_input_fields[column_name] = GraphQLInputField(get_required_type(column, base_type))
+            input_fields[column_name] = GraphQLInputField(base_type)
+            filter_fields[column_name] = get_filter_type(column, base_type)
             sort_fields[column_name + "_asc"] = column_name + "_asc",
             sort_fields[column_name + "_desc"] = column_name + "_desc",
 
@@ -72,7 +84,7 @@ def generate_mutations(table_name, table):
     delete_args = {
         "id": id_arg,
     }
-    camelized = camelize(table_name)
+    camelized = js_camelize(table_name)
     fields["create" + camelized] = GraphQLField(payload, create_args, CreateResolver(table, schema))
     fields["update" + camelized] = GraphQLField(payload, update_args, UpdateResolver(table, schema))
     fields["delete" + camelized] = GraphQLField(payload, delete_args, DeleteResolver(table, schema))
@@ -86,12 +98,12 @@ def generate_column_queries(table_name, table):
     filter_obj = table_to_gql_object_types[table].filter
     sort_obj = table_to_gql_object_types[table].sort
     fields = {
-        table_name: GraphQLField(
+        js_camelize(table_name): GraphQLField(
             table_gql_object,
             {"id": GraphQLArgument(GraphQLNonNull(GraphQLID))},
             SingleResolver(table)
         ),
-        pluralize(table_name): GraphQLField(
+        js_camelize(pluralize(table_name)): GraphQLField(
             GraphQLList(table_gql_object),
             {
                 "filter": GraphQLArgument(filter_obj),
@@ -106,7 +118,12 @@ def generate_column_queries(table_name, table):
 def generate_column_object_types(table_name, table):
     fields, filter_fields, sort_fields, required_input_fields, input_fields = build_fields_from_column(table)
 
-    table_class = get_mapper(table).class_
+    try:
+        table_class = get_mapper(table).class_
+    except ValueError:
+        print(table)
+        return
+
     schema_overrides = get_validator_overrides(table_class)
     schema_overrides["Meta"] = type("Meta", (object, ), {
                 "model": table_class,
@@ -161,7 +178,11 @@ def convert(tables):
 
     # make query columns and mutations
     for table_name, table in tables.items():
-
+        try:
+            get_mapper(table)
+        except ValueError:
+            print(f"No Mapper for table {table.name}")
+            continue
         # Build only columns first so GQLObjectTypes are built for all tables
         generate_column_object_types(table_name, table)
 
@@ -171,7 +192,11 @@ def convert(tables):
         query_fields = {**query_fields, **generate_column_queries(table_name, table)}
 
     for table_name, table in tables.items():
-        table_mapper = get_mapper(table)
+        try:
+            table_mapper = get_mapper(table)
+        except ValueError:
+            print(f"No Mapper for table {table.name}")
+            continue
 
         for relationship_name, rel in table_mapper.relationships.items():
             direction = rel.direction.name
@@ -196,6 +221,8 @@ def convert(tables):
             # 'TOMANY' cannot be required
             elif required:
                 rel_required_input = GraphQLNonNull(rel_required_input)
+
+            relationship_name = js_camelize(relationship_name)
 
             required_input.fields[relationship_name] = GraphQLInputField(rel_required_input)
             input.fields[relationship_name] = GraphQLInputField(rel_input)

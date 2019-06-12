@@ -3,6 +3,12 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy_utils import get_mapper
 from magql.filter import generate_filters
 from magql.sort import generate_sorts
+from inflection import underscore
+
+
+def js_underscore(word):
+    # add config
+    return underscore(word)
 
 
 class Resolver:
@@ -21,7 +27,18 @@ class Resolver:
         :param info: gql info dictionary
         :return: getattr(parent, info.field_Name)
         """
-        return getattr(parent, info.field_name)
+        return getattr(parent, underscore(info.field_name))
+
+
+class EnumResolver(Resolver):
+    def resolve(self, parent, info):
+        """
+        Resolve Enums which need to get the code from the value
+        :param parent: gql parent. is whatever was returned by the parent resolver
+        :param info: gql info dictionary
+        :return: getattr(parent, info.field_Name)
+        """
+        return getattr(getattr(parent, underscore(info.field_name)), "value", None)
 
 
 class TableResolver(Resolver):
@@ -266,7 +283,7 @@ class ManyResolver(QueryResolver):
             # selections with no sub selection_sets are scalars
             if selection.selection_set is None:
                 continue
-            field_name = selection.name.value
+            field_name = js_underscore(selection.name.value)
             if load_path is None:
                 extended_load_path = subqueryload(field_name)
             else:
