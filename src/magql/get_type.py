@@ -1,29 +1,66 @@
 from functools import singledispatch
-from graphql import build_schema, GraphQLSchema, GraphQLField, GraphQLString, GraphQLInt, GraphQLNonNull
-from sqlalchemy.types import VARCHAR, Integer, String
-from magql.filter import StringFilter, IntFilter
+
+from inflection import camelize
+
+from graphql import build_schema, GraphQLSchema, GraphQLField, GraphQLString, GraphQLInt, GraphQLNonNull, GraphQLBoolean, GraphQLEnumType, GraphQLFloat
+from sqlalchemy.types import VARCHAR, Integer, String, Date, Time, Unicode, UnicodeText, Text, Boolean, DateTime, JSON, DECIMAL, FLOAT
+from sqlalchemy_utils import JSONType
+from sqlalchemy_utils import EmailType
+from sqlalchemy_utils import URLType
+from sqlalchemy_utils import PhoneNumberType
+from sqlalchemy_utils import ChoiceType
+
+from magql.filter import StringFilter, IntFilter, EnumFilter, BooleanFilter, FloatFilter
 
 
 @singledispatch
-def get_type(type):
+def _get_type(type_, column):
     """
     Returns the corrsponding GraphQL type to the given SQLA column type
     :param type: The type of the SQLA column
     :return: The corresponding GraphQL type
     """
-    print("Type not found error")
+    print(f"Type not found error")
 
 
-@get_type.register(String)
-@get_type.register(VARCHAR)
-def _(type):
+@_get_type.register(JSON)
+@_get_type.register(JSONType)
+@_get_type.register(DateTime)
+@_get_type.register(Text)
+@_get_type.register(Date)
+@_get_type.register(UnicodeText)
+@_get_type.register(Unicode)
+@_get_type.register(URLType)
+@_get_type.register(PhoneNumberType)
+@_get_type.register(EmailType)
+@_get_type.register(Time)
+@_get_type.register(String)
+@_get_type.register(VARCHAR)
+def _(type, column):
     return GraphQLString
 
 
-@get_type.register(Integer)
-def _(type):
+@_get_type.register(Boolean)
+def _(type, column):
+    return GraphQLBoolean
+
+
+@_get_type.register(Integer)
+def _(type, column):
     return GraphQLInt
 
+@_get_type.register(FLOAT)
+@_get_type.register(DECIMAL)
+def _(type, column):
+    return GraphQLFloat
+
+
+
+@_get_type.register(ChoiceType)
+def _(type, column):
+    name = camelize(column.table.name) + camelize(column.name) + "EnumType"
+    rm =  GraphQLEnumType(name, dict((key, value) for key, value in type.choices))
+    return rm
 
 def is_required(column):
     """
@@ -34,19 +71,26 @@ def is_required(column):
     return not column.nullable and not column.default and not column.primary_key
 
 
-def get_required_type(column):
+def get_type(column):
+    return _get_type(column.type, column)
+
+
+def get_required_type(column, type):
     """
     Returns the type of a column and whether or not it is required
     :param column:
     :return: The type of the column conditionally wrapped with
     GraphQLRequired
     """
-    type = get_type(column.type)
     return GraphQLNonNull(type) if is_required(column) else type
 
 
+def get_filter_type(column, base_type):
+    return _get_filter_type(column.type, base_type)
+
+
 @singledispatch
-def get_filter_type(type):
+def _get_filter_type(column, base_type):
     """
     Returns the filter based on the given type
     :param type: The type of the SQLAlchemy column
@@ -55,13 +99,39 @@ def get_filter_type(type):
     print("Filter not found error")
 
 
-@get_filter_type.register(String)
-@get_filter_type.register(VARCHAR)
-def _(_):
+@_get_filter_type.register(JSON)
+@_get_filter_type.register(JSONType)
+@_get_filter_type.register(DateTime)
+@_get_filter_type.register(Text)
+@_get_filter_type.register(Date)
+@_get_filter_type.register(UnicodeText)
+@_get_filter_type.register(Unicode)
+@_get_filter_type.register(URLType)
+@_get_filter_type.register(PhoneNumberType)
+@_get_filter_type.register(EmailType)
+@_get_filter_type.register(Time)
+@_get_filter_type.register(String)
+@_get_filter_type.register(VARCHAR)
+def _(type, base_type):
     return StringFilter
 
 
-@get_filter_type.register(Integer)
-def _(_):
+@_get_filter_type.register(Integer)
+def _(type, base_type):
     return IntFilter
 
+
+@_get_filter_type.register(FLOAT)
+@_get_filter_type.register(DECIMAL)
+def _(type, base_type):
+    return FloatFilter
+
+
+@_get_filter_type.register(Boolean)
+def _(type, base_type):
+    return BooleanFilter
+
+
+@_get_filter_type.register(ChoiceType)
+def _(type_, base_type):
+    return EnumFilter(base_type)

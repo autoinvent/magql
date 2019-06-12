@@ -1,10 +1,12 @@
 from functools import singledispatch
 
+from sqlalchemy import DateTime, Text, Date, UnicodeText, Unicode, Time
 from sqlalchemy.orm import RelationshipProperty
-from sqlalchemy.types import VARCHAR, Integer, String
-from graphql import GraphQLString, GraphQLEnumType, GraphQLInt, GraphQLInputObjectType, GraphQLID
+from sqlalchemy.types import VARCHAR, Integer, String, FLOAT, DECIMAL, Boolean
+from sqlalchemy_utils.types import ChoiceType
+from graphql import GraphQLString, GraphQLEnumType, GraphQLInt, GraphQLInputObjectType, GraphQLID, GraphQLFloat, GraphQLBoolean
 
-from sqlalchemy_utils import get_mapper
+from sqlalchemy_utils import get_mapper, JSONType, URLType, PhoneNumberType, EmailType
 
 StringFilter = GraphQLInputObjectType("StringFilter", {
     "operator": GraphQLEnumType("StringOperator", {"INCLUDES": "INCLUDES", "EQUALS": "EQUALS"}),
@@ -23,6 +25,18 @@ IntFilter = GraphQLInputObjectType("IntFilter", {
     "value": GraphQLInt
 })
 
+FloatFilter = GraphQLInputObjectType("FloatFilter", {
+    "operator": GraphQLEnumType("FloatOperator", {
+        "lt": "lt",
+        "lte": "lte",
+        "eq": "eq",
+        "neq": "neq",
+        "gt": "gt",
+        "gte": "gte",
+    }),
+    "value": GraphQLFloat
+})
+
 RelFilter = GraphQLInputObjectType("RelFilter", {
     "operator": GraphQLEnumType("RelOperator", {
         "INCLUDES": "INCLUDES"
@@ -30,6 +44,26 @@ RelFilter = GraphQLInputObjectType("RelFilter", {
     "value": GraphQLID
 })
 
+
+BooleanFilter = GraphQLInputObjectType("BooleanFilter", {
+    "operator": GraphQLEnumType("BooleanOperator", {
+        "TRUE": "TRUE",
+        "FALSE": "FALSE"
+    }),
+    "value": GraphQLBoolean
+})
+
+EnumOperator = GraphQLEnumType("EnumOperator", {
+        "INCLUDES": "INCLUDES",
+        "EXCLUDES": "EXCLUDES"
+    })
+
+
+def EnumFilter(base_type):
+     return GraphQLInputObjectType(base_type.name + "Filter", {
+    "operator": EnumOperator,
+    "value": base_type
+})
 
 @singledispatch
 def get_filter_comparator(_):
@@ -46,8 +80,18 @@ def _(_):
     return condition
 
 
-@get_filter_comparator.register(VARCHAR)
+@get_filter_comparator.register(JSONType)
+@get_filter_comparator.register(DateTime)
+@get_filter_comparator.register(Text)
+@get_filter_comparator.register(Date)
+@get_filter_comparator.register(UnicodeText)
+@get_filter_comparator.register(Unicode)
+@get_filter_comparator.register(URLType)
+@get_filter_comparator.register(PhoneNumberType)
+@get_filter_comparator.register(EmailType)
+@get_filter_comparator.register(Time)
 @get_filter_comparator.register(String)
+@get_filter_comparator.register(VARCHAR)
 def _(_):
     def condition(filter_value, filter_operator, field):
         if filter_operator == "INCLUDES":
@@ -59,6 +103,8 @@ def _(_):
     return condition
 
 
+@get_filter_comparator.register(FLOAT)
+@get_filter_comparator.register(DECIMAL)
 @get_filter_comparator.register(Integer)
 def _(_):
     def condition(filter_value, filter_operator, field):
@@ -74,6 +120,29 @@ def _(_):
             return field > filter_value
         elif filter_operator == "gte":
             return field >= filter_value
+        else:
+            print("filter operator not found")
+    return condition
+
+
+@get_filter_comparator.register(Boolean)
+def _(_):
+    def condition(filter_value, filter_operator, field):
+        if filter_operator == "TRUE":
+            return field
+        elif filter_operator == "FALSE":
+            return not field
+        else:
+            print("filter operator not found")
+    return condition
+
+@get_filter_comparator.register(ChoiceType)
+def _(_):
+    def condition(filter_value, filter_operator, field):
+        if filter_operator == "includes":
+            return field == filter_value
+        elif filter_operator == "excludes":
+            return field != filter_value
         else:
             print("filter operator not found")
     return condition
