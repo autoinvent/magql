@@ -7,12 +7,13 @@ The validations can be overridden with decorators, as explained later.
 """
 from magql.validator import get_validator_overrides
 from graphql import GraphQLSchema, GraphQLField, GraphQLObjectType, GraphQLList, GraphQLNonNull, \
-    GraphQLString, GraphQLInputField, GraphQLArgument, GraphQLID, GraphQLInputObjectType, GraphQLEnumType
+    GraphQLString, GraphQLInputField, GraphQLArgument, GraphQLID, GraphQLInputObjectType, GraphQLEnumType, GraphQLScalarType
 from marshmallow_sqlalchemy import ModelSchema
 from sqlalchemy_utils import get_mapper
 from magql.get_type import get_type, get_required_type, get_filter_type
 from magql.resolver_factory import Resolver, ManyResolver, SingleResolver, CreateResolver, UpdateResolver, DeleteResolver, EnumResolver
 from magql.filter import RelFilter
+from magql.join import join_schemas
 from inflection import pluralize, camelize
 from collections import namedtuple
 
@@ -37,7 +38,7 @@ def is_rel_required(rel):
     return not fk.nullable
 
 
-class GeneratedGraphQLSchema(GraphQLSchema):
+class MagqlSchema:
     """
      Creates a subclass of GraphQLSchema which has been extended to
      provide the capability to override resolvers. Takes in SQLAlchemy
@@ -46,7 +47,7 @@ class GeneratedGraphQLSchema(GraphQLSchema):
     :param tables: A dict with values of each table to generate a Schema
             for and keys of the tablename
     """
-    def __init__(self, tables):
+    def __init__(self, tables, existing_schema=None):
         query_fields = {}
         mutation_fields = {}
         self.table_types = {}
@@ -103,10 +104,15 @@ class GeneratedGraphQLSchema(GraphQLSchema):
                 input.fields[relationship_name] = GraphQLInputField(rel_input)
                 object.fields[relationship_name] = GraphQLField(rel_object, None, Resolver())
                 filter_.fields[relationship_name] = GraphQLInputField(RelFilter)
+
         query = GraphQLObjectType("Query", query_fields)
         mutation = GraphQLObjectType("Mutation", mutation_fields)
 
-        super(GeneratedGraphQLSchema, self).__init__(query, mutation)
+        self.schema = GraphQLSchema(query, mutation)
+
+        if existing_schema is not None:
+            self.merge_schema(existing_schema)
+
 
     def generate_column_object_types(self, table_name, table):
         fields, filter_fields, sort_fields, required_input_fields, input_fields = self.build_fields_from_column(table)
@@ -217,11 +223,101 @@ class GeneratedGraphQLSchema(GraphQLSchema):
         }
         return fields
 
+    @staticmethod
+    def join_types(type1, type2):
+        for field_name, field in type2.fields.items():
+            if field_name in type1.fields:
+                raise Exception("Duplicate fields in type, cannot resolve")
+        new_fields = {**type1.fields, **type2.fields}
+
+        return GraphQLObjectType(type1.name, new_fields)
+
+    @staticmethod
+    def get_merged_object_type(return_type, joined_type_map):
+        if isinstance(return_type, GraphQLList):
+            return GraphQLList(MagqlSchema.get_merged_object_type(return_type.of_type, joined_type_map))
+
+        if isinstance(return_type, GraphQLNonNull):
+            return GraphQLNonNull(MagqlSchema.get_merged_object_type(return_type.of_type, joined_type_map))
+
+        type_name = return_type.name
+
+        if type_name in joined_type_map:
+            return_type = joined_type_map[type_name]
+
+        return return_type
+
+    @staticmethod
+    def generate_new_return_type(return_type, joined_type_map):
+
+        if isinstance(return_type, GraphQLList):
+            return GraphQLList(MagqlSchema.generate_new_return_type(return_type.of_type, joined_type_map))
+
+        if isinstance(return_type, GraphQLNonNull):
+            return GraphQLNonNull(MagqlSchema.generate_new_return_type(return_type.of_type, joined_type_map))
+
+        type_name = return_type.name
+        if type_name in joined_type_map:
+            return_type = joined_type_map[type_name]
+
+        new_sub_fields = {}
+        for field_name, field in return_type.fields.items():
+            new_sub_fields[field_name] = field
+            if MagqlSchema.get_object_type(field.type).name in joined_type_map:
+                new_sub_fields[field_name].type = MagqlSchema.get_merged_object_type(field.type, joined_type_map)
+        return_type.fields = new_sub_fields
+        return return_type
+
+    @staticmethod
+    def get_object_type(field):
+        while not getattr(field, "name", None):
+            field = field.of_type
+        return field
+
+    @staticmethod
+    def generate_new_field(field, joined_type_map):
+        type_ = MagqlSchema.generate_new_return_type(field.type, joined_type_map)
+
+        return GraphQLField(
+            type_,
+            field.args,
+            field.resolve,
+            field.subscribe,
+            field.description,
+            field.deprecation_reason
+        )
+
+    def merge_schema(self, schema):
+        assert isinstance(schema, GraphQLSchema)
+
+        joined_type_map = {}
+        for type_name, type in schema.type_map.items():
+            if type_name in self.schema.type_map and not isinstance(type, GraphQLScalarType) and not type_name.startswith("__"):
+                joined_type_map[type_name] = (MagqlSchema.join_types(self.schema.type_map[type_name], type))
+
+        new_query_fields = {}
+        new_mutation_fields = {}
+
+        for query_name, field in getattr(self.schema.query_type, "fields",{}).items():
+            new_query_fields[query_name] = MagqlSchema.generate_new_field(field, joined_type_map)
+
+        for query_name, field in getattr(schema.query_type, "fields", {}).items():
+            new_query_fields[query_name] = MagqlSchema.generate_new_field(field, joined_type_map)
+
+        for mutation_name, field in getattr(self.schema.mutation_type, "fields", {}).items():
+            new_mutation_fields[mutation_name] = MagqlSchema.generate_new_field(field, joined_type_map)
+
+        for mutation_name, field in getattr(schema.mutation_type, "fields", {}).items():
+            new_mutation_fields[mutation_name] = MagqlSchema.generate_new_field(field, joined_type_map)
+
+        new_query = GraphQLObjectType("Query", new_query_fields)
+        new_mutation = GraphQLObjectType("Mutation", new_mutation_fields)
+        self.schema = GraphQLSchema(new_query, new_mutation)
     """
     Subclass of GraphQLSchema that allows the overriding of
     """
     def override_resolver(self, field_name, resolver):
-        if field_name in self.mutation_type.fields:
-            self.mutation_type.fields[field_name].resolve = resolver
-        elif field_name in self.query_type.fields:
-            self.query_type.fields[field_name].resolve = resolver
+        if field_name in self.schema.mutation_type.fields:
+            self.schema.mutation_type.fields[field_name].resolve = resolver
+        elif field_name in self.schema.query_type.fields:
+            self.schema.query_type.fields[field_name].resolve = resolver
