@@ -30,6 +30,48 @@ class Resolver:
         return getattr(parent, underscore(info.field_name))
 
 
+class CheckDeleteResolver(Resolver):
+    """
+    Resolver for the function that checks to see what will be deleted
+    """
+    def __init__(self, table_types):
+        self.table_types = table_types
+
+    def resolve(self, parent, info, *args, **kwargs):
+        for table in self.table_types.keys():
+            class_ = get_mapper(table).class_
+            if class_.__name__ == kwargs["tableName"]:
+                session = info.context
+                instance = session.query(class_).filter_by(id=kwargs["id"]).one()
+                session.delete(instance)
+                cascades = []
+                for obj in session.deleted:
+                    cascades.append(obj)
+
+                session.rollback()
+
+                return cascades
+
+
+class CheckDeleteUnionResolver(Resolver):
+    """
+    Resolver that determines which type is being return from the delete check
+    """
+    def __init__(self, table_types):
+        self.table_types = table_types
+
+
+    # This will fail if a type is added to the scheme during a merge because it will not know about the added type
+    def resolve_type(self, instance):
+        for table, gql_type in self.table_types.items():
+            if isinstance(instance, get_mapper(table).class_):
+                return gql_type.object
+        raise Exception("Type not found")
+
+    def resolve(self, parent, info, *args, **kwargs):
+        return self.resolve_type(parent)
+
+
 class EnumResolver(Resolver):
     def resolve(self, parent, info):
         """

@@ -7,13 +7,12 @@ The validations can be overridden with decorators, as explained later.
 """
 from magql.validator import get_validator_overrides
 from graphql import GraphQLSchema, GraphQLField, GraphQLObjectType, GraphQLList, GraphQLNonNull, \
-    GraphQLString, GraphQLInputField, GraphQLArgument, GraphQLID, GraphQLInputObjectType, GraphQLEnumType, GraphQLScalarType
+    GraphQLString, GraphQLInputField, GraphQLArgument, GraphQLID, GraphQLInputObjectType, GraphQLEnumType, GraphQLScalarType, GraphQLUnionType
 from marshmallow_sqlalchemy import ModelSchema
 from sqlalchemy_utils import get_mapper
 from magql.get_type import get_type, get_required_type, get_filter_type
-from magql.resolver_factory import Resolver, ManyResolver, SingleResolver, CreateResolver, UpdateResolver, DeleteResolver, EnumResolver
+from magql.resolver_factory import Resolver, ManyResolver, SingleResolver, CreateResolver, UpdateResolver, DeleteResolver, EnumResolver, CheckDeleteUnionResolver, CheckDeleteResolver
 from magql.filter import RelFilter
-from magql.join import join_schemas
 from inflection import pluralize, camelize
 from collections import namedtuple
 
@@ -105,6 +104,16 @@ class MagqlSchema:
                 object.fields[relationship_name] = GraphQLField(rel_object, None, Resolver())
                 filter_.fields[relationship_name] = GraphQLInputField(RelFilter)
 
+        types = [types.object for _, types in self.table_types.items()]
+
+        query_fields["checkDelete"] = GraphQLField(
+            GraphQLList(GraphQLUnionType("CheckDeleteUnion", types, CheckDeleteUnionResolver(self.table_types))),
+            {
+                "tableName": GraphQLArgument(GraphQLString),
+                "id": GraphQLArgument(GraphQLString)
+            },
+            CheckDeleteResolver(self.table_types)
+        )
         query = GraphQLObjectType("Query", query_fields)
         mutation = GraphQLObjectType("Mutation", mutation_fields)
 
@@ -112,7 +121,6 @@ class MagqlSchema:
 
         if existing_schema is not None:
             self.merge_schema(existing_schema)
-
 
     def generate_column_object_types(self, table_name, table):
         fields, filter_fields, sort_fields, required_input_fields, input_fields = self.build_fields_from_column(table)
@@ -142,7 +150,6 @@ class MagqlSchema:
             })),
             schema=type(camelized + "Schema", (ModelSchema,), schema_overrides)
         )
-
 
     def build_fields_from_column(self, table):
         fields = {}
@@ -248,6 +255,19 @@ class MagqlSchema:
         return return_type
 
     @staticmethod
+    def convert_old_union_type_resolver(old_resolver ,joined_type_map):
+        """
+        When merging schema's the type resolver for unions cannot be updated at the time of the merge. Instead
+        wrap the resolver with a function that will convert the old type to the new type, if there is a new type
+        :param old_resolver:
+        :param joined_type_map:
+        :return:
+        """
+        def new_resolver(self, parent, info, *args, **kwargs):
+            old_value = old_resolver(self, parent, info, *args, **kwargs)
+            return MagqlSchema.get_merged_object_type(old_value, joined_type_map)
+        return new_resolver
+    @staticmethod
     def generate_new_return_type(return_type, joined_type_map):
 
         if isinstance(return_type, GraphQLList):
@@ -255,6 +275,17 @@ class MagqlSchema:
 
         if isinstance(return_type, GraphQLNonNull):
             return GraphQLNonNull(MagqlSchema.generate_new_return_type(return_type.of_type, joined_type_map))
+
+        if isinstance(return_type, GraphQLUnionType):
+            types = [MagqlSchema.get_merged_object_type(type_, joined_type_map) for type_ in return_type.types]
+            return GraphQLUnionType(
+                return_type.name,
+                types,
+                MagqlSchema.convert_old_union_type_resolver(return_type.resolve_type, joined_type_map),
+                return_type.description,
+                return_type.ast_node,
+                return_type.extension_ast_nodes
+            )
 
         type_name = return_type.name
         if type_name in joined_type_map:
@@ -298,7 +329,7 @@ class MagqlSchema:
         new_query_fields = {}
         new_mutation_fields = {}
 
-        for query_name, field in getattr(self.schema.query_type, "fields",{}).items():
+        for query_name, field in getattr(self.schema.query_type, "fields", {}).items():
             new_query_fields[query_name] = MagqlSchema.generate_new_field(field, joined_type_map)
 
         for query_name, field in getattr(schema.query_type, "fields", {}).items():
