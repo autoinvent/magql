@@ -30,6 +30,23 @@ class Resolver:
         return getattr(parent, underscore(info.field_name))
 
 
+class CamelResolver(Resolver):
+
+    def resolve(self, parent, info, *args, **kwargs):
+        source = parent
+        # Identical to graphql's default_field_resolver except the field_name is snake case
+        # TODO: Look into a way to generate info dictionary so the code does not need to be
+        # paster or circumvent alltogether in a different way
+        field_name = underscore(info.field_name)
+        value = (
+            source.get(field_name)
+            if isinstance(source, dict)
+            else getattr(source, field_name, None)
+        )
+        if callable(value):
+            return value(info, **args)
+        return value
+
 class CheckDeleteResolver(Resolver):
     """
     Resolver for the function that checks to see what will be deleted

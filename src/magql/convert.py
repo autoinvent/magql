@@ -11,14 +11,14 @@ from graphql import GraphQLSchema, GraphQLField, GraphQLObjectType, GraphQLList,
 from marshmallow_sqlalchemy import ModelSchema
 from sqlalchemy_utils import get_mapper
 from magql.get_type import get_type, get_required_type, get_filter_type
-from magql.resolver_factory import Resolver, ManyResolver, SingleResolver, CreateResolver, UpdateResolver, DeleteResolver, EnumResolver, CheckDeleteUnionResolver, CheckDeleteResolver
+from magql.resolver_factory import Resolver, ManyResolver, SingleResolver, CreateResolver, UpdateResolver, DeleteResolver, EnumResolver, CheckDeleteUnionResolver, CheckDeleteResolver, CamelResolver
 from magql.filter import RelFilter
 from inflection import pluralize, camelize
 from collections import namedtuple
 
-
 def js_camelize(word):
     # add config check
+    # disable while camelcasing resolvers aren't added
     return camelize(word, False)
 
 
@@ -164,7 +164,7 @@ class MagqlSchema:
                 column_name = js_camelize(column_name)
 
                 base_type = get_type(column)
-                fields[column_name] = GraphQLField(base_type)
+                fields[column_name] = GraphQLField(base_type, None, CamelResolver())
 
                 # TODO: Refactor how enums are handled
                 if isinstance(base_type, GraphQLEnumType):
@@ -344,6 +344,8 @@ class MagqlSchema:
         new_query = GraphQLObjectType("Query", new_query_fields)
         new_mutation = GraphQLObjectType("Mutation", new_mutation_fields)
         self.schema = GraphQLSchema(new_query, new_mutation)
+
+
     """
     Subclass of GraphQLSchema that allows the overriding of
     """
