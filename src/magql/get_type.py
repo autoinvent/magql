@@ -49,11 +49,11 @@ def _(type, column):
 def _(type, column):
     return GraphQLInt
 
+
 @_get_type.register(FLOAT)
 @_get_type.register(DECIMAL)
 def _(type, column):
     return GraphQLFloat
-
 
 
 @_get_type.register(ChoiceType)
@@ -61,6 +61,7 @@ def _(type, column):
     name = camelize(column.table.name) + camelize(column.name) + "EnumType"
     rm =  GraphQLEnumType(name, dict((key, value) for key, value in type.choices))
     return rm
+
 
 def is_required(column):
     """
