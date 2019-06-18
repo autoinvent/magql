@@ -86,8 +86,8 @@ class MagqlSchema:
                 rel_object = self.table_types[rel.target].object
 
                 # inputs are for mutations so should not be recursive
-                rel_input = GraphQLID
-                rel_required_input = GraphQLID
+                rel_input = GraphQLString
+                rel_required_input = GraphQLString
 
                 if 'TOMANY' in direction:
                     rel_object = GraphQLList(rel_object)
@@ -146,7 +146,7 @@ class MagqlSchema:
             required_input=GraphQLInputObjectType(camelized + "InputRequired", required_input_fields),
             payload=GraphQLNonNull(GraphQLObjectType(camelized + "Payload", {
                 'error': GraphQLList(GraphQLString),
-                table_name: gql_object
+                camelize(table.name, False): gql_object
             })),
             schema=type(camelized + "Schema", (ModelSchema,), schema_overrides)
         )
@@ -185,7 +185,7 @@ class MagqlSchema:
         schema = self.table_types[table].schema
         fields = {}
 
-        id_arg = GraphQLArgument(GraphQLNonNull(GraphQLID))
+        id_arg = GraphQLArgument(GraphQLNonNull(GraphQLString))
         input_arg = GraphQLArgument(GraphQLNonNull(input))
         required_input_arg = GraphQLArgument(GraphQLNonNull(required_input))
 
@@ -194,14 +194,13 @@ class MagqlSchema:
         }
 
         update_args = {
-            "id": id_arg,
             "input": input_arg
         }
 
         delete_args = {
             "id": id_arg,
         }
-        camelized = js_camelize(table_name)
+        camelized = camelize(table_name)
         fields["create" + camelized] = GraphQLField(payload, create_args, CreateResolver(table, schema))
         fields["update" + camelized] = GraphQLField(payload, update_args, UpdateResolver(table, schema))
         fields["delete" + camelized] = GraphQLField(payload, delete_args, DeleteResolver(table, schema))
@@ -216,7 +215,7 @@ class MagqlSchema:
         fields = {
             js_camelize(table_name): GraphQLField(
                 table_gql_object,
-                {"id": GraphQLArgument(GraphQLNonNull(GraphQLID))},
+                {"id": GraphQLArgument(GraphQLNonNull(GraphQLString))},
                 SingleResolver(table)
             ),
             js_camelize(pluralize(table_name)): GraphQLField(
