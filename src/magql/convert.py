@@ -231,10 +231,7 @@ class MagqlSchema:
 
     @staticmethod
     def join_types(type1, type2):
-        for field_name, field in type2.fields.items():
-            if field_name in type1.fields:
-                raise Exception("Duplicate fields in type, cannot resolve")
-        new_fields = {**type1.fields, **type2.fields}
+        new_fields = {**type1.fields, **type2.fields}  # type2 replaces type1
 
         return GraphQLObjectType(type1.name, new_fields)
 
