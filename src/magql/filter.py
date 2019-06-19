@@ -1,69 +1,107 @@
 from functools import singledispatch
 
-from sqlalchemy import DateTime, Text, Date, UnicodeText, Unicode, Time
+from graphql import GraphQLBoolean
+from graphql import GraphQLEnumType
+from graphql import GraphQLFloat
+from graphql import GraphQLID
+from graphql import GraphQLInputObjectType
+from graphql import GraphQLInt
+from graphql import GraphQLString
+from sqlalchemy import Date
+from sqlalchemy import DateTime
+from sqlalchemy import Text
+from sqlalchemy import Time
+from sqlalchemy import Unicode
+from sqlalchemy import UnicodeText
 from sqlalchemy.orm import RelationshipProperty
-from sqlalchemy.types import VARCHAR, Integer, String, FLOAT, DECIMAL, Boolean
+from sqlalchemy.types import Boolean
+from sqlalchemy.types import DECIMAL
+from sqlalchemy.types import FLOAT
+from sqlalchemy.types import Integer
+from sqlalchemy.types import String
+from sqlalchemy.types import VARCHAR
+from sqlalchemy_utils import EmailType
+from sqlalchemy_utils import get_mapper
+from sqlalchemy_utils import JSONType
+from sqlalchemy_utils import PhoneNumberType
+from sqlalchemy_utils import URLType
 from sqlalchemy_utils.types import ChoiceType
-from graphql import GraphQLString, GraphQLEnumType, GraphQLInt, GraphQLInputObjectType, GraphQLID, GraphQLFloat, GraphQLBoolean
 
-from sqlalchemy_utils import get_mapper, JSONType, URLType, PhoneNumberType, EmailType
+StringFilter = GraphQLInputObjectType(
+    "StringFilter",
+    {
+        "operator": GraphQLEnumType(
+            "StringOperator", {"INCLUDES": "INCLUDES", "EQUALS": "EQUALS"}
+        ),
+        "value": GraphQLString,
+    },
+)
 
-StringFilter = GraphQLInputObjectType("StringFilter", {
-    "operator": GraphQLEnumType("StringOperator", {"INCLUDES": "INCLUDES", "EQUALS": "EQUALS"}),
-    "value": GraphQLString
-})
+IntFilter = GraphQLInputObjectType(
+    "IntFilter",
+    {
+        "operator": GraphQLEnumType(
+            "IntOperator",
+            {
+                "lt": "lt",
+                "lte": "lte",
+                "eq": "eq",
+                "neq": "neq",
+                "gt": "gt",
+                "gte": "gte",
+            },
+        ),
+        "value": GraphQLInt,
+    },
+)
 
-IntFilter = GraphQLInputObjectType("IntFilter", {
-    "operator": GraphQLEnumType("IntOperator", {
-        "lt": "lt",
-        "lte": "lte",
-        "eq": "eq",
-        "neq": "neq",
-        "gt": "gt",
-        "gte": "gte",
-    }),
-    "value": GraphQLInt
-})
+FloatFilter = GraphQLInputObjectType(
+    "FloatFilter",
+    {
+        "operator": GraphQLEnumType(
+            "FloatOperator",
+            {
+                "lt": "lt",
+                "lte": "lte",
+                "eq": "eq",
+                "neq": "neq",
+                "gt": "gt",
+                "gte": "gte",
+            },
+        ),
+        "value": GraphQLFloat,
+    },
+)
 
-FloatFilter = GraphQLInputObjectType("FloatFilter", {
-    "operator": GraphQLEnumType("FloatOperator", {
-        "lt": "lt",
-        "lte": "lte",
-        "eq": "eq",
-        "neq": "neq",
-        "gt": "gt",
-        "gte": "gte",
-    }),
-    "value": GraphQLFloat
-})
-
-RelFilter = GraphQLInputObjectType("RelFilter", {
-    "operator": GraphQLEnumType("RelOperator", {
-        "INCLUDES": "INCLUDES"
-    }),
-    "value": GraphQLID
-})
+RelFilter = GraphQLInputObjectType(
+    "RelFilter",
+    {
+        "operator": GraphQLEnumType("RelOperator", {"INCLUDES": "INCLUDES"}),
+        "value": GraphQLID,
+    },
+)
 
 
-BooleanFilter = GraphQLInputObjectType("BooleanFilter", {
-    "operator": GraphQLEnumType("BooleanOperator", {
-        "TRUE": "TRUE",
-        "FALSE": "FALSE"
-    }),
-    "value": GraphQLBoolean
-})
+BooleanFilter = GraphQLInputObjectType(
+    "BooleanFilter",
+    {
+        "operator": GraphQLEnumType(
+            "BooleanOperator", {"TRUE": "TRUE", "FALSE": "FALSE"}
+        ),
+        "value": GraphQLBoolean,
+    },
+)
 
-EnumOperator = GraphQLEnumType("EnumOperator", {
-        "INCLUDES": "INCLUDES",
-        "EXCLUDES": "EXCLUDES"
-    })
+EnumOperator = GraphQLEnumType(
+    "EnumOperator", {"INCLUDES": "INCLUDES", "EXCLUDES": "EXCLUDES"}
+)
 
 
 def EnumFilter(base_type):
-     return GraphQLInputObjectType(base_type.name + "Filter", {
-    "operator": EnumOperator,
-    "value": base_type
-})
+    name = base_type.name + "Filter"
+    input_ = {"operator": EnumOperator, "value": base_type}
+    return GraphQLInputObjectType(name, input_)
+
 
 @singledispatch
 def get_filter_comparator(_):
@@ -77,6 +115,7 @@ def _(_):
             return field == filter_value
         else:
             print("filter operator not found")
+
     return condition
 
 
@@ -100,6 +139,7 @@ def _(_):
             return field == filter_value
         else:
             print("filter operator not found")
+
     return condition
 
 
@@ -122,6 +162,7 @@ def _(_):
             return field >= filter_value
         else:
             print("filter operator not found")
+
     return condition
 
 
@@ -134,7 +175,9 @@ def _(_):
             return not field
         else:
             print("filter operator not found")
+
     return condition
+
 
 @get_filter_comparator.register(ChoiceType)
 def _(_):
@@ -145,6 +188,7 @@ def _(_):
             return field != filter_value
         else:
             print("filter operator not found")
+
     return condition
 
 
@@ -161,11 +205,19 @@ def generate_filters(table, info, *args, **kwargs):
             elif filter_name in mapper.relationships:
                 rel = mapper.relationships[filter_name]
                 rel_mapper = get_mapper(rel.target)
-                gql_filter_value = info.context.query(rel_mapper.class_).filter_by(id=gql_filter_value).one()
+                gql_filter_value = (
+                    info.context.query(rel_mapper.class_)
+                    .filter_by(id=gql_filter_value)
+                    .one()
+                )
                 filter_type = rel
             else:
                 print("Unknown field on sqlamodel")
 
-            sql_filter = get_filter_comparator(filter_type)(gql_filter_value, gql_filter["operator"], getattr(mapper.class_, filter_name))
+            sql_filter = get_filter_comparator(filter_type)(
+                gql_filter_value,
+                gql_filter["operator"],
+                getattr(mapper.class_, filter_name),
+            )
             sqla_filters.append(sql_filter)
     return sqla_filters

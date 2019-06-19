@@ -1,16 +1,36 @@
 from functools import singledispatch
 
+from graphql import GraphQLBoolean
+from graphql import GraphQLEnumType
+from graphql import GraphQLFloat
+from graphql import GraphQLInt
+from graphql import GraphQLNonNull
+from graphql import GraphQLString
 from inflection import camelize
-
-from graphql import build_schema, GraphQLSchema, GraphQLField, GraphQLString, GraphQLInt, GraphQLNonNull, GraphQLBoolean, GraphQLEnumType, GraphQLFloat
-from sqlalchemy.types import VARCHAR, Integer, String, Date, Time, Unicode, UnicodeText, Text, Boolean, DateTime, JSON, DECIMAL, FLOAT
-from sqlalchemy_utils import JSONType
-from sqlalchemy_utils import EmailType
-from sqlalchemy_utils import URLType
-from sqlalchemy_utils import PhoneNumberType
+from sqlalchemy.types import Boolean
+from sqlalchemy.types import Date
+from sqlalchemy.types import DateTime
+from sqlalchemy.types import DECIMAL
+from sqlalchemy.types import FLOAT
+from sqlalchemy.types import Integer
+from sqlalchemy.types import JSON
+from sqlalchemy.types import String
+from sqlalchemy.types import Text
+from sqlalchemy.types import Time
+from sqlalchemy.types import Unicode
+from sqlalchemy.types import UnicodeText
+from sqlalchemy.types import VARCHAR
 from sqlalchemy_utils import ChoiceType
+from sqlalchemy_utils import EmailType
+from sqlalchemy_utils import JSONType
+from sqlalchemy_utils import PhoneNumberType
+from sqlalchemy_utils import URLType
 
-from magql.filter import StringFilter, IntFilter, EnumFilter, BooleanFilter, FloatFilter
+from magql.filter import BooleanFilter
+from magql.filter import EnumFilter
+from magql.filter import FloatFilter
+from magql.filter import IntFilter
+from magql.filter import StringFilter
 
 
 @singledispatch
@@ -59,17 +79,18 @@ def _(type, column):
 @_get_type.register(ChoiceType)
 def _(type, column):
     name = camelize(column.table.name) + camelize(column.name) + "EnumType"
-    rm =  GraphQLEnumType(name, dict((key, value) for key, value in type.choices))
+    enums = dict((key, value) for key, value in type.choices)
+    rm = GraphQLEnumType(name, enums)
     return rm
 
 
-def is_required(column):
+def is_required(col):
     """
     Checks whether a scalar SQLAlchemy column is required or not
-    :param column: SQLAlchemy column
+    :param col: SQLAlchemy column
     :return: Whether or not the column is required
     """
-    return not column.nullable and not column.default and not column.primary_key
+    return not col.nullable and not col.default and not col.primary_key
 
 
 def get_type(column):
