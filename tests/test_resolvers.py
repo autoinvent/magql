@@ -1,9 +1,13 @@
-from inflection import pluralize
-
-from tests.conftest import House, Car, Person, base
-from magql.resolver_factory import SingleResolver, CreateResolver, DeleteResolver, ManyResolver, UpdateResolver
-
 import pytest
+from tests.conftest import base
+from tests.conftest import Car
+from tests.conftest import House
+from tests.conftest import Person
+
+from magql.resolver_factory import CreateResolver
+from magql.resolver_factory import DeleteResolver
+from magql.resolver_factory import SingleResolver
+from magql.resolver_factory import UpdateResolver
 
 
 class DummyInfo:
@@ -29,11 +33,14 @@ def compare(output, test_input):
             assert output_value == value
 
 
-@pytest.mark.parametrize("input_data", [
-    (House, {"name": "House 2", "inhabitants": [1]}),
-    (Car, {"name": "Car 2", "drivers": [1]}),
-    (Person, {"name": "Person 2", "age": 30, "car": 1, "house": 1})
-])
+@pytest.mark.parametrize(
+    "input_data",
+    [
+        (House, {"name": "House 2", "inhabitants": [1]}),
+        (Car, {"name": "Car 2", "drivers": [1]}),
+        (Person, {"name": "Person 2", "age": 30, "car": 1, "house": 1}),
+    ],
+)
 def test_create_resolver(input_data, info, session):
     test_class = input_data[0]
     test_input = input_data[1]
@@ -45,11 +52,14 @@ def test_create_resolver(input_data, info, session):
     compare(output, test_input)
 
 
-@pytest.mark.parametrize("input_data", [
-    (House, 1, {"name": "House 2", "inhabitants": [1]}),
-    (Car, 1, {"name": "Car 2", "drivers": [1]}),
-    (Person, 1, {"name": "Person 2", "age": 30, "car": 1, "house": 1})
-])
+@pytest.mark.parametrize(
+    "input_data",
+    [
+        (House, 1, {"name": "House 2", "inhabitants": [1]}),
+        (Car, 1, {"name": "Car 2", "drivers": [1]}),
+        (Person, 1, {"name": "Person 2", "age": 30, "car": 1, "house": 1}),
+    ],
+)
 def test_update_resolver(input_data, info, session):
     test_class = input_data[0]
     test_id = input_data[1]
@@ -62,11 +72,7 @@ def test_update_resolver(input_data, info, session):
     compare(output, test_input)
 
 
-@pytest.mark.parametrize("input_data", [
-    (House, 1),
-    (Car, 1),
-    (Person, 1)
-])
+@pytest.mark.parametrize("input_data", [(House, 1), (Car, 1), (Person, 1)])
 def test_delete_resolvers(input_data, info, session):
     test_class = input_data[0]
     test_id = input_data[1]
@@ -75,7 +81,9 @@ def test_delete_resolvers(input_data, info, session):
 
     resolve(None, info, id=test_id)[table_name]
 
-    assert session.query(test_class).filter_by(id=test_id).one_or_none() is None
+    del_inst = session.query(test_class).filter_by(id=test_id).one_or_none()
+
+    assert del_inst is None
 
 
 @pytest.mark.parametrize("model", [House, Car, Person])

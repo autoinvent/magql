@@ -1,9 +1,10 @@
+from inflection import underscore
 from marshmallow import ValidationError
 from sqlalchemy.orm import subqueryload
 from sqlalchemy_utils import get_mapper
+
 from magql.filter import generate_filters
 from magql.sort import generate_sorts
-from inflection import underscore
 
 
 def js_underscore(word):
@@ -17,13 +18,15 @@ class Resolver:
     performing dot operation on the parent object through the field
     info.field_name
     """
+
     def __call__(self, parent, info, *args, **kwargs):
         return self.resolve(parent, info, *args, **kwargs)
 
     def resolve(self, parent, info):
         """
         Default resolve method, performs dot access
-        :param parent: gql parent. is whatever was returned by the parent resolver
+        :param parent: gql parent. is whatever was returned by the
+        parent resolver
         :param info: gql info dictionary
         :return: getattr(parent, info.field_Name)
         """
@@ -31,12 +34,13 @@ class Resolver:
 
 
 class CamelResolver(Resolver):
-
     def resolve(self, parent, info, *args, **kwargs):
         source = parent
-        # Identical to graphql's default_field_resolver except the field_name is snake case
-        # TODO: Look into a way to generate info dictionary so the code does not need to be
-        # paster or circumvent alltogether in a different way
+        # Identical to graphql's default_field_resolver
+        # except the field_name is snake case
+        # TODO: Look into a way to generate info
+        #  dictionary so the code does not need to be
+        # copied or circumvent alltogether in a different way
         field_name = underscore(info.field_name)
         value = (
             source.get(field_name)
@@ -47,10 +51,12 @@ class CamelResolver(Resolver):
             return value(info, **args)
         return value
 
+
 class CheckDeleteResolver(Resolver):
     """
     Resolver for the function that checks to see what will be deleted
     """
+
     def __init__(self, table_types):
         self.table_types = table_types
 
@@ -58,8 +64,9 @@ class CheckDeleteResolver(Resolver):
         for table in self.table_types.keys():
             class_ = get_mapper(table).class_
             if class_.__name__ == kwargs["tableName"]:
+                id_ = kwargs["id"]
                 session = info.context
-                instance = session.query(class_).filter_by(id=kwargs["id"]).one()
+                instance = session.query(class_).filter_by(id=id_).one()
                 session.delete(instance)
                 cascades = []
                 for obj in session.deleted:
@@ -74,11 +81,12 @@ class CheckDeleteUnionResolver(Resolver):
     """
     Resolver that determines which type is being return from the delete check
     """
+
     def __init__(self, table_types):
         self.table_types = table_types
 
-
-    # This will fail if a type is added to the scheme during a merge because it will not know about the added type
+    # This will fail if a type is added to the schema
+    # during a merge because it will not know about the added type
     def resolve_type(self, instance):
         for table, gql_type in self.table_types.items():
             if isinstance(instance, get_mapper(table).class_):
@@ -93,11 +101,13 @@ class EnumResolver(Resolver):
     def resolve(self, parent, info):
         """
         Resolve Enums which need to get the code from the value
-        :param parent: gql parent. is whatever was returned by the parent resolver
+        :param parent: gql parent. is whatever was returned by
+        the parent resolver
         :param info: gql info dictionary
         :return: getattr(parent, info.field_Name)
         """
-        return getattr(getattr(parent, underscore(info.field_name)), "value", None)
+        field_name = underscore(info.field_name)
+        return getattr(getattr(parent, field_name), "value", None)
 
 
 class TableResolver(Resolver):
@@ -105,6 +115,7 @@ class TableResolver(Resolver):
     A subclass of :class:`Resolver` that adds a table so that it can be
     reused in :class:`QueryResolver` and :class:`MutationResolver`.
     """
+
     def __init__(self, table):
         self.table = table
 
@@ -116,6 +127,7 @@ class MutationResolver(TableResolver):
     method and return either the requested data of the changed object
     or an error dict filled with errors.
     """
+
     def __init__(self, table, schema=None):
         """
         MutationResolver can be overriden by
@@ -142,10 +154,9 @@ class MutationResolver(TableResolver):
         if self.schema is not None:
             error = self.validate(parent, info, *args, **kwargs)
             if error:
-                return {
-                    "error": error
-                }
-        return super(MutationResolver, self).__call__(parent, info, *args, **kwargs)
+                return {"error": error}
+        super_ = super(MutationResolver, self)
+        return super_.__call__(parent, info, *args, **kwargs)
 
     def validate(self, parent, info, **kwargs):
         """
@@ -153,8 +164,8 @@ class MutationResolver(TableResolver):
         according to the Marshmallow schema. The default Marshmallow
         schema can be overriden or the entire validate method can be
         overriden to allow for non-standard validations.
-        :param parent: parent object required by GraphQL, always None because
-        mutations are always top level.
+        :param parent: parent object required by GraphQL, always
+        None because mutations are always top level.
         :param info: GraphQL info dictionary
         :param kwargs: Holds user inputs. If the input dict is passed,
         this function will validate each of the fields it contains.
@@ -201,21 +212,22 @@ class CreateResolver(MutationResolver):
     as input and creates an instance of the associated table with those
     fields.
     """
+
     def resolve(self, parent, info, *args, **kwargs):
         session = info.context
         mapper = get_mapper(self.table)
         table_name = self.table.name
 
-        instance_values = self.input_to_instance_values(kwargs["input"], mapper, session)
+        instance_values = self.input_to_instance_values(
+            kwargs["input"], mapper, session
+        )
 
         instance = mapper.class_()
         for key, value in instance_values.items():
             setattr(instance, key, value)
         session.add(instance)
         session.commit()
-        return {
-            table_name: instance,
-        }
+        return {table_name: instance}
 
 
 class UpdateResolver(MutationResolver):
@@ -224,6 +236,7 @@ class UpdateResolver(MutationResolver):
     and an id as input and updates the instance specified by id with
     fields specified by fields.
     """
+
     def resolve(self, parent, info, *args, **kwargs):
         """
         Updates the instance of the associated table with the id passed.
@@ -240,17 +253,18 @@ class UpdateResolver(MutationResolver):
         mapper = get_mapper(self.table)
         table_name = self.table.name
 
-        instance_values = self.input_to_instance_values(kwargs["input"], mapper, session)
+        instance_values = self.input_to_instance_values(
+            kwargs["input"], mapper, session
+        )
 
-        instance = session.query(mapper.class_).filter_by(id=kwargs["id"]).one()
+        id_ = kwargs["id"]
+        instance = session.query(mapper.class_).filter_by(id=id_).one()
         for key, value in instance_values.items():
             setattr(instance, key, value)
         session.add(instance)
         session.commit()
 
-        return {
-            table_name: instance
-        }
+        return {table_name: instance}
 
 
 class DeleteResolver(MutationResolver):
@@ -258,6 +272,7 @@ class DeleteResolver(MutationResolver):
     A subclass of :class:`MutationResolver`. Takes an id and deletes
     the instance specified by id.
     """
+
     def resolve(self, parent, info, *args, **kwargs):
         """
         Deletes the instance of the associated table with the id passed.
@@ -272,20 +287,19 @@ class DeleteResolver(MutationResolver):
         session = info.context
         mapper = get_mapper(self.table)
         table_name = self.table.name
-
-        instance = session.query(mapper.class_).filter_by(id=kwargs["id"]).one()
+        id_ = kwargs["id"]
+        instance = session.query(mapper.class_).filter_by(id=id_).one()
         session.delete(instance)
         session.commit()
 
-        return {
-            table_name: instance
-        }
+        return {table_name: instance}
 
 
 class QueryResolver(TableResolver):
     """
     A subclass of :class:`TableResolver`.
     """
+
     def generate_query(self, info):
         """
         Generates a basic query based on the mapped class
@@ -303,6 +317,7 @@ class SingleResolver(QueryResolver):
     A subclass of :class:`QueryResolver`. Takes an id and queries for
     the instance specified by id.
     """
+
     def resolve(self, parent, info, *args, **kwargs):
         """
 
@@ -312,15 +327,17 @@ class SingleResolver(QueryResolver):
         :param kwargs: Has the id of the instance of the desired model
         :return: The instance of the model with the given id
         """
-        return self.generate_query(info).filter_by(id=kwargs["id"]).one_or_none()
+        query = self.generate_query(info)
+        return query.filter_by(id=kwargs["id"]).one_or_none()
 
 
 class ManyResolver(QueryResolver):
     """
     A subclass of :class:`QueryResolver`. By default queries for all
-    instances of the table that it is associated with. Can be filtered and sorted
-    with keyword args.
+    instances of the table that it is associated with. Can be filtered and
+    sorted with keyword args.
     """
+
     def generate_subqueryloads(self, field_node, load_path=None):
         """
         A helper function that allows the generation of the top level
@@ -348,7 +365,8 @@ class ManyResolver(QueryResolver):
             else:
                 extended_load_path = load_path.subqueryload(field_name)
             options = options + self.generate_subqueryloads(
-                selection, extended_load_path)
+                selection, extended_load_path
+            )
 
         # if all children are leaves then this is the last node,
         if len(options) == 0:
@@ -364,7 +382,11 @@ class ManyResolver(QueryResolver):
         """
         field_name = info.field_name
         field_node = list(
-            filter(lambda selection: selection.name.value == field_name, info.operation.selection_set.selections))
+            filter(
+                lambda selection: selection.name.value == field_name,
+                info.operation.selection_set.selections,
+            )
+        )
         if len(field_node) != 1:
             print("Duplicate queries not allowed")
         options = self.generate_subqueryloads(field_node[0])

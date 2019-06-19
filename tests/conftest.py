@@ -1,7 +1,11 @@
 import pytest
-
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column
 from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm import sessionmaker
 
 base = declarative_base()
@@ -12,7 +16,7 @@ Session = sessionmaker()
 def session():
     """Create and configure a new app instance for each test."""
     # create the app with common test config
-    engine = create_engine('sqlite://')
+    engine = create_engine("sqlite://")
     base.metadata.create_all(engine)
     Session.configure(bind=engine)
     session = Session()
@@ -27,12 +31,8 @@ def session():
     return session
 
 
-from sqlalchemy.orm import relationship
-from sqlalchemy import String, Integer, Column, ForeignKey
-
-
 class Person(base):
-    __tablename__ = 'Person'
+    __tablename__ = "Person"
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -46,16 +46,18 @@ class Person(base):
 
 
 class House(base):
-    __tablename__ = 'House'
+    __tablename__ = "House"
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
 
-    inhabitants = relationship("Person", cascade="all, delete-orphan", back_populates="house")
+    inhabitants = relationship(
+        "Person", cascade="all, delete-orphan", back_populates="house"
+    )
 
 
 class Car(base):
-    __tablename__ = 'Car'
+    __tablename__ = "Car"
 
     id = Column(Integer, primary_key=True)
     name = Column(String)

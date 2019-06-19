@@ -19,9 +19,16 @@ setup(
         "marshmallow",
         "marshmallow_sqlalchemy",
         "inflection",
-        "graphql-core-next"
+        "graphql-core-next",
     ],
     extras_require={
-        "dev": ["pytest", "coverage", "tox", "sphinx", "Pallets-Sphinx-Themes"]
+        "dev": [
+            "pytest",
+            "coverage",
+            "tox",
+            "sphinx",
+            "Pallets-Sphinx-Themes",
+            "pre-commit",
+        ]
     },
 )
