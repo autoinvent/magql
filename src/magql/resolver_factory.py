@@ -199,10 +199,11 @@ class MutationResolver(TableResolver):
             if key in mapper.relationships:
                 target = get_mapper(mapper.relationships[key].target).class_
                 query = session.query(target)
-                if isinstance(value, list):
-                    value = query.filter(target.id.in_(value)).all()
-                else:
-                    value = query.filter(target.id == value).one()
+                if value:
+                    if isinstance(value, list):
+                        value = query.filter(target.id.in_(value)).all()
+                    else:
+                        value = query.filter(target.id == value).one()
             instance_values[key] = value
         return instance_values
 
