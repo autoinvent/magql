@@ -18,6 +18,8 @@ from graphql import GraphQLObjectType
 from graphql import GraphQLScalarType
 from graphql import GraphQLSchema
 from graphql import GraphQLString
+from graphql import GraphQLInt
+from graphql import GraphQLID
 from graphql import GraphQLUnionType
 from inflection import camelize
 from inflection import pluralize
@@ -129,8 +131,8 @@ class MagqlSchema:
                 rel_object = self.table_types[rel.target].object
 
                 # inputs are for mutations so should not be recursive
-                rel_input = GraphQLString
-                rel_required_input = GraphQLString
+                rel_input = GraphQLInt
+                rel_required_input = GraphQLInt
 
                 if "TOMANY" in direction:
                     rel_object = GraphQLList(rel_object)
@@ -289,7 +291,7 @@ class MagqlSchema:
         fields = {
             js_camelize(table_name): GraphQLField(
                 table_gql_object,
-                {"id": GraphQLArgument(GraphQLNonNull(GraphQLString))},
+                {"id": GraphQLArgument(GraphQLNonNull(GraphQLID))},
                 SingleResolver(table),
             ),
             js_camelize(pluralize(table_name)): GraphQLField(
