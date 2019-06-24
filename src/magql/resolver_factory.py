@@ -155,6 +155,7 @@ class MutationResolver(TableResolver):
             error = self.validate(parent, info, *args, **kwargs)
             if error:
                 return {"error": error}
+        info.context.rollback()
         super_ = super(MutationResolver, self)
         return super_.__call__(parent, info, *args, **kwargs)
 
