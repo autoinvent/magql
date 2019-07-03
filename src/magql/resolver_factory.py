@@ -106,11 +106,13 @@ class EnumResolver(Resolver):
         :param info: gql info dictionary
         :return: getattr(parent, info.field_Name)
         """
+        if not parent:
+            return None
         field_name = underscore(info.field_name)
         return getattr(getattr(parent, field_name), "value", None)
 
 
-class TableResolver(Resolver):
+class TableResolver(Resolver):  # noqa: B903
     """
     A subclass of :class:`Resolver` that adds a table so that it can be
     reused in :class:`QueryResolver` and :class:`MutationResolver`.

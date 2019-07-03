@@ -10,7 +10,7 @@ from magql.resolver_factory import SingleResolver
 from magql.resolver_factory import UpdateResolver
 
 
-class DummyInfo:
+class DummyInfo:  # noqa: E501
     def __init__(self, session):
         self.context = session
 

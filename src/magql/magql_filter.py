@@ -1,12 +1,5 @@
 from functools import singledispatch
 
-from graphql import GraphQLBoolean
-from graphql import GraphQLEnumType
-from graphql import GraphQLFloat
-from graphql import GraphQLID
-from graphql import GraphQLInputObjectType
-from graphql import GraphQLInt
-from graphql import GraphQLString
 from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy import Text
@@ -27,80 +20,96 @@ from sqlalchemy_utils import PhoneNumberType
 from sqlalchemy_utils import URLType
 from sqlalchemy_utils.types import ChoiceType
 
-StringFilter = GraphQLInputObjectType(
+from magql.definitions import MagqlEnumType
+from magql.definitions import MagqlInputField
+from magql.definitions import MagqlInputObjectType
+
+StringFilter = MagqlInputObjectType(
     "StringFilter",
     {
-        "operator": GraphQLEnumType(
-            "StringOperator", {"INCLUDES": "INCLUDES", "EQUALS": "EQUALS"}
+        "operator": MagqlInputField(
+            MagqlEnumType(
+                "StringOperator", {"INCLUDES": "INCLUDES", "EQUALS": "EQUALS"}
+            )
         ),
-        "value": GraphQLString,
+        "value": MagqlInputField("String"),
     },
 )
 
-IntFilter = GraphQLInputObjectType(
+IntFilter = MagqlInputObjectType(
     "IntFilter",
     {
-        "operator": GraphQLEnumType(
-            "IntOperator",
-            {
-                "lt": "lt",
-                "lte": "lte",
-                "eq": "eq",
-                "neq": "neq",
-                "gt": "gt",
-                "gte": "gte",
-            },
+        "operator": MagqlInputField(
+            MagqlEnumType(
+                "IntOperator",
+                {
+                    "lt": "lt",
+                    "lte": "lte",
+                    "eq": "eq",
+                    "neq": "neq",
+                    "gt": "gt",
+                    "gte": "gte",
+                },
+            )
         ),
-        "value": GraphQLInt,
+        "value": MagqlInputField("Int"),
     },
 )
 
-FloatFilter = GraphQLInputObjectType(
+FloatFilter = MagqlInputObjectType(
     "FloatFilter",
     {
-        "operator": GraphQLEnumType(
-            "FloatOperator",
-            {
-                "lt": "lt",
-                "lte": "lte",
-                "eq": "eq",
-                "neq": "neq",
-                "gt": "gt",
-                "gte": "gte",
-            },
+        "operator": MagqlInputField(
+            MagqlEnumType(
+                "FloatOperator",
+                {
+                    "lt": "lt",
+                    "lte": "lte",
+                    "eq": "eq",
+                    "neq": "neq",
+                    "gt": "gt",
+                    "gte": "gte",
+                },
+            )
         ),
-        "value": GraphQLFloat,
+        "value": MagqlInputField("Float"),
     },
 )
 
-RelFilter = GraphQLInputObjectType(
+RelFilter = MagqlInputObjectType(
     "RelFilter",
     {
-        "operator": GraphQLEnumType("RelOperator", {"INCLUDES": "INCLUDES"}),
-        "value": GraphQLID,
+        "operator": MagqlInputField(
+            MagqlEnumType("RelOperator", {"INCLUDES": "INCLUDES"})
+        ),
+        "value": MagqlInputField("Int"),
     },
 )
 
 
-BooleanFilter = GraphQLInputObjectType(
+BooleanFilter = MagqlInputObjectType(
     "BooleanFilter",
     {
-        "operator": GraphQLEnumType(
-            "BooleanOperator", {"TRUE": "TRUE", "FALSE": "FALSE"}
+        "operator": MagqlInputField(
+            MagqlEnumType("BooleanOperator", {"TRUE": "TRUE", "FALSE": "FALSE"})
         ),
-        "value": GraphQLBoolean,
+        "value": MagqlInputField("Boolean"),
     },
 )
 
-EnumOperator = GraphQLEnumType(
+EnumOperator = MagqlEnumType(
     "EnumOperator", {"INCLUDES": "INCLUDES", "EXCLUDES": "EXCLUDES"}
 )
 
 
 def EnumFilter(base_type):
     name = base_type.name + "Filter"
-    input_ = {"operator": EnumOperator, "value": base_type}
-    return GraphQLInputObjectType(name, input_)
+
+    input_ = {
+        "operator": MagqlInputField(EnumOperator),
+        "value": MagqlInputField(base_type),
+    }
+    return MagqlInputObjectType(name, input_)
 
 
 @singledispatch
@@ -194,7 +203,7 @@ def _(_):
 
 def generate_filters(table, info, *args, **kwargs):
     sqla_filters = []
-    if "filter" in kwargs and kwargs["filter"] is not None:
+    if "filter" in kwargs:
         mapper = get_mapper(table)
         gql_filters = kwargs["filter"]
         for filter_name, gql_filter in gql_filters.items():

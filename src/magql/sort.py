@@ -3,7 +3,7 @@ from sqlalchemy_utils import get_mapper
 
 def generate_sorts(table, info, *args, **kwargs):
     sqla_sorts = []
-    if "sort" in kwargs:
+    if "sort" in kwargs and kwargs["sort"] is not None:
         class_ = get_mapper(table).class_
         gql_sorts = kwargs["sort"]
         for sort in gql_sorts:
