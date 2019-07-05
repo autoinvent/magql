@@ -471,4 +471,3 @@
 #             self.schema.mutation_type.fields[field_name].resolve = resolver
 #         elif field_name in self.schema.query_type.fields:
 #             self.schema.query_type.fields[field_name].resolve = resolver
-# >>>>>>> 37da0205a4b0934cc398825156333b3b1c19c713

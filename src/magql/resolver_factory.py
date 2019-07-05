@@ -364,6 +364,10 @@ class ManyResolver(QueryResolver):
             if selection.selection_set is None:
                 continue
             field_name = js_underscore(selection.name.value)
+
+            if field_name not in get_mapper(self.table).relationships:
+                continue
+
             if load_path is None:
                 extended_load_path = subqueryload(field_name)
             else:

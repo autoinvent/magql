@@ -49,7 +49,31 @@ class MagqlTableManagerCollection:
         self.manager_map[table] = MagqlTableManager(table)
 
 
-class MagqlTableManager:
+class MagqlManager:
+    def __init__(self, magql_name):
+        self.query = MagqlObjectType("Query")
+        self.mutation = MagqlObjectType("Mutation")
+        self.magql_types = {}
+        self.magql_name = magql_name
+
+    def query_field(self, query_name, return_type, args=None):
+        def decorator(resolver):
+            self.query.fields[query_name] = MagqlField(return_type, args, resolver)
+            return resolver
+
+        return decorator
+
+    def field(self, field_name, return_type, args=None):
+        def decorator(resolver):
+            self.magql_types[self.magql_name].fields[field_name] = MagqlField(
+                return_type, args, resolver
+            )
+            return resolver
+
+        return decorator
+
+
+class MagqlTableManager(MagqlManager):
     def __init__(self, table):
         self.query = MagqlObjectType("Query")
         self.mutation = MagqlObjectType("Mutation")
@@ -60,6 +84,9 @@ class MagqlTableManager:
         self.magql_types = {}
         self._generate_validation_schema()
         self.gen_magql_fields()
+
+    # def create_resolver(self):
+    #     return
 
     def single_query_name(self):
         return js_camelize(self.table.name)
