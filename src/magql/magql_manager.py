@@ -12,11 +12,14 @@ from magql.definitions import MagqlInputObjectType
 from magql.definitions import MagqlList
 from magql.definitions import MagqlNonNull
 from magql.definitions import MagqlObjectType
+from magql.definitions import MagqlUnionType
 from magql.magql_filter import RelFilter
 from magql.magql_type import get_magql_filter_type
 from magql.magql_type import get_magql_required_type
 from magql.magql_type import get_magql_type
 from magql.resolver_factory import CamelResolver
+from magql.resolver_factory import CheckDeleteResolver
+from magql.resolver_factory import CheckDeleteUnionResolver
 from magql.resolver_factory import CreateResolver
 from magql.resolver_factory import DeleteResolver
 from magql.resolver_factory import EnumResolver
@@ -40,6 +43,30 @@ class MagqlTableManagerCollection:
                 self.manager_map[table] = managers[table]
             else:
                 self.generate_manager(table)
+        self.generate_check_delete()
+
+    def generate_check_delete(self):
+        check_delete_manager = MagqlManager("checkDelete")
+
+        types = [
+            manager.magql_name for _magql_name, manager in self.manager_map.items()
+        ]
+
+        table_types = {}
+        for _magql_name, manager in self.manager_map.items():
+            if isinstance(manager, MagqlTableManager):
+                table_types[manager.magql_name] = manager.table
+
+        check_delete_manager.magql_types["CheckDeleteUnion"] = MagqlUnionType(
+            "CheckDeleteUnion", types, CheckDeleteUnionResolver, table_types
+        )
+
+        check_delete_manager.query.fields["checkDelete"] = MagqlField(
+            MagqlList("CheckDeleteUnion"),
+            {"tableName": MagqlArgument("String"), "id": MagqlArgument("String")},
+            CheckDeleteResolver(self.manager_map),
+        )
+        self.manager_map["checkDelete"] = check_delete_manager
 
     def generate_manager(self, table):
         try:
