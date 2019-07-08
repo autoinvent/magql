@@ -82,18 +82,21 @@ class CheckDeleteUnionResolver(Resolver):
     Resolver that determines which type is being return from the delete check
     """
 
-    def __init__(self, table_types):
+    def __init__(self, table_types, type_map):
         self.table_types = table_types
+        self.type_map = type_map
 
     # This will fail if a type is added to the schema
     # during a merge because it will not know about the added type
     def resolve_type(self, instance):
-        for table, gql_type in self.table_types.items():
+        for magql_name, table in self.table_types.items():
             if isinstance(instance, get_mapper(table).class_):
-                return gql_type.object
+                return self.type_map[magql_name]
         raise Exception("Type not found")
 
     def resolve(self, parent, info, *args, **kwargs):
+        if self.type_map is None:
+            raise AssertionError("Resolve called before type_map added")
         return self.resolve_type(parent)
 
 

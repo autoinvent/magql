@@ -14,6 +14,7 @@ from graphql import GraphQLNonNull
 from graphql import GraphQLObjectType
 from graphql import GraphQLSchema
 from graphql import GraphQLString
+from graphql import GraphQLUnionType
 
 from magql.definitions import MagqlArgument
 from magql.definitions import MagqlBoolean
@@ -28,6 +29,7 @@ from magql.definitions import MagqlList
 from magql.definitions import MagqlNonNull
 from magql.definitions import MagqlObjectType
 from magql.definitions import MagqlString
+from magql.definitions import MagqlUnionType
 from magql.definitions import MagqlWrappingType
 
 
@@ -72,6 +74,9 @@ class Convert:
                     wrapping_types_stack.append(type(type_))
                     type_ = type_.type_
                 if isinstance(type_, MagqlEnumType):
+                    continue
+
+                if isinstance(type_, MagqlUnionType):
                     continue
                 for _field_name, field in type_.fields.items():
                     wrapping_types_stack2 = []
@@ -217,3 +222,22 @@ def _(arg, type_map):
 @convert.register(MagqlFloat)
 def _(arg, type_map):
     return GraphQLFloat
+
+
+@convert.register(MagqlUnionType)
+def _(union, type_map):
+    if union.name in type_map:
+        return type_map[union.name]
+    types = []
+
+    for type in union.types:
+        if isinstance(type, str):
+            types.append(type_map[type])
+        else:
+            types.append(type)
+    gql_union = GraphQLUnionType(
+        union.name, types, union.resolve_types(union.table_types, type_map)
+    )
+
+    type_map[union.name] = gql_union
+    return gql_union
