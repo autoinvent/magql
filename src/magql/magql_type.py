@@ -56,7 +56,7 @@ def is_required(col):
 
 
 def get_magql_required_type(col):
-    type_ = get_magql_type(col.type, col)
+    type_ = get_magql_type(col)
     if is_required(col):
         return MagqlNonNull(type_)
     else:

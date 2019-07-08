@@ -177,7 +177,10 @@ class MutationResolver(TableResolver):
         if "input" in kwargs:
             try:
                 schema = self.schema()
-                validate = schema.load(kwargs["input"], session=info.context)
+                partial = isinstance(self, UpdateResolver)
+                validate = schema.load(
+                    kwargs["input"], session=info.context, partial=partial
+                )
             except ValidationError as err:
                 return [value for key, value in err.messages.items()]
             if validate.errors:
