@@ -14,6 +14,7 @@ from magql.definitions import MagqlNonNull
 from magql.definitions import MagqlObjectType
 from magql.magql_filter import RelFilter
 from magql.magql_type import get_magql_filter_type
+from magql.magql_type import get_magql_required_type
 from magql.magql_type import get_magql_type
 from magql.resolver_factory import CamelResolver
 from magql.resolver_factory import CreateResolver
@@ -115,7 +116,7 @@ class MagqlTableManager(MagqlManager):
 
         self.mutation.fields["create" + self.magql_name] = MagqlField(
             self.magql_name + "Payload",
-            {"input": MagqlArgument(self.magql_name + "InputRequired")},
+            {"input": MagqlArgument(MagqlNonNull(self.magql_name + "InputRequired"))},
             CreateResolver(self.table, self.validation_schema),
         )
         self.mutation.fields["delete" + self.magql_name] = MagqlField(
@@ -127,7 +128,7 @@ class MagqlTableManager(MagqlManager):
             self.magql_name + "Payload",
             {
                 "id": MagqlArgument(MagqlNonNull("Int")),
-                "input": MagqlArgument(self.magql_name + "Input"),
+                "input": MagqlArgument(MagqlNonNull(self.magql_name + "Input")),
             },
             UpdateResolver(self.table, self.validation_schema),
         )
@@ -162,7 +163,7 @@ class MagqlTableManager(MagqlManager):
                 continue
             field_name = js_camelize(col_name)
             magql_type = get_magql_type(col)
-            required_magql_type = get_magql_type(col)
+            required_magql_type = get_magql_required_type(col)
             base.fields[field_name] = MagqlField(
                 magql_type, None, CamelResolver()
             )  # noqa: E501
