@@ -93,7 +93,9 @@ class MagqlManager:
 
     def mutation_field(self, mutation_name, return_type, args=None):
         def decorator(resolver):
-            self.mutation.fields[mutation_name] = MagqlField(return_type, args, resolver)
+            self.mutation.fields[mutation_name] = MagqlField(
+                return_type, args, resolver
+            )
             return resolver
 
         return decorator
@@ -249,7 +251,7 @@ class MagqlTableManager(MagqlManager):
             MagqlObjectType(
                 base.name + "Payload",
                 {
-                    "error": MagqlField(MagqlList("String")),
+                    "errors": MagqlField(MagqlList("String")),
                     js_camelize(self.table_name): MagqlField(
                         base.name, None, CamelResolver()
                     ),
