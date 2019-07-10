@@ -157,9 +157,9 @@ class MutationResolver(TableResolver):
         :return:
         """
         if self.schema is not None:
-            error = self.validate(parent, info, *args, **kwargs)
-            if error:
-                return {"error": error}
+            errors = self.validate(parent, info, *args, **kwargs)
+            if errors:
+                return {"errors": errors}
         info.context.rollback()
         super_ = super(MutationResolver, self)
         return super_.__call__(parent, info, *args, **kwargs)
