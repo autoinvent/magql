@@ -87,7 +87,7 @@ def _(type, column):
 
 @_get_magql_type.register(Integer)
 def _(type, column):
-    return MagqlInt()
+    return MagqlInt(MagqlInt.parse_value_accepts_string)
 
 
 @_get_magql_type.register(FLOAT)

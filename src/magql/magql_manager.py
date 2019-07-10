@@ -63,7 +63,7 @@ class MagqlTableManagerCollection:
 
         check_delete_manager.query.fields["checkDelete"] = MagqlField(
             MagqlList("CheckDeleteUnion"),
-            {"tableName": MagqlArgument("String"), "id": MagqlArgument("String")},
+            {"tableName": MagqlArgument("String"), "id": MagqlArgument("Int")},
             CheckDeleteResolver(self.manager_map),
         )
         self.manager_map["checkDelete"] = check_delete_manager
@@ -172,7 +172,7 @@ class MagqlTableManager(MagqlManager):
         self.query.fields[self.single_query_name()] = MagqlField(
             self.magql_name,
             {"id": MagqlArgument(MagqlNonNull("Int"))},
-            SingleResolver(self.table),
+            SingleResolver(self.table, self.validation_schema),
         )
 
         self.query.fields[self.many_query_name()] = MagqlField(
@@ -183,7 +183,7 @@ class MagqlTableManager(MagqlManager):
                     MagqlList(MagqlNonNull(self.magql_name + "Sort"))
                 ),
             },
-            ManyResolver(self.table),
+            ManyResolver(self.table, self.validation_schema),
         )
 
         base = MagqlObjectType(self.magql_name)

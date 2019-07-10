@@ -63,6 +63,7 @@ class CheckDeleteResolver(Resolver):
     def resolve(self, parent, info, *args, **kwargs):
         for table in self.table_types.keys():
             class_ = get_mapper(table).class_
+            # TODO: switch over frontend to class name
             if class_.__name__ == kwargs["tableName"]:
                 id_ = kwargs["id"]
                 session = info.context
@@ -121,8 +122,23 @@ class TableResolver(Resolver):  # noqa: B903
     reused in :class:`QueryResolver` and :class:`MutationResolver`.
     """
 
-    def __init__(self, table):
+    def __init__(self, table, schema=None):
+        """
+        MutationResolver can be overriden by
+        :param table:
+        :param schema: Optional, by default it is a generic Marshmallow
+        schema that is automatically generated based on the table by
+        Marshmallow-SQLAlchemy.
+        """
         self.table = table
+        self.schema = schema
+
+    def __call__(self, parent, info, *args, **kwargs):
+        if self.schema is not None:
+            error = self.validate(parent, info, *args, **kwargs)
+            if error:
+                return {"errors": error}
+        return super(TableResolver, self).__call__(parent, info, *args, **kwargs)
 
 
 class MutationResolver(TableResolver):
@@ -132,17 +148,6 @@ class MutationResolver(TableResolver):
     method and return either the requested data of the changed object
     or an error dict filled with errors.
     """
-
-    def __init__(self, table, schema=None):
-        """
-        MutationResolver can be overriden by
-        :param table:
-        :param schema: Optional, by default it is a generic Marshmallow
-        schema that is automatically generated based on the table by
-        Marshmallow-SQLAlchemy.
-        """
-        super(MutationResolver, self).__init__(table)
-        self.schema = schema
 
     def __call__(self, parent, info, *args, **kwargs):
         """
@@ -156,10 +161,6 @@ class MutationResolver(TableResolver):
         :param kwargs: Holds user inputs.
         :return:
         """
-        if self.schema is not None:
-            errors = self.validate(parent, info, *args, **kwargs)
-            if errors:
-                return {"errors": errors}
         info.context.rollback()
         super_ = super(MutationResolver, self)
         return super_.__call__(parent, info, *args, **kwargs)
@@ -321,6 +322,9 @@ class QueryResolver(TableResolver):
         mapper = get_mapper(self.table)
         return session.query(mapper.class_)
 
+    def validate(self, parent, info, *args, **kwargs):
+        pass
+
 
 class SingleResolver(QueryResolver):
     """
@@ -339,6 +343,9 @@ class SingleResolver(QueryResolver):
         """
         query = self.generate_query(info)
         return query.filter_by(id=kwargs["id"]).one_or_none()
+
+    def validate(self, parent, info, *args, **kwargs):
+        pass
 
 
 class ManyResolver(QueryResolver):
