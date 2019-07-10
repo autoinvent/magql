@@ -59,7 +59,7 @@ class Convert:
     def generate_type_map(self, managers):
         magql_type_map = {
             "String": MagqlString(),
-            "Int": MagqlInt(),
+            "Int": MagqlInt(MagqlInt.parse_value_accepts_string),
             "Boolean": MagqlBoolean(),
             "Float": MagqlFloat(),
             "ID": MagqlID(),
@@ -186,58 +186,63 @@ def _(str_, type_map):
 
 
 @convert.register(MagqlEnumType)
-def _(enum, type_map):
-    if enum.name in type_map:
-        return type_map[enum.name]
-    enum_type = GraphQLEnumType(enum.name, enum.values)
-    type_map[enum.name] = enum_type
+def _(magql_enum, type_map):
+    if magql_enum.name in type_map:
+        return type_map[magql_enum.name]
+    enum_type = GraphQLEnumType(magql_enum.name, magql_enum.values)
+    type_map[magql_enum.name] = enum_type
     return enum_type
 
 
 @convert.register(MagqlArgument)
-def _(arg, type_map):
-    return GraphQLArgument(convert(arg.type_, type_map), arg.default_value)
+def _(magql_arg, type_map):
+    return GraphQLArgument(convert(magql_arg.type_, type_map), magql_arg.default_value)
 
 
 @convert.register(MagqlString)
-def _(arg, type_map):
+def _(magql_string, type_map):
     return GraphQLString
 
 
 @convert.register(MagqlID)
-def _(arg, type_map):
+def _(magql_id, type_map):
     return GraphQLID
 
 
 @convert.register(MagqlInt)
-def _(arg, type_map):
-    return GraphQLInt
+def _(magql_int, type_map):
+    gql_int = GraphQLInt
+    if magql_int.parse_value:
+        gql_int.parse_value = magql_int.parse_value
+    return gql_int
 
 
 @convert.register(MagqlBoolean)
-def _(arg, type_map):
+def _(magql_boolean, type_map):
     return GraphQLBoolean
 
 
 @convert.register(MagqlFloat)
-def _(arg, type_map):
+def _(magql_float, type_map):
     return GraphQLFloat
 
 
 @convert.register(MagqlUnionType)
-def _(union, type_map):
-    if union.name in type_map:
-        return type_map[union.name]
+def _(magql_union, type_map):
+    if magql_union.name in type_map:
+        return type_map[magql_union.name]
     types = []
 
-    for type in union.types:
+    for type in magql_union.types:
         if isinstance(type, str):
             types.append(type_map[type])
         else:
             types.append(type)
     gql_union = GraphQLUnionType(
-        union.name, types, union.resolve_types(union.table_types, type_map)
+        magql_union.name,
+        types,
+        magql_union.resolve_types(magql_union.table_types, type_map),
     )
 
-    type_map[union.name] = gql_union
+    type_map[magql_union.name] = gql_union
     return gql_union

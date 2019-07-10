@@ -1,3 +1,4 @@
+from graphql.type.scalars import coerce_int
 from inflection import camelize
 
 
@@ -97,7 +98,16 @@ class MagqlUnionType:  # noqa: B903
 
 
 class MagqlInt:
-    pass
+    def __init__(self, parse_value=None):
+        self.parse_value = parse_value
+
+    @staticmethod
+    def parse_value_accepts_string(value):
+        try:
+            converted_value = int(value)
+        except ValueError:
+            converted_value = coerce_int(value)
+        return converted_value
 
 
 class MagqlFloat:
