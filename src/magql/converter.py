@@ -78,7 +78,16 @@ class Convert:
 
                 if isinstance(type_, MagqlUnionType):
                     continue
-                for _field_name, field in type_.fields.items():
+                for field_name, field in type_.fields.items():
+                    if not (
+                        isinstance(field, MagqlField)
+                        or isinstance(field, MagqlInputField)
+                    ):
+                        raise Exception(
+                            f"Expected type MagqlField, got type {type(field)} "
+                            f"for field: {field_name}\n Did you "
+                            "forget to wrap your field with MagqlField?"
+                        )
                     wrapping_types_stack2 = []
                     ret_field = field.type_name
                     while isinstance(ret_field, MagqlWrappingType):
