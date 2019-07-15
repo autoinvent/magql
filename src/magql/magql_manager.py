@@ -84,31 +84,6 @@ class MagqlManager:
         self.magql_types = {}
         self.magql_name = magql_name
 
-    def query_field(self, query_name, return_type, args=None):
-        def decorator(resolver):
-            self.query.fields[query_name] = MagqlField(return_type, args, resolver)
-            return resolver
-
-        return decorator
-
-    def mutation_field(self, mutation_name, return_type, args=None):
-        def decorator(resolver):
-            self.mutation.fields[mutation_name] = MagqlField(
-                return_type, args, resolver
-            )
-            return resolver
-
-        return decorator
-
-    def field(self, field_name, return_type, args=None):
-        def decorator(resolver):
-            self.magql_types[self.magql_name].fields[field_name] = MagqlField(
-                return_type, args, resolver
-            )
-            return resolver
-
-        return decorator
-
 
 class MagqlTableManager(MagqlManager):
     def __init__(self, table):

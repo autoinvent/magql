@@ -9,6 +9,13 @@ class MagqlObjectType:
         self.fields = fields if fields is not None else {}
         self.description = description
 
+    def field(self, field_name, return_type, args=None):
+        def decorator(resolver):
+            self.fields[field_name] = MagqlField(return_type, args, resolver)
+            return resolver
+
+        return decorator
+
     # Convert each value in fields to GQLField
     # def convert(self):
     #     gql_fields = {}

@@ -56,6 +56,48 @@ class Convert:
 
             self.convert_manager(manager)
 
+    # TODO: Update convert_str_leafs and convert_type to either recursive or
+    # functions on MagqlTypes
+    @staticmethod
+    def convert_type(ret_type, magql_type_map):
+        wrapping_types_stack2 = []
+        while isinstance(ret_type, MagqlWrappingType):
+            wrapping_types_stack2.append(type(ret_type))
+            ret_type = ret_type.type_
+        if isinstance(ret_type, str):
+            ret_type = magql_type_map[ret_type]
+            while wrapping_types_stack2:
+                ret_type = wrapping_types_stack2.pop()(ret_type)
+        return ret_type
+
+    @staticmethod
+    def convert_str_leafs(type_, magql_type_map):
+        wrapping_types_stack = []
+        while isinstance(type_, MagqlWrappingType):
+            wrapping_types_stack.append(type(type_))
+            type_ = type_.type_
+        if isinstance(type_, MagqlEnumType):
+            return
+
+        if isinstance(type_, MagqlUnionType):
+            return
+        for field_name, field in type_.fields.items():
+            if not (
+                isinstance(field, MagqlField) or isinstance(field, MagqlInputField)
+            ):
+                raise Exception(
+                    f"Expected type MagqlField, got type {type(field)} "
+                    f"for field: {field_name}\n Did you "
+                    "forget to wrap your field with MagqlField?"
+                )
+
+            field.type_name = Convert.convert_type(field.type_name, magql_type_map)
+            if not isinstance(field, MagqlInputField):
+                for arg_name, arg in field.args.items():
+                    field.args[arg_name] = Convert.convert_type(
+                        arg.type_, magql_type_map
+                    )
+
     def generate_type_map(self, managers):
         magql_type_map = {
             "String": MagqlString(),
@@ -69,35 +111,10 @@ class Convert:
                 magql_type_map[type_name] = type_
         for _magql_name, manager in managers.items():
             for _type_name, type_ in manager.magql_types.items():
-                wrapping_types_stack = []
-                while isinstance(type_, MagqlWrappingType):
-                    wrapping_types_stack.append(type(type_))
-                    type_ = type_.type_
-                if isinstance(type_, MagqlEnumType):
-                    continue
+                Convert.convert_str_leafs(type_, magql_type_map)
+            # Convert.convert_str_leafs(manager.query, magql_type_map)
+            # Convert.convert_str_leafs(manager.mutation, magql_type_map)
 
-                if isinstance(type_, MagqlUnionType):
-                    continue
-                for field_name, field in type_.fields.items():
-                    if not (
-                        isinstance(field, MagqlField)
-                        or isinstance(field, MagqlInputField)
-                    ):
-                        raise Exception(
-                            f"Expected type MagqlField, got type {type(field)} "
-                            f"for field: {field_name}\n Did you "
-                            "forget to wrap your field with MagqlField?"
-                        )
-                    wrapping_types_stack2 = []
-                    ret_field = field.type_name
-                    while isinstance(ret_field, MagqlWrappingType):
-                        wrapping_types_stack2.append(type(ret_field))
-                        ret_field = ret_field.type_
-                    if isinstance(ret_field, str):
-                        ret_field = magql_type_map[ret_field]
-                        while wrapping_types_stack2:
-                            ret_field = wrapping_types_stack2.pop()(ret_field)
-                        field.type_name = ret_field
         for _magql_name, manager in managers.items():
             self.convert_types(manager)
 
@@ -191,7 +208,7 @@ def _(str_, type_map):
     if str_ in type_map:
         return type_map[str_]
     else:
-        raise KeyError("String name not in type_map")
+        raise KeyError(f"String, {str_}, not in registered MagqlTypes")
 
 
 @convert.register(MagqlEnumType)
