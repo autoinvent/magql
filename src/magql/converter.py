@@ -66,8 +66,8 @@ class Convert:
             ret_type = ret_type.type_
         if isinstance(ret_type, str):
             ret_type = magql_type_map[ret_type]
-            while wrapping_types_stack2:
-                ret_type = wrapping_types_stack2.pop()(ret_type)
+        while wrapping_types_stack2:
+            ret_type = wrapping_types_stack2.pop()(ret_type)
         return ret_type
 
     @staticmethod
