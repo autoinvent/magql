@@ -161,7 +161,6 @@ class MutationResolver(TableResolver):
         :param kwargs: Holds user inputs.
         :return:
         """
-        info.context.rollback()
         super_ = super(MutationResolver, self)
         return super_.__call__(parent, info, *args, **kwargs)
 
@@ -189,6 +188,7 @@ class MutationResolver(TableResolver):
                 return [value for key, value in err.messages.items()]
             if validate.errors:
                 return [value[0] for key, value in validate.errors.items()]
+            info.context.rollback()
 
     def input_to_instance_values(self, input, mapper, session):
         """
