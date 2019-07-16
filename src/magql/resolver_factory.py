@@ -1,6 +1,7 @@
 from inflection import underscore
 from marshmallow import ValidationError
 from sqlalchemy.orm import subqueryload
+from sqlalchemy_utils import ChoiceType
 from sqlalchemy_utils import get_mapper
 
 from magql.filter import generate_filters
@@ -206,6 +207,13 @@ class MutationResolver(TableResolver):
         instance_values = {}
         for key, value in input.items():
             key = underscore(key)
+            if key in mapper.c:
+                col_type = mapper.c[key].type
+                if isinstance(col_type, ChoiceType):
+                    for enum_tuple in col_type.choices:
+                        if value == enum_tuple[1]:
+                            value = enum_tuple[0]
+                            break
             if key in mapper.relationships:
                 target = get_mapper(mapper.relationships[key].target).class_
                 query = session.query(target)
@@ -271,6 +279,8 @@ class UpdateResolver(MutationResolver):
 
         id_ = kwargs["id"]
         instance = session.query(mapper.class_).filter_by(id=id_).one()
+
+        # Current enum implementation is very closely tied to using choice type
         for key, value in instance_values.items():
             setattr(instance, key, value)
         session.add(instance)
