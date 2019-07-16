@@ -205,6 +205,7 @@ class MutationResolver(TableResolver):
         """
         instance_values = {}
         for key, value in input.items():
+            key = underscore(key)
             if key in mapper.relationships:
                 target = get_mapper(mapper.relationships[key].target).class_
                 query = session.query(target)
