@@ -1,6 +1,7 @@
 from inflection import camelize
 from inflection import pluralize
 from marshmallow_sqlalchemy import ModelSchema
+from sqlalchemy import DECIMAL
 from sqlalchemy_utils import get_mapper
 
 from magql.definitions import js_camelize
@@ -21,6 +22,7 @@ from magql.resolver_factory import CamelResolver
 from magql.resolver_factory import CheckDeleteResolver
 from magql.resolver_factory import CheckDeleteUnionResolver
 from magql.resolver_factory import CreateResolver
+from magql.resolver_factory import DECIMALResolver
 from magql.resolver_factory import DeleteResolver
 from magql.resolver_factory import EnumResolver
 from magql.resolver_factory import ManyResolver
@@ -192,8 +194,12 @@ class MagqlTableManager(MagqlManager):
             base.fields[field_name] = MagqlField(
                 magql_type, None, CamelResolver()
             )  # noqa: E501
+            # TODO: Organize better method of having different resolvers
+            # for different fields, probably move onto magql_type
             if isinstance(magql_type, MagqlEnumType):
                 base.fields[field_name].resolve = EnumResolver()
+            if isinstance(col.type, DECIMAL):
+                base.fields[field_name].resolve = DECIMALResolver()
             if not col.primary_key:
                 input.fields[field_name] = MagqlInputField(magql_type)
                 input_required.fields[field_name] = MagqlInputField(
