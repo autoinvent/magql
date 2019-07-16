@@ -103,7 +103,7 @@ class Convert:
             "String": MagqlString(),
             "Int": MagqlInt(MagqlInt.parse_value_accepts_string),
             "Boolean": MagqlBoolean(),
-            "Float": MagqlFloat(),
+            "Float": MagqlFloat(MagqlFloat.parse_value_accepts_string),
             "ID": MagqlID(),
         }
         for _magql_name, manager in managers.items():
@@ -250,7 +250,11 @@ def _(magql_boolean, type_map):
 
 @convert.register(MagqlFloat)
 def _(magql_float, type_map):
-    return GraphQLFloat
+    gql_float = GraphQLFloat
+
+    if magql_float.parse_value:
+        gql_float.parse_value = magql_float.parse_value
+    return gql_float
 
 
 @convert.register(MagqlUnionType)

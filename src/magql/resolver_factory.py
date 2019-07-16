@@ -117,6 +117,21 @@ class EnumResolver(Resolver):
         return getattr(getattr(parent, field_name), "value", None)
 
 
+class DECIMALResolver(Resolver):
+    def resolve(self, parent, info):
+        """
+        Resolves decimals which need to get the real value
+        :param parent: gql parent. is whatever was returned by
+        the parent resolver
+        :param info: gql info dictionary
+        :return: decimal value
+        """
+        if not parent:
+            return None
+        field_name = underscore(info.field_name)
+        return getattr(getattr(parent, field_name), "value", None)
+
+
 class TableResolver(Resolver):  # noqa: B903
     """
     A subclass of :class:`Resolver` that adds a table so that it can be

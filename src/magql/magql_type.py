@@ -93,7 +93,7 @@ def _(type, column):
 @_get_magql_type.register(FLOAT)
 @_get_magql_type.register(DECIMAL)
 def _(type, column):
-    return MagqlFloat()
+    return MagqlFloat(MagqlFloat.parse_value_accepts_string)
 
 
 @_get_magql_type.register(ChoiceType)

@@ -118,7 +118,16 @@ class MagqlInt:
 
 
 class MagqlFloat:
-    pass
+    def __init__(self, parse_value=None):
+        self.parse_value = parse_value
+
+    @staticmethod
+    def parse_value_accepts_string(value):
+        try:
+            converted_value = float(value)
+        except ValueError:
+            converted_value = coerce_int(value)
+        return converted_value
 
 
 class MagqlBoolean:
