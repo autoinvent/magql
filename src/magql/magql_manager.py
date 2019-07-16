@@ -194,10 +194,11 @@ class MagqlTableManager(MagqlManager):
             )  # noqa: E501
             if isinstance(magql_type, MagqlEnumType):
                 base.fields[field_name].resolve = EnumResolver()
-            input.fields[field_name] = MagqlInputField(magql_type)
-            input_required.fields[field_name] = MagqlInputField(
-                required_magql_type
-            )  # noqa: E501
+            if not col.primary_key:
+                input.fields[field_name] = MagqlInputField(magql_type)
+                input_required.fields[field_name] = MagqlInputField(
+                    required_magql_type
+                )  # noqa: E501
             filter_.fields[field_name] = MagqlInputField(
                 get_magql_filter_type(col, magql_type)
             )
