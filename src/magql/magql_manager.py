@@ -43,6 +43,9 @@ class MagqlTableManagerCollection:
                 self.manager_map[table] = managers[table]
             else:
                 self.generate_manager(table)
+        for _table, manager in self.manager_map.items():
+            manager.add_rels(self.manager_map)
+
         self.generate_check_delete()
 
     def generate_check_delete(self):
@@ -86,12 +89,23 @@ class MagqlManager:
 
 
 class MagqlTableManager(MagqlManager):
-    def __init__(self, table):
+    def __init__(
+        self,
+        table,
+        magql_name=None,
+        magql_field_name=None,
+        magql_field_name_plural=None,
+    ):
         self.query = MagqlObjectType("Query")
         self.mutation = MagqlObjectType("Mutation")
         self.table = table
         self.table_name = table.name
-        self.magql_name = camelize(self.table_name)
+        self.magql_name = (
+            magql_name if magql_name is not None else camelize(self.table_name)
+        )  # magql_object_name
+        self.magql_field_name = magql_field_name
+        self.magql_field_name_plural = magql_field_name_plural
+
         # convert to list of magql types than will be converted
         self.magql_types = {}
         self._generate_validation_schema()
@@ -190,17 +204,37 @@ class MagqlTableManager(MagqlManager):
             sort.values[field_name + "_asc"] = (col_name + "_asc",)
             sort.values[field_name + "_desc"] = (col_name + "_desc",)
 
+        self.magql_types[self.magql_name] = base
+
+        self.magql_types[self.magql_name + "Input"] = input
+        self.magql_types[self.magql_name + "InputRequired"] = input_required
+        self.magql_types[self.magql_name + "Filter"] = filter_
+        self.magql_types[self.magql_name + "Sort"] = sort
+
+    # a manager map can be passed in to give information about
+    # other managers, such as an overriden name, otherwise a default is used
+    def add_rels(self, managers=None):
         try:
             table_mapper = get_mapper(self.table)
         except ValueError:
             print(f"No Mapper for table {self.table.name}")
             return
+
         for rel_name, rel in table_mapper.relationships.items():
+            rel_table = rel.target
+
+            rel_manager = None
+            if rel_table in managers:
+                rel_manager = managers[rel_table]
             direction = rel.direction.name
             required = is_rel_required(rel)
-            # Add input, input_required and non-null/list
+
             field_name = js_camelize(rel_name)
-            target_name = camelize(rel.target.name)
+
+            # use magql name of rel manager if it exists else use default name
+            target_name = (
+                rel_manager.magql_name if rel_manager else camelize(rel.target.name)
+            )
 
             base_field = target_name
             input_required_field = input_field = "Int"
@@ -212,29 +246,30 @@ class MagqlTableManager(MagqlManager):
             elif required:
                 input_required_field = MagqlNonNull(input_required_field)
 
-            input_required.fields[field_name] = MagqlInputField(
+            self.magql_types[self.magql_name + "InputRequired"].fields[
+                field_name
+            ] = MagqlInputField(
                 input_required_field
             )  # noqa: E501
-            input.fields[field_name] = MagqlInputField(input_field)
-            base.fields[field_name] = MagqlField(base_field, None, Resolver())
-            filter_.fields[field_name] = MagqlInputField(RelFilter)
-
-            # Add magql input field and then generate rels based on that
-        self.magql_types[self.magql_name] = base
+            self.magql_types[self.magql_name + "Input"].fields[
+                field_name
+            ] = MagqlInputField(input_field)
+            self.magql_types[self.magql_name].fields[field_name] = MagqlField(
+                base_field, None, Resolver()
+            )
+            self.magql_types[self.magql_name + "Filter"].fields[
+                field_name
+            ] = MagqlInputField(RelFilter)
 
         payload = MagqlNonNull(
             MagqlObjectType(
-                base.name + "Payload",
+                self.magql_name + "Payload",
                 {
                     "errors": MagqlField(MagqlList("String")),
                     js_camelize(self.table_name): MagqlField(
-                        base.name, None, CamelResolver()
+                        self.magql_name, None, CamelResolver()
                     ),
                 },
             )
         )
         self.magql_types[self.magql_name + "Payload"] = payload
-        self.magql_types[self.magql_name + "Input"] = input
-        self.magql_types[self.magql_name + "InputRequired"] = input_required
-        self.magql_types[self.magql_name + "Filter"] = filter_
-        self.magql_types[self.magql_name + "Sort"] = sort
