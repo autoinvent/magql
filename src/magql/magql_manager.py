@@ -68,7 +68,10 @@ class MagqlTableManagerCollection:
 
         check_delete_manager.query.fields["checkDelete"] = MagqlField(
             MagqlList("CheckDeleteUnion"),
-            {"tableName": MagqlArgument("String"), "id": MagqlArgument("Int")},
+            {
+                "tableName": MagqlArgument("String"),
+                "id": MagqlArgument(MagqlNonNull("Int")),
+            },
             CheckDeleteResolver(self.manager_map),
         )
         self.manager_map["checkDelete"] = check_delete_manager
