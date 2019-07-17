@@ -1,3 +1,4 @@
+from graphql.type.scalars import coerce_float
 from graphql.type.scalars import coerce_int
 from inflection import camelize
 
@@ -126,7 +127,7 @@ class MagqlFloat:
         try:
             converted_value = float(value)
         except ValueError:
-            converted_value = coerce_int(value)
+            converted_value = coerce_float(value)
         return converted_value
 
 
