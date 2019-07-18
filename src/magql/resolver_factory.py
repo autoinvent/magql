@@ -138,7 +138,7 @@ class TableResolver(Resolver):  # noqa: B903
     reused in :class:`QueryResolver` and :class:`MutationResolver`.
     """
 
-    def __init__(self, table, schema=None):
+    def __init__(self, table, schema=None, partial=True):
         """
         MutationResolver can be overriden by
         :param table:
@@ -148,6 +148,7 @@ class TableResolver(Resolver):  # noqa: B903
         """
         self.table = table
         self.schema = schema
+        self.partial = partial
 
     def __call__(self, parent, info, *args, **kwargs):
         if self.schema is not None:
@@ -196,9 +197,12 @@ class MutationResolver(TableResolver):
         if "input" in kwargs:
             try:
                 schema = self.schema()
-                partial = isinstance(self, UpdateResolver)
+                input_ = kwargs["input"]
+                camel_input = {}
+                for key, value in input_.items():
+                    camel_input[underscore(key)] = value
                 validate = schema.load(
-                    kwargs["input"], session=info.context, partial=partial
+                    camel_input, session=info.context, partial=self.partial
                 )
             except ValidationError as err:
                 return [value for key, value in err.messages.items()]

@@ -2,6 +2,7 @@ from inflection import camelize
 from inflection import pluralize
 from marshmallow_sqlalchemy import ModelSchema
 from sqlalchemy import DECIMAL
+from sqlalchemy import inspect
 from sqlalchemy_utils import get_mapper
 
 from magql.definitions import js_camelize
@@ -101,6 +102,9 @@ class MagqlTableManager(MagqlManager):
         magql_field_name=None,
         magql_field_name_plural=None,
     ):
+        # Throws ValueError if it cannot find a table
+        self.table_class = get_mapper(table).class_
+
         self.query = MagqlObjectType("Query")
         self.mutation = MagqlObjectType("Mutation")
         self.table = table
@@ -126,16 +130,11 @@ class MagqlTableManager(MagqlManager):
         return js_camelize(pluralize(self.table.name))
 
     def _generate_validation_schema(self):
-        try:
-            table_class = get_mapper(self.table).class_
-        except ValueError:
-            print(self.table)
-            return
 
         # validation_schema_overrides =get_validator_overrides(table_class)
 
         validation_schema_overrides = {
-            "Meta": type("Meta", (object,), {"model": table_class})  # noqa: E501
+            "Meta": type("Meta", (object,), {"model": self.table_class})  # noqa: E501
         }
 
         self.validation_schema = type(
@@ -144,10 +143,14 @@ class MagqlTableManager(MagqlManager):
 
     def gen_magql_fields(self):
 
+        primary_key = tuple(
+            map(lambda x: x.name, inspect(self.table_class).primary_key)
+        )
+
         self.mutation.fields["create" + self.magql_name] = MagqlField(
             self.magql_name + "Payload",
             {"input": MagqlArgument(MagqlNonNull(self.magql_name + "InputRequired"))},
-            CreateResolver(self.table, self.validation_schema),
+            CreateResolver(self.table, self.validation_schema, primary_key),
         )
         self.mutation.fields["delete" + self.magql_name] = MagqlField(
             self.magql_name + "Payload",
