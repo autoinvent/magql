@@ -1,5 +1,6 @@
 from inflection import camelize
 from inflection import pluralize
+from marshmallow_sqlalchemy import field_for
 from marshmallow_sqlalchemy import ModelSchema
 from sqlalchemy import DECIMAL
 from sqlalchemy import inspect
@@ -42,7 +43,7 @@ def is_rel_required(rel):
 # and table managers
 class MagqlTableManagerCollection:
     def __init__(self, tables, managers=None):
-        self.manager_map = {} if not managers else managers
+        self.manager_map = {}
         for _table_name, table in tables.items():
             if managers and table in managers:
                 self.manager_map[table] = managers[table]
@@ -124,6 +125,14 @@ class MagqlTableManager(MagqlManager):
 
     # def create_resolver(self):
     #     return
+
+    def validation_schema(self, field_name):
+        def validatoion_decorator(validator):
+            self.validation_schema.field_name = field_for(
+                self.table_class, field_name, validate=validator
+            )
+
+        return validatoion_decorator
 
     def single_query_name(self):
         return js_camelize(self.table.name)
