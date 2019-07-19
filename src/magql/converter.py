@@ -34,7 +34,7 @@ from magql.definitions import MagqlWrappingType
 
 
 class Convert:
-    def __init__(self, manager_collection):
+    def __init__(self, manager_list):
         # type_map maps magql_names to GraphQL and is needed to translate
         # MagqlTypes to GraphQLTypes
         self.gql_queries = {}
@@ -48,11 +48,9 @@ class Convert:
             "ID": GraphQLID,
         }
 
-        managers = manager_collection.manager_map
+        self.generate_type_map(manager_list)
 
-        self.generate_type_map(managers)
-
-        for _magql_name, manager in managers.items():
+        for manager in manager_list:
 
             self.convert_manager(manager)
 
@@ -106,16 +104,16 @@ class Convert:
             "Float": MagqlFloat(MagqlFloat.parse_value_accepts_string),
             "ID": MagqlID(),
         }
-        for _magql_name, manager in managers.items():
+        for manager in managers:
             for type_name, type_ in manager.magql_types.items():
                 magql_type_map[type_name] = type_
-        for _magql_name, manager in managers.items():
+        for manager in managers:
             for _type_name, type_ in manager.magql_types.items():
                 Convert.convert_str_leafs(type_, magql_type_map)
             # Convert.convert_str_leafs(manager.query, magql_type_map)
             # Convert.convert_str_leafs(manager.mutation, magql_type_map)
 
-        for _magql_name, manager in managers.items():
+        for manager in managers:
             self.convert_types(manager)
 
     def convert_types(self, manager):
