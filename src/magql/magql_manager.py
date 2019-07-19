@@ -38,9 +38,11 @@ def is_rel_required(rel):
     return not fk.nullable
 
 
+# TODO: refactor ManagerCollection so it seamlessly integrates regular
+# and table managers
 class MagqlTableManagerCollection:
     def __init__(self, tables, managers=None):
-        self.manager_map = {}
+        self.manager_map = {} if not managers else managers
         for _table_name, table in tables.items():
             if managers and table in managers:
                 self.manager_map[table] = managers[table]
