@@ -161,6 +161,13 @@ class TableResolver(Resolver):  # noqa: B903
                 return {"errors": error}
         return super(TableResolver, self).__call__(parent, info, *args, **kwargs)
 
+    def override_validate(self, validate):
+        self.validate = validate
+        return validate
+
+    def validate(self):
+        pass
+
 
 class MutationResolver(TableResolver):
     """
