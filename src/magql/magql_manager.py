@@ -126,13 +126,22 @@ class MagqlTableManager(MagqlManager):
     # def create_resolver(self):
     #     return
 
-    def validation_schema(self, field_name):
-        def validatoion_decorator(validator):
-            self.validation_schema.field_name = field_for(
-                self.table_class, field_name, validate=validator
+    def validation_field(self, field_name):
+        """
+        Validation functions must raise a ValidationError when there is an error
+        :param field_name: The name of the field that's validation field is changing
+        :return:
+        """
+
+        def validator_decorator(validate_function):
+            field_with_validator = field_for(
+                self.table_class, field_name, validate=validate_function
             )
 
-        return validatoion_decorator
+            setattr(self.validation_schema, field_name, field_with_validator)
+            self.validation_schema._declared_fields[field_name] = field_with_validator
+
+        return validator_decorator
 
     def single_query_name(self):
         return js_camelize(self.table.name)

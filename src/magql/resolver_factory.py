@@ -33,6 +33,10 @@ class Resolver:
         """
         return getattr(parent, underscore(info.field_name))
 
+    def override_resolver(self, resolve):
+        self.resolve = resolve
+        return resolve
+
 
 class CamelResolver(Resolver):
     def resolve(self, parent, info, *args, **kwargs):
