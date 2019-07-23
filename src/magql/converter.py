@@ -269,7 +269,8 @@ def _(magql_union, type_map):
     gql_union = GraphQLUnionType(
         magql_union.name,
         types,
-        magql_union.resolve_types(magql_union.table_types, type_map),
+        # magql_union.resolve_types(magql_union.table_types, type_map),
+        magql_union.resolve_types,
     )
 
     type_map[magql_union.name] = gql_union

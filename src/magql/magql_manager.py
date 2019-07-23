@@ -22,7 +22,6 @@ from magql.magql_type import get_magql_required_type
 from magql.magql_type import get_magql_type
 from magql.resolver_factory import CamelResolver
 from magql.resolver_factory import CheckDeleteResolver
-from magql.resolver_factory import CheckDeleteUnionResolver
 from magql.resolver_factory import CreateResolver
 from magql.resolver_factory import DECIMALResolver
 from magql.resolver_factory import DeleteResolver
@@ -30,6 +29,7 @@ from magql.resolver_factory import EnumResolver
 from magql.resolver_factory import ManyResolver
 from magql.resolver_factory import Resolver
 from magql.resolver_factory import SingleResolver
+from magql.resolver_factory import SQLAlchemyTableUnionResolver
 from magql.resolver_factory import UpdateResolver
 
 
@@ -52,26 +52,28 @@ class MagqlTableManagerCollection:
         for _table, manager in self.manager_map.items():
             manager.add_rels(self.manager_map)
 
+        self.magql_name_to_table = {}
         self.generate_check_delete()
 
     def generate_check_delete(self):
         check_delete_manager = MagqlManager("checkDelete")
 
-        types = [
+        self.magql_names = [
             manager.magql_name for _magql_name, manager in self.manager_map.items()
         ]
 
-        table_types = {}
         for _magql_name, manager in self.manager_map.items():
             if isinstance(manager, MagqlTableManager):
-                table_types[manager.magql_name] = manager.table
+                self.magql_name_to_table[manager.magql_name] = manager.table
 
-        check_delete_manager.magql_types["CheckDeleteUnion"] = MagqlUnionType(
-            "CheckDeleteUnion", types, CheckDeleteUnionResolver, table_types
+        check_delete_manager.magql_types["SQLAlchemyTableUnion"] = MagqlUnionType(
+            "SQLAlchemyTableUnion",
+            self.magql_names,
+            SQLAlchemyTableUnionResolver(self.magql_name_to_table),
         )
 
         check_delete_manager.query.fields["checkDelete"] = MagqlField(
-            MagqlList("CheckDeleteUnion"),
+            MagqlList("SQLAlchemyTableUnion"),
             {
                 "tableName": MagqlArgument("String"),
                 "id": MagqlArgument(MagqlNonNull("Int")),
@@ -94,6 +96,9 @@ class MagqlManager:
         self.query = MagqlObjectType("Query")
         self.mutation = MagqlObjectType("Mutation")
         self.magql_types = {}
+        # The check delete union type resolver ( and likely more resolvers)
+        # relies on the fact that the magql_name and the base object type
+        # share the same name
         self.magql_name = magql_name
 
 

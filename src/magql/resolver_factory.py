@@ -83,27 +83,22 @@ class CheckDeleteResolver(Resolver):
                 return cascades
 
 
-class CheckDeleteUnionResolver(Resolver):
+class SQLAlchemyTableUnionResolver(Resolver):
     """
-    Resolver that determines which type is being return from the delete check
+    Resolver that determines which type is being return from the delete check.
+    This resolver is tied to the use of sqlalchemy
     """
 
-    def __init__(self, table_types, type_map):
-        self.table_types = table_types
-        self.type_map = type_map
-
-    # This will fail if a type is added to the schema
-    # during a merge because it will not know about the added type
-    def resolve_type(self, instance):
-        for magql_name, table in self.table_types.items():
-            if isinstance(instance, get_mapper(table).class_):
-                return self.type_map[magql_name]
-        raise Exception("Type not found")
+    def __init__(self, magql_name_to_table):
+        self.magql_name_to_table = magql_name_to_table
 
     def resolve(self, parent, info, *args, **kwargs):
-        if self.type_map is None:
-            raise AssertionError("Resolve called before type_map added")
-        return self.resolve_type(parent)
+        for magql_name, table in self.magql_name_to_table.items():
+            if isinstance(parent, get_mapper(table).class_):
+                for gql_type in info.return_type.of_type.types:
+                    if gql_type.name == magql_name:
+                        return gql_type
+        raise Exception("Type not found")
 
 
 class EnumResolver(Resolver):
