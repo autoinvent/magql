@@ -113,7 +113,7 @@ class EnumResolver(Resolver):
         if not parent:
             return None
         field_name = underscore(info.field_name)
-        return getattr(getattr(parent, field_name), "value", None)
+        return getattr(getattr(parent, field_name), "code", None)
 
 
 class DECIMALResolver(Resolver):
