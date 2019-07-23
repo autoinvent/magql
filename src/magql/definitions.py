@@ -93,16 +93,13 @@ class MagqlEnumType:
 
 
 class MagqlUnionType:  # noqa: B903
-    def __init__(self, name, types, resolve_type, table_types):
+    def __init__(self, name, types, resolve_type):
         self.name = name
 
-        # types needs to be a map of tables to graphql types
+        # List of magql_types or magql_names
         self.types = types
-        # Should be an the class instead of an instanec of the class so the
-        # type mapping can be added later
-        self.resolve_types = resolve_type
 
-        self.table_types = table_types
+        self.resolve_types = resolve_type
 
 
 class MagqlInt:
