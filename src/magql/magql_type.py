@@ -103,7 +103,7 @@ def _(type_, column):
     # rm = GraphQLEnumType(name, enums)
     # return rm
     name = camelize(column.table.name) + camelize(column.name) + "EnumType"
-    enums = dict((key, value) for key, value in type_.choices)
+    enums = dict((key, key) for key, value in type_.choices)
     return MagqlEnumType(name, enums)
 
 
