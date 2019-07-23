@@ -103,28 +103,16 @@ class MagqlManager:
 
 
 class MagqlTableManager(MagqlManager):
-    def __init__(
-        self,
-        table,
-        magql_name=None,
-        magql_field_name=None,
-        magql_field_name_plural=None,
-    ):
+    def __init__(self, table, magql_name=None):
+        super(MagqlTableManager, self).__init__(
+            magql_name if magql_name is not None else camelize(table.name)
+        )  # magql_object_name
         # Throws ValueError if it cannot find a table
         self.table_class = get_mapper(table).class_
 
-        self.query = MagqlObjectType("Query")
-        self.mutation = MagqlObjectType("Mutation")
         self.table = table
         self.table_name = table.name
-        self.magql_name = (
-            magql_name if magql_name is not None else camelize(self.table_name)
-        )  # magql_object_name
-        self.magql_field_name = magql_field_name
-        self.magql_field_name_plural = magql_field_name_plural
 
-        # convert to list of magql types than will be converted
-        self.magql_types = {}
         self._generate_validation_schema()
         self.gen_magql_fields()
 
