@@ -20,8 +20,22 @@ class Resolver:
     info.field_name
     """
 
+    def __init__(self):
+        self.overriden_resolve = None
+
     def __call__(self, parent, info, *args, **kwargs):
-        return self.resolve(parent, info, *args, **kwargs)
+        parent, info, args, kwargs = self.pre_resolve(parent, info, *args, **kwargs)
+        resolved_value = self.resolve(parent, info, *args, **kwargs)
+        post_resolved_value = self.post_resolve(
+            resolved_value, parent, info, *args, **kwargs
+        )
+        return post_resolved_value
+
+    def pre_resolve(self, parent, info, *args, **kwargs):
+        return parent, info, args, kwargs
+
+    def post_resolve(self, resolved_value, *args, **kwargs):
+        return resolved_value
 
     def resolve(self, parent, info):
         """
@@ -34,6 +48,7 @@ class Resolver:
         return getattr(parent, underscore(info.field_name))
 
     def override_resolver(self, resolve):
+        self.overriden_resolve = self.resolve
         self.resolve = resolve
         return resolve
 
@@ -251,7 +266,18 @@ class MutationResolver(TableResolver):
         return instance_values
 
 
-class CreateResolver(MutationResolver):
+class ModelInputResolver(MutationResolver):
+    def pre_resolve(self, parent, info, *args, **kwargs):
+        session = info.context
+        mapper = get_mapper(self.table)
+        kwargs["input"] = self.input_to_instance_values(
+            kwargs["input"], mapper, session
+        )
+
+        return parent, info, args, kwargs
+
+
+class CreateResolver(ModelInputResolver):
     """
     A subclass of :class:`MutationResolver`. Takes a dict of field values
     as input and creates an instance of the associated table with those
@@ -263,19 +289,15 @@ class CreateResolver(MutationResolver):
         mapper = get_mapper(self.table)
         table_name = self.table.name
 
-        instance_values = self.input_to_instance_values(
-            kwargs["input"], mapper, session
-        )
-
         instance = mapper.class_()
-        for key, value in instance_values.items():
+        for key, value in kwargs["input"].items():
             setattr(instance, key, value)
         session.add(instance)
         session.commit()
         return {table_name: instance}
 
 
-class UpdateResolver(MutationResolver):
+class UpdateResolver(ModelInputResolver):
     """
     A subclass of :class:`MutationResolver`. Takes a dict of field values
     and an id as input and updates the instance specified by id with
@@ -298,15 +320,11 @@ class UpdateResolver(MutationResolver):
         mapper = get_mapper(self.table)
         table_name = self.table.name
 
-        instance_values = self.input_to_instance_values(
-            kwargs["input"], mapper, session
-        )
-
         id_ = kwargs["id"]
         instance = session.query(mapper.class_).filter_by(id=id_).one()
 
         # Current enum implementation is very closely tied to using choice type
-        for key, value in instance_values.items():
+        for key, value in kwargs["input"].items():
             setattr(instance, key, value)
         session.add(instance)
         session.commit()
