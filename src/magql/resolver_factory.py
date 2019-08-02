@@ -34,7 +34,7 @@ class Resolver:
     def pre_resolve(self, parent, info, *args, **kwargs):
         return parent, info, args, kwargs
 
-    def post_resolve(self, resolved_value, *args, **kwargs):
+    def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
         return resolved_value
 
     def resolve(self, parent, info):
@@ -161,6 +161,7 @@ class TableResolver(Resolver):  # noqa: B903
         Marshmallow-SQLAlchemy.
         """
         self.table = table
+        self.table_class = get_mapper(table).class_
         self.schema = schema
         self.partial = partial
 
@@ -276,6 +277,10 @@ class ModelInputResolver(MutationResolver):
 
         return parent, info, args, kwargs
 
+    def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
+        info.context.commit()
+        return resolved_value
+
 
 class CreateResolver(ModelInputResolver):
     """
@@ -293,7 +298,6 @@ class CreateResolver(ModelInputResolver):
         for key, value in kwargs["input"].items():
             setattr(instance, key, value)
         session.add(instance)
-        session.commit()
         return {table_name: instance}
 
 
@@ -327,7 +331,6 @@ class UpdateResolver(ModelInputResolver):
         for key, value in kwargs["input"].items():
             setattr(instance, key, value)
         session.add(instance)
-        session.commit()
 
         return {table_name: instance}
 
@@ -355,7 +358,6 @@ class DeleteResolver(MutationResolver):
         id_ = kwargs["id"]
         instance = session.query(mapper.class_).filter_by(id=id_).one()
         session.delete(instance)
-        session.commit()
 
         return {table_name: instance}
 
