@@ -42,7 +42,23 @@ def is_rel_required(rel):
 # TODO: refactor ManagerCollection so it seamlessly integrates regular
 # and table managers
 class MagqlTableManagerCollection:
-    def __init__(self, tables, managers=None):
+    def __init__(
+        self,
+        tables,
+        managers=None,
+        default_create_resolver=CreateResolver,
+        default_update_resolver=UpdateResolver,
+        default_delete_resolver=DeleteResolver,
+        default_single_resolver=SingleResolver,
+        default_many_resolver=ManyResolver,
+    ):
+
+        self.default_create_resolver = default_create_resolver
+        self.default_update_resolver = default_update_resolver
+        self.default_delete_resolver = default_delete_resolver
+        self.default_single_resolver = default_single_resolver
+        self.default_many_resolver = default_many_resolver
+
         self.manager_map = {}
         for _table_name, table in tables.items():
             if managers and table in managers:
@@ -88,7 +104,14 @@ class MagqlTableManagerCollection:
         except ValueError:
             print(f"No Mapper for table {table.name}")
             return
-        self.manager_map[table] = MagqlTableManager(table)
+        self.manager_map[table] = MagqlTableManager(
+            table,
+            create_resolver=self.default_create_resolver,
+            update_resolver=self.default_update_resolver,
+            delete_resolver=self.default_delete_resolver,
+            single_resolver=self.default_single_resolver,
+            many_resolver=self.default_many_resolver,
+        )
 
 
 class MagqlManager:
@@ -103,15 +126,29 @@ class MagqlManager:
 
 
 class MagqlTableManager(MagqlManager):
-    def __init__(self, table, magql_name=None):
+    def __init__(
+        self,
+        table,
+        magql_name=None,
+        create_resolver=CreateResolver,
+        update_resolver=UpdateResolver,
+        delete_resolver=DeleteResolver,
+        single_resolver=SingleResolver,
+        many_resolver=ManyResolver,
+    ):
         super(MagqlTableManager, self).__init__(
             magql_name if magql_name is not None else camelize(table.name)
         )  # magql_object_name
         # Throws ValueError if it cannot find a table
         self.table_class = get_mapper(table).class_
-
         self.table = table
         self.table_name = table.name
+
+        self.create_resolver = create_resolver
+        self.update_resolver = update_resolver
+        self.delete_resolver = delete_resolver
+        self.single_resolver = single_resolver
+        self.many_resolver = many_resolver
 
         self._generate_validation_schema()
         self.gen_magql_fields()
@@ -163,12 +200,12 @@ class MagqlTableManager(MagqlManager):
         self.mutation.fields["create" + self.magql_name] = MagqlField(
             self.magql_name + "Payload",
             {"input": MagqlArgument(MagqlNonNull(self.magql_name + "InputRequired"))},
-            CreateResolver(self.table, self.validation_schema, primary_key),
+            self.create_resolver(self.table, self.validation_schema, primary_key),
         )
         self.mutation.fields["delete" + self.magql_name] = MagqlField(
             self.magql_name + "Payload",
             {"id": MagqlArgument(MagqlNonNull("Int"))},
-            DeleteResolver(self.table, self.validation_schema),
+            self.delete_resolver(self.table, self.validation_schema),
         )
         self.mutation.fields["update" + self.magql_name] = MagqlField(
             self.magql_name + "Payload",
@@ -176,13 +213,13 @@ class MagqlTableManager(MagqlManager):
                 "id": MagqlArgument(MagqlNonNull("Int")),
                 "input": MagqlArgument(MagqlNonNull(self.magql_name + "Input")),
             },
-            UpdateResolver(self.table, self.validation_schema),
+            self.update_resolver(self.table, self.validation_schema),
         )
 
         self.query.fields[self.single_query_name()] = MagqlField(
             self.magql_name,
             {"id": MagqlArgument(MagqlNonNull("Int"))},
-            SingleResolver(self.table, self.validation_schema),
+            self.single_resolver(self.table, self.validation_schema),
         )
 
         self.query.fields[self.many_query_name()] = MagqlField(
@@ -193,7 +230,7 @@ class MagqlTableManager(MagqlManager):
                     MagqlList(MagqlNonNull(self.magql_name + "Sort"))
                 ),
             },
-            ManyResolver(self.table, self.validation_schema),
+            self.many_resolver(self.table, self.validation_schema),
         )
 
         base = MagqlObjectType(self.magql_name)
