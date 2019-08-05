@@ -266,6 +266,10 @@ class MutationResolver(TableResolver):
             instance_values[key] = value
         return instance_values
 
+    def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
+        info.context.commit()
+        return resolved_value
+
 
 class ModelInputResolver(MutationResolver):
     def pre_resolve(self, parent, info, *args, **kwargs):
@@ -276,10 +280,6 @@ class ModelInputResolver(MutationResolver):
         )
 
         return parent, info, args, kwargs
-
-    def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
-        info.context.commit()
-        return resolved_value
 
 
 class CreateResolver(ModelInputResolver):
