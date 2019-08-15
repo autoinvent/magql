@@ -62,9 +62,16 @@ class MagqlTableManagerCollection:
         self.manager_map = {}
         for _table_name, table in tables.items():
             if managers and table in managers:
-                self.manager_map[table] = managers[table]
+                manager = managers[table]
             else:
-                self.generate_manager(table)
+                manager = self.generate_manager(table)
+                # skip tables that do not have a manager
+            if not manager:
+                continue
+            manager.generate_validation_schema()
+            manager.to_magql()
+            self.manager_map[table] = manager
+
         for _table, manager in self.manager_map.items():
             manager.add_rels(self.manager_map)
 
@@ -104,7 +111,7 @@ class MagqlTableManagerCollection:
         except ValueError:
             print(f"No Mapper for table {table.name}")
             return
-        self.manager_map[table] = MagqlTableManager(
+        return MagqlTableManager(
             table,
             create_resolver=self.default_create_resolver,
             update_resolver=self.default_update_resolver,
@@ -143,6 +150,7 @@ class MagqlTableManager(MagqlManager):
         self.table_class = get_mapper(table).class_
         self.table = table
         self.table_name = table.name
+        self.validators = {}
 
         self.create_resolver = create_resolver
         self.update_resolver = update_resolver
@@ -150,13 +158,13 @@ class MagqlTableManager(MagqlManager):
         self.single_resolver = single_resolver
         self.many_resolver = many_resolver
 
-        self._generate_validation_schema()
-        self.gen_magql_fields()
+        self.validation_schema = None
 
-    # def create_resolver(self):
-    #     return
+        self.generate_magql_types()
 
-    def validation_field(self, field_name):
+        # self.generate_magql_types()
+
+    def validate_field(self, field_name):
         """
         Validation functions must raise a ValidationError when there is an error
         :param field_name: The name of the field that's validation field is changing
@@ -164,22 +172,51 @@ class MagqlTableManager(MagqlManager):
         """
 
         def validator_decorator(validate_function):
-            field_with_validator = field_for(
-                self.table_class, field_name, validate=validate_function
-            )
-
-            setattr(self.validation_schema, field_name, field_with_validator)
-            self.validation_schema._declared_fields[field_name] = field_with_validator
+            field_validators = self.validators.get(field_name, [])
+            field_validators.append(validate_function)
+            self.validators[field_name] = field_validators
 
         return validator_decorator
 
+    @property
     def single_query_name(self):
+        if hasattr(self, "_single_query_name_override"):
+            if callable(self._single_query_name_override):
+                return self._single_query_name_override()
+            else:
+                return self._single_query_name_override
         return js_camelize(self.table.name)
 
+    @single_query_name.setter
+    def single_query_name(self, value):
+        self._single_query_name_override = value
+
+    @property
     def many_query_name(self):
+        if hasattr(self, "_many_query_name_override"):
+            if callable(self._many_query_name_override):
+                return self._many_query_name_override()
+            else:
+                return self._many_query_name_override
         return js_camelize(pluralize(self.table.name))
 
-    def _generate_validation_schema(self):
+    @many_query_name.setter
+    def many_query_name(self, value):
+        self._many_query_name_override = value
+
+    @property
+    def create_mutation_name(self):
+        return "create" + self.magql_name
+
+    @property
+    def update_mutation_name(self):
+        return "update" + self.magql_name
+
+    @property
+    def delete_mutation_name(self):
+        return "delete" + self.magql_name
+
+    def generate_validation_schema(self):
 
         # validation_schema_overrides =get_validator_overrides(table_class)
 
@@ -187,27 +224,34 @@ class MagqlTableManager(MagqlManager):
             "Meta": type("Meta", (object,), {"model": self.table_class})  # noqa: E501
         }
 
+        for field_name, validators in self.validators.items():
+            validation_schema_overrides[field_name] = field_for(
+                self.table_class, field_name, validate=validators
+            )
+
         self.validation_schema = type(
             self.magql_name + "Schema", (ModelSchema,), validation_schema_overrides
-        )
+        )()
 
-    def gen_magql_fields(self):
+        if self.create:
+            self.create.resolve.schema = self.validation_schema
+        if self.update:
+            self.update.resolve.schema = self.validation_schema
 
+    def generate_create_mutation(self):
         primary_key = tuple(
             map(lambda x: x.name, inspect(self.table_class).primary_key)
         )
 
-        self.mutation.fields["create" + self.magql_name] = MagqlField(
+        # TODO: Move backend auth functions into manager collection
+        self.create = MagqlField(
             self.magql_name + "Payload",
             {"input": MagqlArgument(MagqlNonNull(self.magql_name + "InputRequired"))},
             self.create_resolver(self.table, self.validation_schema, primary_key),
         )
-        self.mutation.fields["delete" + self.magql_name] = MagqlField(
-            self.magql_name + "Payload",
-            {"id": MagqlArgument(MagqlNonNull("Int"))},
-            self.delete_resolver(self.table, self.validation_schema),
-        )
-        self.mutation.fields["update" + self.magql_name] = MagqlField(
+
+    def generate_update_mutation(self):
+        self.update = MagqlField(
             self.magql_name + "Payload",
             {
                 "id": MagqlArgument(MagqlNonNull("Int")),
@@ -216,13 +260,22 @@ class MagqlTableManager(MagqlManager):
             self.update_resolver(self.table, self.validation_schema),
         )
 
-        self.query.fields[self.single_query_name()] = MagqlField(
-            self.magql_name,
+    def generate_delete_mutation(self):
+        self.delete = MagqlField(
+            self.magql_name + "Payload",
             {"id": MagqlArgument(MagqlNonNull("Int"))},
-            self.single_resolver(self.table, self.validation_schema),
+            self.delete_resolver(self.table),
         )
 
-        self.query.fields[self.many_query_name()] = MagqlField(
+    def generate_single_query(self):
+        self.single = MagqlField(
+            self.magql_name,
+            {"id": MagqlArgument(MagqlNonNull("Int"))},
+            self.single_resolver(self.table),
+        )
+
+    def generate_many_query(self):
+        self.many = MagqlField(
             MagqlList(self.magql_name),
             {
                 "filter": MagqlArgument(self.magql_name + "Filter"),
@@ -230,14 +283,13 @@ class MagqlTableManager(MagqlManager):
                     MagqlList(MagqlNonNull(self.magql_name + "Sort"))
                 ),
             },
-            self.many_resolver(self.table, self.validation_schema),
+            self.many_resolver(self.table),
         )
 
+    def generate_types(self):
         base = MagqlObjectType(self.magql_name)
         input = MagqlInputObjectType(self.magql_name + "Input")
-        input_required = MagqlInputObjectType(
-            self.magql_name + "InputRequired"
-        )  # noqa: E501
+        input_required = MagqlInputObjectType(self.magql_name + "InputRequired")
         filter_ = MagqlInputObjectType(self.magql_name + "Filter")
         sort = MagqlEnumType(self.magql_name + "Sort")
 
@@ -273,6 +325,28 @@ class MagqlTableManager(MagqlManager):
         self.magql_types[self.magql_name + "InputRequired"] = input_required
         self.magql_types[self.magql_name + "Filter"] = filter_
         self.magql_types[self.magql_name + "Sort"] = sort
+
+    def generate_magql_types(self):
+        self.generate_create_mutation()
+        self.generate_update_mutation()
+        self.generate_delete_mutation()
+        self.generate_single_query()
+        self.generate_many_query()
+
+        self.generate_types()
+
+    # Allows fields to be added directly to mutation and query
+    def to_magql(self):
+        if self.create:
+            self.mutation.fields[self.create_mutation_name] = self.create
+        if self.update:
+            self.mutation.fields[self.update_mutation_name] = self.update
+        if self.delete:
+            self.mutation.fields[self.delete_mutation_name] = self.delete
+        if self.single:
+            self.query.fields[self.single_query_name] = self.single
+        if self.many:
+            self.query.fields[self.many_query_name] = self.many
 
     # a manager map can be passed in to give information about
     # other managers, such as an overriden name, otherwise a default is used

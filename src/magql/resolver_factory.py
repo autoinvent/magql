@@ -6,6 +6,7 @@ from sqlalchemy_utils import get_mapper
 
 from magql.filter import generate_filters
 from magql.sort import generate_sorts
+from magql.validator import ValidationFailedError
 
 
 def js_underscore(word):
@@ -25,10 +26,15 @@ class Resolver:
 
     def __call__(self, parent, info, *args, **kwargs):
         parent, info, args, kwargs = self.pre_resolve(parent, info, *args, **kwargs)
-        resolved_value = self.resolve(parent, info, *args, **kwargs)
+        try:
+            resolved_value = self.resolve(parent, info, *args, **kwargs)
+        except ValidationFailedError as error:
+            return {"errors": error.errors}
+
         post_resolved_value = self.post_resolve(
             resolved_value, parent, info, *args, **kwargs
         )
+        self.authorization()
         return post_resolved_value
 
     def pre_resolve(self, parent, info, *args, **kwargs):
@@ -36,6 +42,9 @@ class Resolver:
 
     def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
         return resolved_value
+
+    def authorization(self):
+        pass
 
     def resolve(self, parent, info):
         """
@@ -79,6 +88,7 @@ class CheckDeleteResolver(Resolver):
 
     def __init__(self, table_types):
         self.table_types = table_types
+        super(CheckDeleteResolver, self).__init__()
 
     def resolve(self, parent, info, *args, **kwargs):
         for table in self.table_types.keys():
@@ -106,6 +116,7 @@ class SQLAlchemyTableUnionResolver(Resolver):
 
     def __init__(self, magql_name_to_table):
         self.magql_name_to_table = magql_name_to_table
+        super(SQLAlchemyTableUnionResolver, self).__init__()
 
     def resolve(self, parent, info, *args, **kwargs):
         for magql_name, table in self.magql_name_to_table.items():
@@ -152,32 +163,14 @@ class TableResolver(Resolver):  # noqa: B903
     reused in :class:`QueryResolver` and :class:`MutationResolver`.
     """
 
-    def __init__(self, table, schema=None, partial=True):
+    def __init__(self, table):
         """
         MutationResolver can be overriden by
-        :param table:
-        :param schema: Optional, by default it is a generic Marshmallow
-        schema that is automatically generated based on the table by
-        Marshmallow-SQLAlchemy.
+        :param table: a sqlalchemy table
         """
         self.table = table
         self.table_class = get_mapper(table).class_
-        self.schema = schema
-        self.partial = partial
-
-    def __call__(self, parent, info, *args, **kwargs):
-        if self.schema is not None:
-            error = self.validate(parent, info, *args, **kwargs)
-            if error:
-                return {"errors": error}
-        return super(TableResolver, self).__call__(parent, info, *args, **kwargs)
-
-    def override_validate(self, validate):
-        self.validate = validate
-        return validate
-
-    def validate(self):
-        pass
+        super(TableResolver, self).__init__()
 
 
 class MutationResolver(TableResolver):
@@ -188,49 +181,19 @@ class MutationResolver(TableResolver):
     or an error dict filled with errors.
     """
 
-    def __call__(self, parent, info, *args, **kwargs):
-        """
-        Checks if a schema has been set and if so validates the mutation.
-        Otherwise it just resolves the mutation.
-        :param parent: parent object required by GraphQL, always None because
-        mutations are always top level.
-        :param info: GraphQL info dictionary
-        :param args: Not used in automatic generation but left in in case
-        overriding the validate or call methods.
-        :param kwargs: Holds user inputs.
-        :return:
-        """
-        super_ = super(MutationResolver, self)
-        return super_.__call__(parent, info, *args, **kwargs)
-
-    def validate(self, parent, info, **kwargs):
-        """
-        Validates that all fields that are in the input are valid
-        according to the Marshmallow schema. The default Marshmallow
-        schema can be overriden or the entire validate method can be
-        overriden to allow for non-standard validations.
-        :param parent: parent object required by GraphQL, always
-        None because mutations are always top level.
-        :param info: GraphQL info dictionary
-        :param kwargs: Holds user inputs. If the input dict is passed,
-        this function will validate each of the fields it contains.
-        :return: A list of validation errors, if they occurred else None
-        """
-        if "input" in kwargs:
-            try:
-                schema = self.schema()
-                input_ = kwargs["input"]
-                camel_input = {}
-                for key, value in input_.items():
-                    camel_input[underscore(key)] = value
-                validate = schema.load(
-                    camel_input, session=info.context, partial=self.partial
-                )
-            except ValidationError as err:
-                return [value for key, value in err.messages.items()]
-            if validate.errors:
-                return [value[0] for key, value in validate.errors.items()]
-            info.context.rollback()
+    # def __call__(self, parent, info, *args, **kwargs):
+    #     """
+    #     Checks if a schema has been set and if so validates the mutation.
+    #     Otherwise it just resolves the mutation.
+    #     :param parent: parent object required by GraphQL, always None because
+    #     mutations are always top level.
+    #     :param info: GraphQL info dictionary
+    #     :param args: Not used in automatic generation but left in in case
+    #     overriding the validate or call methods.
+    #     :param kwargs: Holds user inputs.
+    #     :return:
+    #     """
+    #     return super(MutationResolver, self).__call__(parent, info, *args, **kwargs)
 
     def input_to_instance_values(self, input, mapper, session):
         """
@@ -255,14 +218,14 @@ class MutationResolver(TableResolver):
                         if value == enum_tuple[1]:
                             value = enum_tuple[0]
                             break
-            if key in mapper.relationships:
-                target = get_mapper(mapper.relationships[key].target).class_
-                query = session.query(target)
-                if value:
-                    if isinstance(value, list):
-                        value = query.filter(target.id.in_(value)).all()
-                    else:
-                        value = query.filter(target.id == value).one()
+            # if key in mapper.relationships:
+            #     target = get_mapper(mapper.relationships[key].target).class_
+            #     query = session.query(target)
+            #     if value:
+            #         if isinstance(value, list):
+            #             value = query.filter(target.id.in_(value)).all()
+            #         else:
+            #             value = query.filter(target.id == value).one()
             instance_values[key] = value
         return instance_values
 
@@ -272,6 +235,18 @@ class MutationResolver(TableResolver):
 
 
 class ModelInputResolver(MutationResolver):
+    def __init__(self, table, schema=None, partial=True):
+        """
+        MutationResolver can be overriden by
+        :param table:
+        :param schema: Optional, by default it is a generic Marshmallow
+        schema that is automatically generated based on the table by
+        Marshmallow-SQLAlchemy.
+        """
+        self.schema = schema
+        self.partial = partial
+        super(ModelInputResolver, self).__init__(table)
+
     def pre_resolve(self, parent, info, *args, **kwargs):
         session = info.context
         mapper = get_mapper(self.table)
@@ -280,6 +255,45 @@ class ModelInputResolver(MutationResolver):
         )
 
         return parent, info, args, kwargs
+
+    def resolve(self, parent, info, *args, **kwargs):
+        self.validate(parent, info, *args, **kwargs)
+
+    def validate(self, parent, info, *args, **kwargs):
+        """
+        Validates that all fields that are in the input are valid
+        according to the Marshmallow schema. The default Marshmallow
+        schema can be overriden or the entire validate method can be
+        overriden to allow for non-standard validations.
+        :param parent: parent object required by GraphQL, always
+        None because mutations are always top level.
+        :param info: GraphQL info dictionary
+        :param kwargs: Holds user inputs. If the input dict is passed,
+        this function will validate each of the fields it contains.
+        :return: A list of validation errors, if they occurred else None
+        """
+        try:
+            schema = self.schema
+            # input_ = kwargs["input"]
+            # camel_input = {}
+            # for key, value in input_.items():
+            #     camel_input[underscore(key)] = value
+            validate = schema.load(
+                kwargs["input"], session=info.context, partial=self.partial
+            )
+        # TODO: figure out how to differentiate errors from validated value,
+        # Override resolve instead of __call__?
+        except ValidationError as err:
+            raise ValidationFailedError([value for key, value in err.messages.items()])
+        if validate.errors:
+            raise ValidationFailedError(
+                [value[0] for key, value in validate.errors.items()]
+            )
+        info.context.rollback()
+
+    def override_validate(self, validate):
+        self.validate = validate
+        return validate
 
 
 class CreateResolver(ModelInputResolver):
@@ -290,13 +304,18 @@ class CreateResolver(ModelInputResolver):
     """
 
     def resolve(self, parent, info, *args, **kwargs):
+        validate = super(CreateResolver, self).resolve(parent, info, *args, **kwargs)
+        if validate:
+            return validate
         session = info.context
-        mapper = get_mapper(self.table)
+        # mapper = get_mapper(self.table)
         table_name = self.table.name
 
-        instance = mapper.class_()
-        for key, value in kwargs["input"].items():
-            setattr(instance, key, value)
+        result = self.schema.load(kwargs["input"], session=info.context)
+        instance = result.data
+        # instance = mapper.class_()
+        # for key, value in kwargs["input"].items():
+        #     setattr(instance, key, value)
         session.add(instance)
         return {table_name: instance}
 
@@ -320,16 +339,19 @@ class UpdateResolver(ModelInputResolver):
         :param kwargs: Holds user inputs.
         :return: The instance with newly modified values
         """
+        super(UpdateResolver, self).resolve(parent, info, *args, **kwargs)
         session = info.context
         mapper = get_mapper(self.table)
         table_name = self.table.name
 
         id_ = kwargs["id"]
         instance = session.query(mapper.class_).filter_by(id=id_).one()
-
+        result = self.schema.load(kwargs["input"], session=info.context, partial=True)
+        session.rollback()
+        data = result.data
         # Current enum implementation is very closely tied to using choice type
-        for key, value in kwargs["input"].items():
-            setattr(instance, key, value)
+        for key, _value in kwargs["input"].items():
+            setattr(instance, key, getattr(data, key))
         session.add(instance)
 
         return {table_name: instance}
@@ -378,9 +400,6 @@ class QueryResolver(TableResolver):
         mapper = get_mapper(self.table)
         return session.query(mapper.class_)
 
-    def validate(self, parent, info, *args, **kwargs):
-        pass
-
 
 class SingleResolver(QueryResolver):
     """
@@ -399,9 +418,6 @@ class SingleResolver(QueryResolver):
         """
         query = self.generate_query(info)
         return query.filter_by(id=kwargs["id"]).one_or_none()
-
-    def validate(self, parent, info, *args, **kwargs):
-        pass
 
 
 class ManyResolver(QueryResolver):
