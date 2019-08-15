@@ -102,7 +102,8 @@ class MagqlTableManagerCollection:
         try:
             get_mapper(table)
         except ValueError:
-            print(f"No Mapper for table {table.name}")
+            # TODO: Replace with logs
+            # print(f"No Mapper for table {table.name}")
             return
         self.manager_map[table] = MagqlTableManager(
             table,
@@ -280,7 +281,8 @@ class MagqlTableManager(MagqlManager):
         try:
             table_mapper = get_mapper(self.table)
         except ValueError:
-            print(f"No Mapper for table {self.table.name}")
+            # TODO: Replace with logs
+            # print(f"No Mapper for table {self.table.name}")
             return
 
         for rel_name, rel in table_mapper.relationships.items():
