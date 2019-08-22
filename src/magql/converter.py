@@ -51,8 +51,8 @@ class Convert:
         self.generate_type_map(manager_list)
 
         for manager in manager_list:
-
-            self.convert_manager(manager)
+            if manager:
+                self.convert_manager(manager)
 
     # TODO: Update convert_str_leafs and convert_type to either recursive or
     # functions on MagqlTypes
@@ -105,16 +105,21 @@ class Convert:
             "ID": MagqlID(),
         }
         for manager in managers:
+            if not manager:
+                continue
             for type_name, type_ in manager.magql_types.items():
                 magql_type_map[type_name] = type_
         for manager in managers:
+            if not manager:
+                continue
             for _type_name, type_ in manager.magql_types.items():
                 Convert.convert_str_leafs(type_, magql_type_map)
             # Convert.convert_str_leafs(manager.query, magql_type_map)
             # Convert.convert_str_leafs(manager.mutation, magql_type_map)
 
         for manager in managers:
-            self.convert_types(manager)
+            if manager:
+                self.convert_types(manager)
 
     def convert_types(self, manager):
         for _magql_name, magql_type in manager.magql_types.items():
