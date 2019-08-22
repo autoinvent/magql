@@ -66,14 +66,14 @@ class MagqlTableManagerCollection:
             else:
                 manager = self.generate_manager(table)
                 # skip tables that do not have a manager
-            if not manager:
-                continue
-            manager.generate_validation_schema()
-            manager.to_magql()
+            if manager:
+                manager.generate_validation_schema()
+                manager.to_magql()
             self.manager_map[table] = manager
 
         for _table, manager in self.manager_map.items():
-            manager.add_rels(self.manager_map)
+            if manager:
+                manager.add_rels(self.manager_map)
 
         self.magql_name_to_table = {}
         self.generate_check_delete()
@@ -81,12 +81,13 @@ class MagqlTableManagerCollection:
     def generate_check_delete(self):
         check_delete_manager = MagqlManager("checkDelete")
 
-        self.magql_names = [
-            manager.magql_name for _magql_name, manager in self.manager_map.items()
-        ]
+        self.magql_names = []
+        for _magql_name, manager in self.manager_map.items():
+            if manager:
+                self.magql_names.append(manager.magql_name)
 
         for _magql_name, manager in self.manager_map.items():
-            if isinstance(manager, MagqlTableManager):
+            if isinstance(manager, MagqlTableManager) and manager:
                 self.magql_name_to_table[manager.magql_name] = manager.table
 
         check_delete_manager.magql_types["SQLAlchemyTableUnion"] = MagqlUnionType(
@@ -362,9 +363,12 @@ class MagqlTableManager(MagqlManager):
         for rel_name, rel in table_mapper.relationships.items():
             rel_table = rel.target
 
-            rel_manager = None
             if rel_table in managers:
                 rel_manager = managers[rel_table]
+                if rel_manager is None:
+                    continue
+            else:
+                rel_manager = None
             direction = rel.direction.name
             required = is_rel_required(rel)
 
