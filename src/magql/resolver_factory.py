@@ -56,7 +56,7 @@ class Resolver:
         """
         return getattr(parent, underscore(info.field_name))
 
-    def override_resolver(self, resolve):
+    def override_resolve(self, resolve):
         self.overriden_resolve = self.resolve
         self.resolve = resolve
         return resolve
