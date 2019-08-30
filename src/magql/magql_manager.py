@@ -389,22 +389,26 @@ class MagqlTableManager(MagqlManager):
             elif required:
                 input_required_field = MagqlNonNull(input_required_field)
 
-            self.magql_types[self.magql_name + "InputRequired"].fields[
+            if (
                 field_name
-            ] = MagqlInputField(
-                input_required_field
-            )  # noqa: E501
-            self.magql_types[self.magql_name + "Input"].fields[
-                field_name
-            ] = MagqlInputField(input_field)
-            self.magql_types[self.magql_name].fields[field_name] = MagqlField(
-                base_field, None, Resolver()
-            )
-            self.magql_types[self.magql_name + "Filter"].fields[
-                field_name
-            ] = MagqlInputField(RelFilter)
-
-        payload = MagqlNonNull(
+                not in self.magql_types[self.magql_name + "InputRequired"].fields
+            ):
+                self.magql_types[self.magql_name + "InputRequired"].fields[
+                    field_name
+                ] = MagqlInputField(input_required_field)
+            if field_name not in self.magql_types[self.magql_name + "Input"].fields:
+                self.magql_types[self.magql_name + "Input"].fields[
+                    field_name
+                ] = MagqlInputField(input_field)
+            if field_name not in self.magql_types[self.magql_name].fields:
+                self.magql_types[self.magql_name].fields[field_name] = MagqlField(
+                    base_field, None, Resolver()
+                )
+            if field_name not in self.magql_types[self.magql_name + "Filter"]:
+                self.magql_types[self.magql_name + "Filter"].fields[
+                    field_name
+                ] = MagqlInputField(RelFilter)
+        self.magql_types[self.magql_name + "Payload"] = MagqlNonNull(
             MagqlObjectType(
                 self.magql_name + "Payload",
                 {
@@ -415,4 +419,3 @@ class MagqlTableManager(MagqlManager):
                 },
             )
         )
-        self.magql_types[self.magql_name + "Payload"] = payload
