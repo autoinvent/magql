@@ -404,7 +404,7 @@ class MagqlTableManager(MagqlManager):
                 self.magql_types[self.magql_name].fields[field_name] = MagqlField(
                     base_field, None, Resolver()
                 )
-            if field_name not in self.magql_types[self.magql_name + "Filter"]:
+            if field_name not in self.magql_types[self.magql_name + "Filter"].fields:
                 self.magql_types[self.magql_name + "Filter"].fields[
                     field_name
                 ] = MagqlInputField(RelFilter)
