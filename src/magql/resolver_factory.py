@@ -92,7 +92,10 @@ class CheckDeleteResolver(Resolver):
 
     def resolve(self, parent, info, *args, **kwargs):
         for table in self.table_types.keys():
-            class_ = get_mapper(table).class_
+            try:
+                class_ = get_mapper(table).class_
+            except ValueError:
+                continue
             # TODO: switch over frontend to class name
             if class_.__name__ == kwargs["tableName"]:
                 id_ = kwargs["id"]
