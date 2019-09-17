@@ -9,14 +9,14 @@ with io.open("README.md", "rt", encoding="utf8") as f:
 
 setup(
     name="magql",
-    version="0.0.1",
+    version="0.1.0",
     packages=find_packages("src"),
     package_dir={"": "src"},
     include_package_data=True,
     install_requires=[
         "sqlalchemy",
         "sqlalchemy_utils",
-        "marshmallow",
+        "marshmallow==2.20.0",
         "marshmallow_sqlalchemy",
         "inflection",
         "graphql-core-next",
