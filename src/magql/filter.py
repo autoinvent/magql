@@ -7,6 +7,7 @@ from graphql import GraphQLID
 from graphql import GraphQLInputObjectType
 from graphql import GraphQLInt
 from graphql import GraphQLString
+from inflection import underscore
 from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy import Text
@@ -199,7 +200,7 @@ def generate_filters(table, info, *args, **kwargs):
         gql_filters = kwargs["filter"]
         for filter_name, gql_filter in gql_filters.items():
             gql_filter_value = gql_filter["value"]
-
+            filter_name = underscore(filter_name)
             if filter_name in table.c:
                 filter_type = table.c[filter_name].type
             elif filter_name in mapper.relationships:
