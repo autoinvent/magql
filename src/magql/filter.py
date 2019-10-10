@@ -87,7 +87,7 @@ BooleanFilter = GraphQLInputObjectType(
     "BooleanFilter",
     {
         "operator": GraphQLEnumType(
-            "BooleanOperator", {"TRUE": "TRUE", "FALSE": "FALSE"}
+            "BooleanOperator", {"EQUALS": "EQUALS", "NOTEQUALS": "NOTEQUALS"}
         ),
         "value": GraphQLBoolean,
     },
@@ -170,10 +170,10 @@ def _(_):
 @get_filter_comparator.register(Boolean)
 def _(_):
     def condition(filter_value, filter_operator, field):
-        if filter_operator == "TRUE":
-            return field
-        elif filter_operator == "FALSE":
-            return not field
+        if filter_operator == "EQUALS":
+            return field == filter_value
+        elif filter_operator == "NOTEQUALS":
+            return field != filter_value
         else:
             print("filter operator not found")
 
@@ -183,9 +183,9 @@ def _(_):
 @get_filter_comparator.register(ChoiceType)
 def _(_):
     def condition(filter_value, filter_operator, field):
-        if filter_operator == "includes":
+        if filter_operator == "INCLUDES":
             return field == filter_value
-        elif filter_operator == "excludes":
+        elif filter_operator == "EXCLUDES":
             return field != filter_value
         else:
             print("filter operator not found")
