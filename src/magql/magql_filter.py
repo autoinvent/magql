@@ -91,7 +91,9 @@ BooleanFilter = MagqlInputObjectType(
     "BooleanFilter",
     {
         "operator": MagqlInputField(
-            MagqlEnumType("BooleanOperator", {"TRUE": "TRUE", "FALSE": "FALSE"})
+            MagqlEnumType(
+                "BooleanOperator", {"EQUALS": "EQUALS", "NOTEQUALS": "NOTEQUALS"}
+            )
         ),
         "value": MagqlInputField("Boolean"),
     },
@@ -178,9 +180,9 @@ def _(_):
 @get_filter_comparator.register(Boolean)
 def _(_):
     def condition(filter_value, filter_operator, field):
-        if filter_operator == "TRUE":
+        if filter_operator == "EQUALS":
             return field
-        elif filter_operator == "FALSE":
+        elif filter_operator == "NOTEQUALS":
             return not field
         else:
             print("filter operator not found")
