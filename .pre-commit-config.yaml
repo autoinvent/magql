@@ -5,6 +5,10 @@ repos:
       - id: reorder-python-imports
         args: ["--application-directories", "src"]
         language_version: python3
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: 3.7.8
+    hooks:
+      - id: flake8
   - repo: https://github.com/ambv/black
     rev: 19.3b0
     hooks:
@@ -15,6 +19,5 @@ repos:
       - id: check-byte-order-marker
       - id: trailing-whitespace
       - id: end-of-file-fixer
-      - id: flake8
         additional_dependencies: [flake8-bugbear]
         language_version: python3
