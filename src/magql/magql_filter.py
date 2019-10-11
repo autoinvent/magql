@@ -99,9 +99,7 @@ BooleanFilter = MagqlInputObjectType(
     },
 )
 
-EnumOperator = MagqlEnumType(
-    "EnumOperator", {"INCLUDES": "INCLUDES", "EXCLUDES": "EXCLUDES"}
-)
+EnumOperator = MagqlEnumType("EnumOperator", {"INCLUDES": "INCLUDES"})
 
 
 def EnumFilter(base_type):

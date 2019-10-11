@@ -93,9 +93,7 @@ BooleanFilter = GraphQLInputObjectType(
     },
 )
 
-EnumOperator = GraphQLEnumType(
-    "EnumOperator", {"INCLUDES": "INCLUDES", "EXCLUDES": "EXCLUDES"}
-)
+EnumOperator = GraphQLEnumType("EnumOperator", {"INCLUDES": "INCLUDES"})
 
 
 def EnumFilter(base_type):
@@ -185,8 +183,6 @@ def _(_):
     def condition(filter_value, filter_operator, field):
         if filter_operator == "INCLUDES":
             return field == filter_value
-        elif filter_operator == "EXCLUDES":
-            return field != filter_value
         else:
             print("filter operator not found")
 
