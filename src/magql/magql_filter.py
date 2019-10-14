@@ -36,6 +36,20 @@ StringFilter = MagqlInputObjectType(
     },
 )
 
+
+DateFilter = MagqlInputObjectType(
+    "DateFilter",
+    {
+        "operator": MagqlInputField(
+            MagqlEnumType(
+                "DateOperator", {"BEFORE": "BEFORE", "ON": "ON", "AFTER": "AFTER"}
+            )
+        ),
+        "value": MagqlInputField("String"),
+    },
+)
+
+
 IntFilter = MagqlInputObjectType(
     "IntFilter",
     {

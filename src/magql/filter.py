@@ -118,10 +118,22 @@ def _(_):
     return condition
 
 
-@get_filter_comparator.register(JSONType)
 @get_filter_comparator.register(DateTime)
-@get_filter_comparator.register(Text)
 @get_filter_comparator.register(Date)
+def _(_):
+    def condition(filter_value, filter_operator, field):
+        if filter_operator == "BEFORE":
+            return field < filter_value
+        elif filter_operator == "ON":
+            return field == filter_value
+        elif filter_operator == "After":
+            return field > filter_value
+
+    return condition
+
+
+@get_filter_comparator.register(JSONType)
+@get_filter_comparator.register(Text)
 @get_filter_comparator.register(UnicodeText)
 @get_filter_comparator.register(Unicode)
 @get_filter_comparator.register(URLType)
