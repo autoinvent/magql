@@ -36,6 +36,20 @@ StringFilter = MagqlInputObjectType(
     },
 )
 
+
+DateFilter = MagqlInputObjectType(
+    "DateFilter",
+    {
+        "operator": MagqlInputField(
+            MagqlEnumType(
+                "DateOperator", {"BEFORE": "BEFORE", "ON": "ON", "AFTER": "AFTER"}
+            )
+        ),
+        "value": MagqlInputField("String"),
+    },
+)
+
+
 IntFilter = MagqlInputObjectType(
     "IntFilter",
     {
@@ -91,15 +105,15 @@ BooleanFilter = MagqlInputObjectType(
     "BooleanFilter",
     {
         "operator": MagqlInputField(
-            MagqlEnumType("BooleanOperator", {"TRUE": "TRUE", "FALSE": "FALSE"})
+            MagqlEnumType(
+                "BooleanOperator", {"EQUALS": "EQUALS", "NOTEQUALS": "NOTEQUALS"}
+            )
         ),
         "value": MagqlInputField("Boolean"),
     },
 )
 
-EnumOperator = MagqlEnumType(
-    "EnumOperator", {"INCLUDES": "INCLUDES", "EXCLUDES": "EXCLUDES"}
-)
+EnumOperator = MagqlEnumType("EnumOperator", {"INCLUDES": "INCLUDES"})
 
 
 def EnumFilter(base_type):
@@ -178,9 +192,9 @@ def _(_):
 @get_filter_comparator.register(Boolean)
 def _(_):
     def condition(filter_value, filter_operator, field):
-        if filter_operator == "TRUE":
+        if filter_operator == "EQUALS":
             return field
-        elif filter_operator == "FALSE":
+        elif filter_operator == "NOTEQUALS":
             return not field
         else:
             print("filter operator not found")

@@ -27,6 +27,7 @@ from magql.definitions import MagqlInt
 from magql.definitions import MagqlNonNull
 from magql.definitions import MagqlString
 from magql.magql_filter import BooleanFilter
+from magql.magql_filter import DateFilter
 from magql.magql_filter import EnumFilter
 from magql.magql_filter import FloatFilter
 from magql.magql_filter import IntFilter
@@ -136,6 +137,12 @@ def _get_magql_filter_type(column, base_type):
 @_get_magql_filter_type.register(VARCHAR)
 def _(type, base_type):
     return StringFilter
+
+
+@_get_magql_filter_type.register(Date)
+@_get_magql_filter_type.register(DateTime)
+def _(type, base_type):
+    return DateFilter
 
 
 @_get_magql_filter_type.register(Integer)

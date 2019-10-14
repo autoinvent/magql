@@ -87,15 +87,13 @@ BooleanFilter = GraphQLInputObjectType(
     "BooleanFilter",
     {
         "operator": GraphQLEnumType(
-            "BooleanOperator", {"TRUE": "TRUE", "FALSE": "FALSE"}
+            "BooleanOperator", {"EQUALS": "EQUALS", "NOTEQUALS": "NOTEQUALS"}
         ),
         "value": GraphQLBoolean,
     },
 )
 
-EnumOperator = GraphQLEnumType(
-    "EnumOperator", {"INCLUDES": "INCLUDES", "EXCLUDES": "EXCLUDES"}
-)
+EnumOperator = GraphQLEnumType("EnumOperator", {"INCLUDES": "INCLUDES"})
 
 
 def EnumFilter(base_type):
@@ -120,10 +118,22 @@ def _(_):
     return condition
 
 
-@get_filter_comparator.register(JSONType)
 @get_filter_comparator.register(DateTime)
-@get_filter_comparator.register(Text)
 @get_filter_comparator.register(Date)
+def _(_):
+    def condition(filter_value, filter_operator, field):
+        if filter_operator == "BEFORE":
+            return field < filter_value
+        elif filter_operator == "ON":
+            return field == filter_value
+        elif filter_operator == "After":
+            return field > filter_value
+
+    return condition
+
+
+@get_filter_comparator.register(JSONType)
+@get_filter_comparator.register(Text)
 @get_filter_comparator.register(UnicodeText)
 @get_filter_comparator.register(Unicode)
 @get_filter_comparator.register(URLType)
@@ -170,10 +180,10 @@ def _(_):
 @get_filter_comparator.register(Boolean)
 def _(_):
     def condition(filter_value, filter_operator, field):
-        if filter_operator == "TRUE":
-            return field
-        elif filter_operator == "FALSE":
-            return not field
+        if filter_operator == "EQUALS":
+            return field == filter_value
+        elif filter_operator == "NOTEQUALS":
+            return field != filter_value
         else:
             print("filter operator not found")
 
@@ -183,10 +193,8 @@ def _(_):
 @get_filter_comparator.register(ChoiceType)
 def _(_):
     def condition(filter_value, filter_operator, field):
-        if filter_operator == "includes":
+        if filter_operator == "INCLUDES":
             return field == filter_value
-        elif filter_operator == "excludes":
-            return field != filter_value
         else:
             print("filter operator not found")
 
