@@ -22,6 +22,7 @@ from sqlalchemy_utils import URLType
 
 from magql.definitions import MagqlBoolean
 from magql.definitions import MagqlEnumType
+from magql.definitions import MagqlFile
 from magql.definitions import MagqlFloat
 from magql.definitions import MagqlInt
 from magql.definitions import MagqlNonNull
@@ -78,6 +79,8 @@ def get_magql_required_type(col):
 @_get_magql_type.register(String)
 @_get_magql_type.register(VARCHAR)
 def _(type, column):
+    if "image" in column.info:
+        return MagqlFile()
     return MagqlString()
 
 
