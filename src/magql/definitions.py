@@ -128,6 +128,10 @@ class MagqlFloat:
         return converted_value
 
 
+class MagqlFile:
+    pass
+
+
 class MagqlBoolean:
     pass
 

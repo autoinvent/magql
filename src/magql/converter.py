@@ -20,6 +20,7 @@ from magql.definitions import MagqlArgument
 from magql.definitions import MagqlBoolean
 from magql.definitions import MagqlEnumType
 from magql.definitions import MagqlField
+from magql.definitions import MagqlFile
 from magql.definitions import MagqlFloat
 from magql.definitions import MagqlID
 from magql.definitions import MagqlInputField
@@ -31,6 +32,7 @@ from magql.definitions import MagqlObjectType
 from magql.definitions import MagqlString
 from magql.definitions import MagqlUnionType
 from magql.definitions import MagqlWrappingType
+from magql.flask_magql_utils import GraphQLFile
 
 
 class Convert:
@@ -102,6 +104,7 @@ class Convert:
             "Int": MagqlInt(MagqlInt.parse_value_accepts_string),
             "Boolean": MagqlBoolean(),
             "Float": MagqlFloat(MagqlFloat.parse_value_accepts_string),
+            "File": MagqlFile(),
             "ID": MagqlID(),
         }
         for manager in managers:
@@ -249,6 +252,11 @@ def _(magql_int, type_map):
 @convert.register(MagqlBoolean)
 def _(magql_boolean, type_map):
     return GraphQLBoolean
+
+
+@convert.register(MagqlFile)
+def _(magql_file, type_map):
+    return GraphQLFile
 
 
 @convert.register(MagqlFloat)
