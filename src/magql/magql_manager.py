@@ -17,6 +17,7 @@ from magql.definitions import MagqlNonNull
 from magql.definitions import MagqlObjectType
 from magql.definitions import MagqlUnionType
 from magql.magql_filter import RelFilter
+from magql.magql_logging import magql_logger
 from magql.magql_type import get_magql_filter_type
 from magql.magql_type import get_magql_required_type
 from magql.magql_type import get_magql_type
@@ -110,8 +111,7 @@ class MagqlTableManagerCollection:
         try:
             get_mapper(table)
         except ValueError:
-            # TODO: Replace with logs
-            # print(f"No Mapper for table {table.name}")
+            magql_logger.error(f"No Mapper for table {table.name}")
             return
         return MagqlTableManager(
             table,
@@ -356,8 +356,7 @@ class MagqlTableManager(MagqlManager):
         try:
             table_mapper = get_mapper(self.table)
         except ValueError:
-            # TODO: Replace with logs
-            # print(f"No Mapper for table {self.table.name}")
+            magql_logger.error(f"No Mapper for table {self.table.name}")
             return
 
         for rel_name, rel in table_mapper.relationships.items():

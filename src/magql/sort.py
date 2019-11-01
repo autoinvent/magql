@@ -1,5 +1,7 @@
 from sqlalchemy_utils import get_mapper
 
+from magql.magql_logging import magql_logger
+
 
 def generate_sorts(table, info, *args, **kwargs):
     sqla_sorts = []
@@ -14,6 +16,6 @@ def generate_sorts(table, info, *args, **kwargs):
             elif direction == "desc":
                 sort = field.desc()
             else:
-                print("Sort not found")
+                magql_logger.warn("Sort not found")
             sqla_sorts.append(sort)
     return sqla_sorts

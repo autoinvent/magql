@@ -23,6 +23,9 @@ from sqlalchemy_utils.types import ChoiceType
 from magql.definitions import MagqlEnumType
 from magql.definitions import MagqlInputField
 from magql.definitions import MagqlInputObjectType
+from magql.magql_logging import magql_logger
+
+OP_NOT_FOUND = "filter operator not found"
 
 StringFilter = MagqlInputObjectType(
     "StringFilter",
@@ -128,7 +131,7 @@ def EnumFilter(base_type):
 
 @singledispatch
 def get_filter_comparator(_):
-    print("Filter comparator type not found")
+    magql_logger.error("Filter comparator type not found")
 
 
 @get_filter_comparator.register(RelationshipProperty)
@@ -137,7 +140,7 @@ def _(_):
         if filter_operator == "INCLUDES":
             return field == filter_value
         else:
-            print("filter operator not found")
+            magql_logger.error(OP_NOT_FOUND)
 
     return condition
 
@@ -161,7 +164,7 @@ def _(_):
         elif filter_operator == "EQUALS":
             return field == filter_value
         else:
-            print("filter operator not found")
+            magql_logger.error(OP_NOT_FOUND)
 
     return condition
 
@@ -184,7 +187,7 @@ def _(_):
         elif filter_operator == "gte":
             return field >= filter_value
         else:
-            print("filter operator not found")
+            magql_logger.error(OP_NOT_FOUND)
 
     return condition
 
@@ -197,7 +200,7 @@ def _(_):
         elif filter_operator == "NOTEQUALS":
             return not field
         else:
-            print("filter operator not found")
+            magql_logger.error(OP_NOT_FOUND)
 
     return condition
 
@@ -210,7 +213,7 @@ def _(_):
         elif filter_operator == "excludes":
             return field != filter_value
         else:
-            print("filter operator not found")
+            magql_logger.error(OP_NOT_FOUND)
 
     return condition
 
@@ -235,7 +238,7 @@ def generate_filters(table, info, *args, **kwargs):
                 )
                 filter_type = rel
             else:
-                print("Unknown field on sqlamodel")
+                magql_logger.error("Unknown field on sqlamodel")
 
             sql_filter = get_filter_comparator(filter_type)(
                 gql_filter_value,
