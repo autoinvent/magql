@@ -108,14 +108,25 @@ def get_filter_comparator(_):
 
 
 @get_filter_comparator.register(RelationshipProperty)
-def _(_):
-    def condition(filter_value, filter_operator, field):
-        if filter_operator == "INCLUDES":
-            return field == filter_value
-        else:
-            print("filter operator not found")
+def _(rel):
+    direction = rel.direction.name
+    if "TOONE" in direction:
 
-    return condition
+        def condition(filter_value, filter_operator, field):
+            if filter_operator == "INCLUDES":
+                return field == filter_value
+            else:
+                print("filter operator not found")
+
+        return condition
+    elif "TOMANY" in direction:
+
+        def condition(filter_value, filter_operator, field):
+            if filter_operator == "INCLUDES":
+                return field.any(field.contains(filter_value))
+
+        return condition
+    # Raise error
 
 
 @get_filter_comparator.register(DateTime)
