@@ -1,35 +1,36 @@
 import pytest
-from graphql import GraphQLInt
-from graphql import GraphQLString
+from sqlalchemy import Column
 from sqlalchemy.types import Integer
 from sqlalchemy.types import String
 from sqlalchemy.types import VARCHAR
 
-from magql.filter import IntFilter
-from magql.filter import StringFilter
-from magql.get_type import get_filter_type
-from magql.get_type import get_type
+from magql.definitions import MagqlInt
+from magql.definitions import MagqlString
+from magql.magql_filter import IntFilter
+from magql.magql_filter import StringFilter
+from magql.magql_type import get_magql_filter_type
+from magql.magql_type import get_magql_type
 
 
-get_type_parameters = [
-    (String, GraphQLString),
-    (VARCHAR, GraphQLString),
-    (Integer, GraphQLInt),
+get_magql_type_parameters = [
+    (Column(String), MagqlString),
+    (Column(VARCHAR), MagqlString),
+    (Column(Integer), MagqlInt),
 ]
 
 
-@pytest.mark.parametrize("types", get_type_parameters)
+@pytest.mark.parametrize("types", get_magql_type_parameters)
 def test_get_type(types):
-    assert get_type(types[0]()) == types[1]
+    assert isinstance(get_magql_type(types[0]), types[1])
 
 
-get_filter_type_parameters = [
-    (String, StringFilter),
-    (VARCHAR, StringFilter),
-    (Integer, IntFilter),
+get_magql_filter_type_parameters = [
+    (Column(String), None, StringFilter),
+    (Column(VARCHAR), None, StringFilter),
+    (Column(Integer), None, IntFilter),
 ]
 
 
-@pytest.mark.parametrize("types", get_filter_type_parameters)
+@pytest.mark.parametrize("types", get_magql_filter_type_parameters)
 def test_get_filter_type(types):
-    assert get_filter_type(types[0]()) == types[1]
+    assert get_magql_filter_type(types[0], types[1]) == types[2]
