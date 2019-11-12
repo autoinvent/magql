@@ -28,6 +28,7 @@ from sqlalchemy_utils import PhoneNumberType
 from sqlalchemy_utils import URLType
 from sqlalchemy_utils.types import ChoiceType
 
+
 StringFilter = GraphQLInputObjectType(
     "StringFilter",
     {

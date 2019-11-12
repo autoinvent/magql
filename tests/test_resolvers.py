@@ -1,4 +1,5 @@
 import pytest
+from marshmallow_sqlalchemy import ModelSchema
 from tests.conftest import base
 from tests.conftest import Car
 from tests.conftest import House
@@ -13,6 +14,18 @@ from magql.resolver_factory import UpdateResolver
 class DummyInfo:  # noqa: E501
     def __init__(self, session):
         self.context = session
+
+
+@pytest.fixture
+def validation_schema_generator():
+    def validation_schema(table_class):
+        return type(
+            "Schema",
+            (ModelSchema,),
+            {"Meta": type("Meta", (object,), {"model": table_class})},
+        )()
+
+    return validation_schema
 
 
 @pytest.fixture
@@ -41,11 +54,13 @@ def compare(output, test_input):
         (Person, {"name": "Person 2", "age": 30, "car": 1, "house": 1}),
     ],
 )
-def test_create_resolver(input_data, info, session):
+def test_create_resolver(input_data, info, session, validation_schema_generator):
     test_class = input_data[0]
     test_input = input_data[1]
     table_name = test_class.__tablename__
-    resolve = CreateResolver(test_class.__table__)
+    resolve = CreateResolver(
+        test_class.__table__, validation_schema_generator(test_class), False
+    )
 
     output = resolve(None, info, input=test_input)[table_name]
 
@@ -60,12 +75,14 @@ def test_create_resolver(input_data, info, session):
         (Person, 1, {"name": "Person 2", "age": 30, "car": 1, "house": 1}),
     ],
 )
-def test_update_resolver(input_data, info, session):
+def test_update_resolver(input_data, info, session, validation_schema_generator):
     test_class = input_data[0]
     test_id = input_data[1]
     test_input = input_data[2]
     table_name = test_class.__tablename__
-    resolve = UpdateResolver(test_class.__table__)
+    resolve = UpdateResolver(
+        test_class.__table__, validation_schema_generator(test_class), False
+    )
 
     output = resolve(None, info, id=test_id, input=test_input)[table_name]
 
