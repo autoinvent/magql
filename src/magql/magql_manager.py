@@ -155,7 +155,6 @@ class MagqlTableManager(MagqlManager):
         self.table_class = get_mapper(table).class_
         self.table = table
         self.table_name = table.name
-        self.validators = {}
 
         self.create_resolver = (
             create_resolver if create_resolver else CreateResolver(self.table)
@@ -174,20 +173,6 @@ class MagqlTableManager(MagqlManager):
         )
 
         self.generate_magql_types()
-
-    def validate_field(self, field_name):
-        """
-        Validation functions must raise a ValidationError when there is an error
-        :param field_name: The name of the field that's validation field is changing
-        :return:
-        """
-
-        def validator_decorator(validate_function):
-            field_validators = self.validators.get(field_name, [])
-            field_validators.append(validate_function)
-            self.validators[field_name] = field_validators
-
-        return validator_decorator
 
     @property
     def single_query_name(self):
