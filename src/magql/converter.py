@@ -33,6 +33,7 @@ from magql.definitions import MagqlString
 from magql.definitions import MagqlUnionType
 from magql.definitions import MagqlWrappingType
 from magql.flask_magql_utils import GraphQLFile
+from magql.magql_logging import magql_logger
 
 
 class Convert:
@@ -154,7 +155,7 @@ class Convert:
 # Convert needs all strings to be converted to MagqlTypes
 @singledispatch
 def convert(type, type_map):
-    print(f"Cannot find type: {type}")
+    magql_logger.error(f"Cannot find type: {type}")
     return type
 
 

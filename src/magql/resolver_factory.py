@@ -5,6 +5,7 @@ from sqlalchemy_utils import ChoiceType
 from sqlalchemy_utils import get_mapper
 
 from magql.filter import generate_filters
+from magql.magql_logging import magql_logger
 from magql.sort import generate_sorts
 from magql.validator import ValidationFailedError
 
@@ -484,7 +485,7 @@ class ManyResolver(QueryResolver):
             )
         )
         if len(field_node) != 1:
-            print("Duplicate queries not allowed")
+            magql_logger.error("Duplicate queries not allowed")
         options = self.generate_subqueryloads(field_node[0])
         query = QueryResolver.generate_query(self, info)
         for option in options:
