@@ -8,6 +8,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import sessionmaker
 
+from magql.magql_manager import MagqlTableManager, MagqlTableManagerCollection
+
 base = declarative_base()
 Session = sessionmaker()
 
@@ -29,6 +31,14 @@ def session():
     session.add(person)
     session.commit()
     return session
+
+
+@pytest.fixture
+def manager_collection():
+    table = {}
+    for table_name, _table in base.metadata.tables.items():
+        table[table_name] = _table
+    return MagqlTableManagerCollection(table)
 
 
 class Person(base):
