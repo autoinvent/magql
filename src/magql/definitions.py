@@ -40,7 +40,6 @@ def check_name(init):
     def wrapper(*args):
         if args[1] in RESERVED:
             raise NamingConflictError(args[1], args[0].__class__.__name__)
-        RESERVED.append(args[1])
         init(*args)
 
     return wrapper
