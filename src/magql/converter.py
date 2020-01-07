@@ -95,11 +95,13 @@ class Convert:
             "File": MagqlFile(),
             "ID": MagqlID(),
         }
+        # Gather all magql types in magql_type_map
         for manager in managers:
             if not manager:
                 continue
             for type_name, type_ in manager.magql_types.items():
                 magql_type_map[type_name] = type_
+        # replace string type representations with references to correct type
         for manager in managers:
             if not manager:
                 continue
@@ -127,6 +129,7 @@ class Convert:
                 pass
 
     def convert_manager(self, manager):
+        # TODO: Consider moving the conversion of the query into the manager
         for query_name, query in manager.query.fields.items():
             self.gql_queries[query_name] = query.convert(self.type_map)
 
