@@ -17,18 +17,6 @@ class DummyInfo:  # noqa: E501
 
 
 @pytest.fixture
-def validation_schema_generator():
-    def validation_schema(table_class):
-        return type(
-            "Schema",
-            (ModelSchema,),
-            {"Meta": type("Meta", (object,), {"model": table_class})},
-        )()
-
-    return validation_schema
-
-
-@pytest.fixture
 def info(session):
     return DummyInfo(session)
 
@@ -54,13 +42,11 @@ def compare(output, test_input):
         (Person, {"name": "Person 2", "age": 30, "car": 1, "house": 1}),
     ],
 )
-def test_create_resolver(input_data, info, session, validation_schema_generator):
+def test_create_resolver(input_data, info, session):
     test_class = input_data[0]
     test_input = input_data[1]
     table_name = test_class.__tablename__
-    resolve = CreateResolver(
-        test_class.__table__, validation_schema_generator(test_class), False
-    )
+    resolve = CreateResolver(test_class.__table__)
 
     output = resolve(None, info, input=test_input)[table_name]
 
@@ -75,14 +61,12 @@ def test_create_resolver(input_data, info, session, validation_schema_generator)
         (Person, 1, {"name": "Person 2", "age": 30, "car": 1, "house": 1}),
     ],
 )
-def test_update_resolver(input_data, info, session, validation_schema_generator):
+def test_update_resolver(input_data, info, session):
     test_class = input_data[0]
     test_id = input_data[1]
     test_input = input_data[2]
     table_name = test_class.__tablename__
-    resolve = UpdateResolver(
-        test_class.__table__, validation_schema_generator(test_class), False
-    )
+    resolve = UpdateResolver(test_class.__table__)
 
     output = resolve(None, info, id=test_id, input=test_input)[table_name]
 
