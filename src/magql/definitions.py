@@ -1,4 +1,20 @@
+from graphql import GraphQLArgument
+from graphql import GraphQLBoolean
+from graphql import GraphQLEnumType
+from graphql import GraphQLField
+from graphql import GraphQLFloat
+from graphql import GraphQLID
+from graphql import GraphQLInputField
+from graphql import GraphQLInputObjectType
+from graphql import GraphQLInt
+from graphql import GraphQLList
+from graphql import GraphQLNonNull
+from graphql import GraphQLObjectType
+from graphql import GraphQLString
+from graphql import GraphQLUnionType
+
 from functools import wraps
+
 
 from graphql.type.scalars import coerce_float
 from graphql.type.scalars import coerce_int
@@ -61,14 +77,15 @@ class MagqlObjectType:
         return decorator
 
     # Convert each value in fields to GQLField
-    # def convert(self):
-    #     gql_fields = {}
-    #     for field_name, field in self.fields.items():
-    #         gql_fields[field_name] = field.convert()
-    #
-    #     return GraphQLObjectType(
-    #         self.name, gql_fields, None, self.description
-    #     )  # noqa: E501
+    def convert(self, type_map):
+        if self.name in type_map:
+            return type_map[self.name]
+        type_map[self.name] = GraphQLObjectType(
+            self.name, {}, None, description=self.description
+        )
+        for field_name, field in self.fields.items():
+            type_map[self.name].fields[field_name] = field.convert(type_map)
+        return type_map[self.name]
 
 
 class MagqlField:
@@ -89,6 +106,16 @@ class MagqlField:
 
         self.resolve = resolve
 
+    def convert(self, type_map):
+        gql_args = {}
+        for arg_name, arg in self.args.items():
+            gql_args[arg_name] = arg.convert(type_map)
+        if self.type_name in type_map:
+            field_type = type_map[self.type_name]
+        else:
+            field_type = self.type_name.convert(type_map)
+        return GraphQLField(field_type, gql_args, self.resolve)
+
 
 def js_camelize(word):
     # add config check
@@ -101,6 +128,13 @@ class MagqlArgument:  # noqa: E501
         self.type_ = type_
         self.default_value = default_value
 
+    def convert(self, type_map):
+        if self.type_ in type_map:
+            converted_type = type_map[self.type_]
+        else:
+            converted_type = self.type_.convert(type_map)
+        return GraphQLArgument(converted_type, self.default_value)
+
 
 class MagqlInputObjectType:
     @check_name
@@ -109,11 +143,31 @@ class MagqlInputObjectType:
         self.fields = fields if fields is not None else {}
         self.description = description
 
+    def convert(self, type_map):
+        if self.name in type_map:
+            return type_map[self.name]
+        for field_name, field in self.fields.items():
+            if field_name in type_map:
+                self.fields[field_name] = type_map[field_name]
+            else:
+                self.fields[field_name] = field.convert(type_map)
+        type_map[self.name] = GraphQLInputObjectType(
+            self.name, self.fields, self.description
+        )
+        return type_map[self.name]
+
 
 class MagqlInputField:  # noqa: E501
     def __init__(self, type_name, description=None):
         self.type_name = type_name
         self.description = description
+
+    def convert(self, type_map):
+        if self.type_name in type_map:
+            field_type = type_map[self.type_name]
+        else:
+            field_type = self.type_name.convert(type_map)
+        return GraphQLInputField(field_type)
 
 
 class MagqlWrappingType:
@@ -124,10 +178,22 @@ class MagqlNonNull(MagqlWrappingType):  # noqa: E501
     def __init__(self, type_):
         self.type_ = type_
 
+    def convert(self, type_map):
+        if self.type_ in type_map:
+            return GraphQLNonNull(type_map[self.type_])
+        return GraphQLNonNull(self.type_.convert(type_map))
+
 
 class MagqlList(MagqlWrappingType):  # noqa: E501
     def __init__(self, type_):
         self.type_ = type_
+
+    def convert(self, type_map):
+        if self.type_ in type_map:
+            converted_type = type_map[self.type_]
+        else:
+            converted_type = self.type_.convert(type_map)
+        return GraphQLList(converted_type)
 
 
 class MagqlEnumType:
@@ -135,6 +201,12 @@ class MagqlEnumType:
     def __init__(self, name, values=None):
         self.name = name
         self.values = values if values else {}
+
+    def convert(self, type_map):
+        if self.name in type_map:
+            return type_map[self.name]
+        type_map[self.name] = GraphQLEnumType(self.name, self.values)
+        return type_map[self.name]
 
 
 class MagqlUnionType:  # noqa: B903
@@ -146,6 +218,19 @@ class MagqlUnionType:  # noqa: B903
         self.types = types
 
         self.resolve_types = resolve_type
+
+    def convert(self, type_map):
+        if self.name in type_map:
+            return type_map[self.name]
+        types = []
+
+        for enum_type in self.types:
+            if isinstance(enum_type, str):
+                types.append(type_map[enum_type])
+            else:
+                types.append(enum_type)
+        type_map[self.name] = GraphQLUnionType(self.name, types, self.resolve_types)
+        return type_map[self.name]
 
 
 class MagqlInt:
@@ -160,6 +245,12 @@ class MagqlInt:
             converted_value = coerce_int(value)
         return converted_value
 
+    def convert(self, type_map):
+        gql_int = GraphQLInt
+        if self.parse_value:
+            gql_int.parse_value = self.parse_value
+        return gql_int
+
 
 class MagqlFloat:
     def __init__(self, parse_value=None):
@@ -173,18 +264,27 @@ class MagqlFloat:
             converted_value = coerce_float(value)
         return converted_value
 
+    def convert(self, type_map):
+        gql_float = GraphQLFloat
+        if self.parse_value:
+            gql_float.parse_value = self.parse_value
+        return gql_float
+
 
 class MagqlFile:
     pass
 
 
 class MagqlBoolean:
-    pass
+    def convert(self, type_map):
+        return GraphQLBoolean
 
 
 class MagqlString:
-    pass
+    def convert(self, type_map):
+        return GraphQLString
 
 
 class MagqlID:
-    pass
+    def convert(self, type_map):
+        return GraphQLID

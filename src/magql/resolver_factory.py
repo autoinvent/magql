@@ -1,5 +1,4 @@
 from inflection import underscore
-from marshmallow import ValidationError
 from sqlalchemy.orm import subqueryload
 from sqlalchemy_utils import ChoiceType
 from sqlalchemy_utils import get_mapper
@@ -29,13 +28,13 @@ class Resolver:
         parent, info, args, kwargs = self.pre_resolve(parent, info, *args, **kwargs)
         try:
             resolved_value = self.resolve(parent, info, *args, **kwargs)
-        except ValidationFailedError as error:
-            return {"errors": error.errors}
-
+        except ValidationFailedError as validation_errors:
+            return {"errors": list(validation_errors.args)}
+        except PermissionError as authorize_error:
+            return {"errors": list(authorize_error.args)}
         post_resolved_value = self.post_resolve(
             resolved_value, parent, info, *args, **kwargs
         )
-        self.authorization()
         return post_resolved_value
 
     def pre_resolve(self, parent, info, *args, **kwargs):
@@ -44,10 +43,25 @@ class Resolver:
     def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
         return resolved_value
 
-    def authorization(self):
-        pass
+    # Authorize should raise an error if it encounters one
+    # This error will then be caughnt and returned by resolve
+    def authorize(self, instance, parent, info, *args, **kwargs):
+        return None
 
-    def resolve(self, parent, info):
+    # Validate should return an error if it encounters one
+    # This error will then be returned by resolve
+    def validate(self, instance, parent, info, *args, **kwargs):
+        return None
+
+    # Queries will not mutate the value but mutations will override this
+    # to mutate the value as needed
+    def mutate(self, value, parent, info, *args, **kwargs):
+        return value
+
+    def retrieve_value(self, parent, info):
+        return getattr(parent, underscore(info.field_name))
+
+    def resolve(self, parent, info, *args, **kwargs):
         """
         Default resolve method, performs dot access
         :param parent: gql parent. is whatever was returned by the
@@ -55,7 +69,15 @@ class Resolver:
         :param info: gql info dictionary
         :return: getattr(parent, info.field_Name)
         """
-        return getattr(parent, underscore(info.field_name))
+        value = self.retrieve_value(parent, info, *args, **kwargs)
+
+        self.authorize(value, parent, info, *args, **kwargs)
+
+        self.validate(value, parent, info, *args, **kwargs)
+
+        value = self.mutate(value, parent, info, *args, **kwargs)
+
+        return value
 
     def override_resolve(self, resolve):
         self.overriden_resolve = self.resolve
@@ -64,13 +86,13 @@ class Resolver:
 
 
 class CamelResolver(Resolver):
-    def resolve(self, parent, info, *args, **kwargs):
+    def retrieve_value(self, parent, info, *args, **kwargs):
         source = parent
         # Identical to graphql's default_field_resolver
         # except the field_name is snake case
         # TODO: Look into a way to generate info
         #  dictionary so the code does not need to be
-        # copied or circumvent alltogether in a different way
+        # copied or circumvent all together in a different way
         field_name = underscore(info.field_name)
         value = (
             source.get(field_name)
@@ -91,7 +113,7 @@ class CheckDeleteResolver(Resolver):
         self.table_types = table_types
         super(CheckDeleteResolver, self).__init__()
 
-    def resolve(self, parent, info, *args, **kwargs):
+    def retrieve_value(self, parent, info, *args, **kwargs):
         for table in self.table_types.keys():
             try:
                 class_ = get_mapper(table).class_
@@ -122,7 +144,7 @@ class SQLAlchemyTableUnionResolver(Resolver):
         self.magql_name_to_table = magql_name_to_table
         super(SQLAlchemyTableUnionResolver, self).__init__()
 
-    def resolve(self, parent, info, *args, **kwargs):
+    def retrieve_value(self, parent, info, *args, **kwargs):
         for magql_name, table in self.magql_name_to_table.items():
             if isinstance(parent, get_mapper(table).class_):
                 for gql_type in info.return_type.of_type.types:
@@ -132,7 +154,7 @@ class SQLAlchemyTableUnionResolver(Resolver):
 
 
 class EnumResolver(Resolver):
-    def resolve(self, parent, info):
+    def retrieve_value(self, parent, info):
         """
         Resolve Enums which need to get the code from the value
         :param parent: gql parent. is whatever was returned by
@@ -147,7 +169,7 @@ class EnumResolver(Resolver):
 
 
 class DECIMALResolver(Resolver):
-    def resolve(self, parent, info):
+    def retrieve_value(self, parent, info):
         """
         Resolves decimals which need to get the real value
         :param parent: gql parent. is whatever was returned by
@@ -222,24 +244,33 @@ class MutationResolver(TableResolver):
                         if value == enum_tuple[1]:
                             value = enum_tuple[0]
                             break
-            # if key in mapper.relationships:
-            #     target = get_mapper(mapper.relationships[key].target).class_
-            #     query = session.query(target)
-            #     if value:
-            #         if isinstance(value, list):
-            #             value = query.filter(target.id.in_(value)).all()
-            #         else:
-            #             value = query.filter(target.id == value).one()
+            if key in mapper.relationships:
+                target = get_mapper(mapper.relationships[key].target).class_
+                query = session.query(target)
+                if value:
+                    if isinstance(value, list):
+                        value = query.filter(target.id.in_(value)).all()
+                    else:
+                        value = query.filter(target.id == value).one()
             instance_values[key] = value
         return instance_values
 
+    # Post resolve will add and commit the created value
     def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
-        info.context.commit()
-        return resolved_value
+        session = info.context
+        session.add(resolved_value)
+        session.commit()
+        table_name = self.table.name
+        return {table_name: resolved_value}
+
+    # def resolve(self, parent, info):
+    #     value = super().resolve()
+    #     table_name = self.table.name
+    #     return {table_name: value}
 
 
 class ModelInputResolver(MutationResolver):
-    def __init__(self, table, schema=None, partial=True):
+    def __init__(self, table):
         """
         MutationResolver can be overriden by
         :param table:
@@ -247,8 +278,6 @@ class ModelInputResolver(MutationResolver):
         schema that is automatically generated based on the table by
         Marshmallow-SQLAlchemy.
         """
-        self.schema = schema
-        self.partial = partial
         super(ModelInputResolver, self).__init__(table)
 
     def pre_resolve(self, parent, info, *args, **kwargs):
@@ -260,45 +289,6 @@ class ModelInputResolver(MutationResolver):
 
         return parent, info, args, kwargs
 
-    def resolve(self, parent, info, *args, **kwargs):
-        self.validate(parent, info, *args, **kwargs)
-
-    def validate(self, parent, info, *args, **kwargs):
-        """
-        Validates that all fields that are in the input are valid
-        according to the Marshmallow schema. The default Marshmallow
-        schema can be overriden or the entire validate method can be
-        overriden to allow for non-standard validations.
-        :param parent: parent object required by GraphQL, always
-        None because mutations are always top level.
-        :param info: GraphQL info dictionary
-        :param kwargs: Holds user inputs. If the input dict is passed,
-        this function will validate each of the fields it contains.
-        :return: A list of validation errors, if they occurred else None
-        """
-        try:
-            schema = self.schema
-            # input_ = kwargs["input"]
-            # camel_input = {}
-            # for key, value in input_.items():
-            #     camel_input[underscore(key)] = value
-            validate = schema.load(
-                kwargs["input"], session=info.context, partial=self.partial
-            )
-        # TODO: figure out how to differentiate errors from validated value,
-        # Override resolve instead of __call__?
-        except ValidationError as err:
-            raise ValidationFailedError([value for key, value in err.messages.items()])
-        if validate.errors:
-            raise ValidationFailedError(
-                [value[0] for key, value in validate.errors.items()]
-            )
-        info.context.rollback()
-
-    def override_validate(self, validate):
-        self.validate = validate
-        return validate
-
 
 class CreateResolver(ModelInputResolver):
     """
@@ -307,21 +297,17 @@ class CreateResolver(ModelInputResolver):
     fields.
     """
 
-    def resolve(self, parent, info, *args, **kwargs):
-        validate = super(CreateResolver, self).resolve(parent, info, *args, **kwargs)
-        if validate:
-            return validate
-        session = info.context
-        # mapper = get_mapper(self.table)
-        table_name = self.table.name
+    def retrieve_value(self, parent, info, *args, **kwargs):
+        mapper = get_mapper(self.table)
 
-        result = self.schema.load(kwargs["input"], session=info.context)
-        instance = result.data
-        # instance = mapper.class_()
-        # for key, value in kwargs["input"].items():
-        #     setattr(instance, key, value)
-        session.add(instance)
-        return {table_name: instance}
+        # TODO: Replace with dictionary spread operator
+        instance = mapper.class_()
+        return instance
+
+    def mutate(self, instance, parent, info, *args, **kwargs):
+        for key, value in kwargs["input"].items():
+            setattr(instance, key, value)
+        return instance
 
 
 class UpdateResolver(ModelInputResolver):
@@ -331,7 +317,7 @@ class UpdateResolver(ModelInputResolver):
     fields specified by fields.
     """
 
-    def resolve(self, parent, info, *args, **kwargs):
+    def retrieve_value(self, parent, info, *args, **kwargs):
         """
         Updates the instance of the associated table with the id passed.
         Performs setattr on the key/value pairs.
@@ -341,24 +327,22 @@ class UpdateResolver(ModelInputResolver):
         :param args: Not used in automatic generation but left in in case
         overriding the validate or call methods.
         :param kwargs: Holds user inputs.
-        :return: The instance with newly modified values
+        :return: The instance with newly modified valuesf
         """
-        super(UpdateResolver, self).resolve(parent, info, *args, **kwargs)
         session = info.context
         mapper = get_mapper(self.table)
-        table_name = self.table.name
 
         id_ = kwargs["id"]
-        instance = session.query(mapper.class_).filter_by(id=id_).one()
-        result = self.schema.load(kwargs["input"], session=info.context, partial=True)
-        session.rollback()
-        data = result.data
+        return session.query(mapper.class_).filter_by(id=id_).one()
+        # result = self.schema.load(kwargs["input"], session=info.context, partial=True)
+        # session.rollback()
+        # data = result.data
         # Current enum implementation is very closely tied to using choice type
-        for key, _value in kwargs["input"].items():
-            setattr(instance, key, getattr(data, key))
-        session.add(instance)
 
-        return {table_name: instance}
+    def mutate(self, instance, parent, info, *args, **kwargs):
+        for key, value in kwargs["input"].items():
+            setattr(instance, key, value)
+        return instance
 
 
 class DeleteResolver(MutationResolver):
@@ -367,7 +351,7 @@ class DeleteResolver(MutationResolver):
     the instance specified by id.
     """
 
-    def resolve(self, parent, info, *args, **kwargs):
+    def retrieve_value(self, parent, info, *args, **kwargs):
         """
         Deletes the instance of the associated table with the id passed.
         :param parent: parent object required by GraphQL, always None because
@@ -380,12 +364,20 @@ class DeleteResolver(MutationResolver):
         """
         session = info.context
         mapper = get_mapper(self.table)
-        table_name = self.table.name
         id_ = kwargs["id"]
-        instance = session.query(mapper.class_).filter_by(id=id_).one()
-        session.delete(instance)
+        return session.query(mapper.class_).filter_by(id=id_).one()
 
-        return {table_name: instance}
+    def mutate(self, instance, parent, info, *args, **kwargs):
+        session = info.context
+        session.delete(instance)
+        return instance
+
+    def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
+        session = info.context
+        session.delete(resolved_value)
+        session.commit()
+        table_name = self.table.name
+        return {table_name: resolved_value}
 
 
 class QueryResolver(TableResolver):
@@ -411,7 +403,7 @@ class SingleResolver(QueryResolver):
     the instance specified by id.
     """
 
-    def resolve(self, parent, info, *args, **kwargs):
+    def retrieve_value(self, parent, info, *args, **kwargs):
         """
 
         :param parent:
@@ -492,7 +484,7 @@ class ManyResolver(QueryResolver):
             query = query.options(option)
         return query
 
-    def resolve(self, parent, info, *args, **kwargs):
+    def retrieve_value(self, parent, info, *args, **kwargs):
         """
         Returns all objects associated with a table and builds out
         a SQLAlchemy query that corresponds to the GQL query so
