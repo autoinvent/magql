@@ -9,7 +9,7 @@ with io.open("README.md", "rt", encoding="utf8") as f:
 
 setup(
     name="magql",
-    version="0.1.1",
+    version="0.2.0",
     packages=find_packages("src"),
     package_dir={"": "src"},
     include_package_data=True,
