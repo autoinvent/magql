@@ -1,3 +1,5 @@
+from functools import wraps
+
 from graphql import GraphQLArgument
 from graphql import GraphQLBoolean
 from graphql import GraphQLEnumType
@@ -12,10 +14,6 @@ from graphql import GraphQLNonNull
 from graphql import GraphQLObjectType
 from graphql import GraphQLString
 from graphql import GraphQLUnionType
-
-from functools import wraps
-
-
 from graphql.type.scalars import coerce_float
 from graphql.type.scalars import coerce_int
 from inflection import camelize
@@ -34,7 +32,7 @@ RESERVED = [
     "Time",
     "String",
     "VARCHAR",
-    "FLOAT",
+    "Float",
     "DECIMAL",
     "Boolean",
     "ChoiceType",

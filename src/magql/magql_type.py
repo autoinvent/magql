@@ -5,7 +5,7 @@ from sqlalchemy import Boolean
 from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy import DECIMAL
-from sqlalchemy import FLOAT
+from sqlalchemy import Float
 from sqlalchemy import Integer
 from sqlalchemy import JSON
 from sqlalchemy import String
@@ -94,7 +94,7 @@ def _(type, column):
     return MagqlInt(MagqlInt.parse_value_accepts_string)
 
 
-@_get_magql_type.register(FLOAT)
+@_get_magql_type.register(Float)
 @_get_magql_type.register(DECIMAL)
 def _(type, column):
     return MagqlFloat(MagqlFloat.parse_value_accepts_string)
@@ -153,7 +153,7 @@ def _(type, base_type):
     return IntFilter
 
 
-@_get_magql_filter_type.register(FLOAT)
+@_get_magql_filter_type.register(Float)
 @_get_magql_filter_type.register(DECIMAL)
 def _(type, base_type):
     return FloatFilter

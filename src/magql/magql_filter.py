@@ -9,7 +9,7 @@ from sqlalchemy import UnicodeText
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.types import Boolean
 from sqlalchemy.types import DECIMAL
-from sqlalchemy.types import FLOAT
+from sqlalchemy.types import Float
 from sqlalchemy.types import Integer
 from sqlalchemy.types import String
 from sqlalchemy.types import VARCHAR
@@ -169,7 +169,7 @@ def _(_):
     return condition
 
 
-@get_filter_comparator.register(FLOAT)
+@get_filter_comparator.register(Float)
 @get_filter_comparator.register(DECIMAL)
 @get_filter_comparator.register(Integer)
 def _(_):
