@@ -33,7 +33,7 @@ RESERVED = [
     "String",
     "VARCHAR",
     "Float",
-    "DECIMAL",
+    "Numeric",
     "Boolean",
     "ChoiceType",
 ]

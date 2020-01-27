@@ -4,10 +4,10 @@ from inflection import camelize
 from sqlalchemy import Boolean
 from sqlalchemy import Date
 from sqlalchemy import DateTime
-from sqlalchemy import DECIMAL
 from sqlalchemy import Float
 from sqlalchemy import Integer
 from sqlalchemy import JSON
+from sqlalchemy import Numeric
 from sqlalchemy import String
 from sqlalchemy import Text
 from sqlalchemy import Time
@@ -95,7 +95,7 @@ def _(type, column):
 
 
 @_get_magql_type.register(Float)
-@_get_magql_type.register(DECIMAL)
+@_get_magql_type.register(Numeric)
 def _(type, column):
     return MagqlFloat(MagqlFloat.parse_value_accepts_string)
 
@@ -154,7 +154,7 @@ def _(type, base_type):
 
 
 @_get_magql_filter_type.register(Float)
-@_get_magql_filter_type.register(DECIMAL)
+@_get_magql_filter_type.register(Numeric)
 def _(type, base_type):
     return FloatFilter
 
