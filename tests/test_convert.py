@@ -32,7 +32,7 @@ from magql.definitions import MagqlNonNull
 from magql.definitions import MagqlObjectType
 from magql.definitions import MagqlString
 from magql.definitions import MagqlUnionType
-from magql.magql_manager import MagqlTableManagerCollection
+from magql.manager import MagqlTableManagerCollection
 
 
 class DummyInfo:  # noqa: E501

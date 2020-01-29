@@ -20,7 +20,7 @@ from magql.definitions import MagqlUnionType
 from magql.definitions import MagqlWrappingType
 
 from magql.flask_magql_utils import GraphQLFile
-from magql.magql_logging import magql_logger
+from magql.logging import magql_logger
 
 
 class Convert:

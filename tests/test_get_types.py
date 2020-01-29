@@ -6,10 +6,10 @@ from sqlalchemy.types import VARCHAR
 
 from magql.definitions import MagqlInt
 from magql.definitions import MagqlString
-from magql.magql_filter import IntFilter
-from magql.magql_filter import StringFilter
-from magql.magql_type import get_magql_filter_type
-from magql.magql_type import get_magql_type
+from magql.filter import IntFilter
+from magql.filter import StringFilter
+from magql.type import get_magql_filter_type
+from magql.type import get_magql_type
 
 
 get_magql_type_parameters = [
