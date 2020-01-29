@@ -4,7 +4,7 @@ from sqlalchemy_utils import ChoiceType
 from sqlalchemy_utils import get_mapper
 
 from magql.filter import generate_filters
-from magql.magql_logging import magql_logger
+from magql.logging import magql_logger
 from magql.sort import generate_sorts
 from magql.validator import ValidationFailedError
 

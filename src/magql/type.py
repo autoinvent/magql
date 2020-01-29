@@ -26,13 +26,13 @@ from magql.definitions import MagqlFloat
 from magql.definitions import MagqlInt
 from magql.definitions import MagqlNonNull
 from magql.definitions import MagqlString
-from magql.magql_filter import BooleanFilter
-from magql.magql_filter import DateFilter
-from magql.magql_filter import EnumFilter
-from magql.magql_filter import FloatFilter
-from magql.magql_filter import IntFilter
-from magql.magql_filter import StringFilter
-from magql.magql_logging import magql_logger
+from magql.filter import BooleanFilter
+from magql.filter import DateFilter
+from magql.filter import EnumFilter
+from magql.filter import FloatFilter
+from magql.filter import IntFilter
+from magql.filter import StringFilter
+from magql.logging import magql_logger
 
 
 @singledispatch

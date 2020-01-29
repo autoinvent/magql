@@ -1,12 +1,5 @@
 from functools import singledispatch
 
-from graphql import GraphQLBoolean
-from graphql import GraphQLEnumType
-from graphql import GraphQLFloat
-from graphql import GraphQLID
-from graphql import GraphQLInputObjectType
-from graphql import GraphQLInt
-from graphql import GraphQLString
 from inflection import underscore
 from sqlalchemy import Date
 from sqlalchemy import DateTime
@@ -28,127 +21,135 @@ from sqlalchemy_utils import PhoneNumberType
 from sqlalchemy_utils import URLType
 from sqlalchemy_utils.types import ChoiceType
 
-from magql.magql_logging import magql_logger
+from magql.definitions import MagqlEnumType
+from magql.definitions import MagqlInputField
+from magql.definitions import MagqlInputObjectType
+from magql.logging import magql_logger
 
-NOT_FOUND = "filter operator not found"
+OP_NOT_FOUND = "filter operator not found"
 
-StringFilter = GraphQLInputObjectType(
+StringFilter = MagqlInputObjectType(
     "StringFilter",
     {
-        "operator": GraphQLEnumType(
-            "StringOperator", {"INCLUDES": "INCLUDES", "EQUALS": "EQUALS"}
+        "operator": MagqlInputField(
+            MagqlEnumType(
+                "StringOperator", {"INCLUDES": "INCLUDES", "EQUALS": "EQUALS"}
+            )
         ),
-        "value": GraphQLString,
+        "value": MagqlInputField("String"),
     },
 )
 
-IntFilter = GraphQLInputObjectType(
+
+DateFilter = MagqlInputObjectType(
+    "DateFilter",
+    {
+        "operator": MagqlInputField(
+            MagqlEnumType(
+                "DateOperator", {"BEFORE": "BEFORE", "ON": "ON", "AFTER": "AFTER"}
+            )
+        ),
+        "value": MagqlInputField("String"),
+    },
+)
+
+
+IntFilter = MagqlInputObjectType(
     "IntFilter",
     {
-        "operator": GraphQLEnumType(
-            "IntOperator",
-            {
-                "lt": "lt",
-                "lte": "lte",
-                "eq": "eq",
-                "neq": "neq",
-                "gt": "gt",
-                "gte": "gte",
-            },
+        "operator": MagqlInputField(
+            MagqlEnumType(
+                "IntOperator",
+                {
+                    "lt": "lt",
+                    "lte": "lte",
+                    "eq": "eq",
+                    "neq": "neq",
+                    "gt": "gt",
+                    "gte": "gte",
+                },
+            )
         ),
-        "value": GraphQLInt,
+        "value": MagqlInputField("Int"),
     },
 )
 
-FloatFilter = GraphQLInputObjectType(
+FloatFilter = MagqlInputObjectType(
     "FloatFilter",
     {
-        "operator": GraphQLEnumType(
-            "FloatOperator",
-            {
-                "lt": "lt",
-                "lte": "lte",
-                "eq": "eq",
-                "neq": "neq",
-                "gt": "gt",
-                "gte": "gte",
-            },
+        "operator": MagqlInputField(
+            MagqlEnumType(
+                "FloatOperator",
+                {
+                    "lt": "lt",
+                    "lte": "lte",
+                    "eq": "eq",
+                    "neq": "neq",
+                    "gt": "gt",
+                    "gte": "gte",
+                },
+            )
         ),
-        "value": GraphQLFloat,
+        "value": MagqlInputField("Float"),
     },
 )
 
-RelFilter = GraphQLInputObjectType(
+RelFilter = MagqlInputObjectType(
     "RelFilter",
     {
-        "operator": GraphQLEnumType("RelOperator", {"INCLUDES": "INCLUDES"}),
-        "value": GraphQLID,
+        "operator": MagqlInputField(
+            MagqlEnumType("RelOperator", {"INCLUDES": "INCLUDES"})
+        ),
+        "value": MagqlInputField("Int"),
     },
 )
 
 
-BooleanFilter = GraphQLInputObjectType(
+BooleanFilter = MagqlInputObjectType(
     "BooleanFilter",
     {
-        "operator": GraphQLEnumType(
-            "BooleanOperator", {"EQUALS": "EQUALS", "NOTEQUALS": "NOTEQUALS"}
+        "operator": MagqlInputField(
+            MagqlEnumType(
+                "BooleanOperator", {"EQUALS": "EQUALS", "NOTEQUALS": "NOTEQUALS"}
+            )
         ),
-        "value": GraphQLBoolean,
+        "value": MagqlInputField("Boolean"),
     },
 )
 
-EnumOperator = GraphQLEnumType("EnumOperator", {"INCLUDES": "INCLUDES"})
+EnumOperator = MagqlEnumType("EnumOperator", {"INCLUDES": "INCLUDES"})
 
 
 def EnumFilter(base_type):
     name = base_type.name + "Filter"
-    input_ = {"operator": EnumOperator, "value": base_type}
-    return GraphQLInputObjectType(name, input_)
+
+    input_ = {
+        "operator": MagqlInputField(EnumOperator),
+        "value": MagqlInputField(base_type),
+    }
+    return MagqlInputObjectType(name, input_)
 
 
 @singledispatch
 def get_filter_comparator(_):
-    magql_logger.error(NOT_FOUND)
+    magql_logger.error("Filter comparator type not found")
 
 
 @get_filter_comparator.register(RelationshipProperty)
-def _(rel):
-    direction = rel.direction.name
-    if "TOONE" in direction:
-
-        def condition(filter_value, filter_operator, field):
-            if filter_operator == "INCLUDES":
-                return field == filter_value
-            else:
-                magql_logger.error("filter operator not found")
-
-        return condition
-    elif "TOMANY" in direction:
-
-        def condition(filter_value, filter_operator, field):
-            if filter_operator == "INCLUDES":
-                return field.any(field.contains(filter_value))
-
-        return condition
-    # Raise error
-
-
-@get_filter_comparator.register(DateTime)
-@get_filter_comparator.register(Date)
 def _(_):
     def condition(filter_value, filter_operator, field):
-        if filter_operator == "BEFORE":
-            return field < filter_value
-        elif filter_operator == "ON":
+        if filter_operator == "INCLUDES":
             return field == filter_value
-        elif filter_operator == "After":
-            return field > filter_value
+        else:
+            magql_logger.error(OP_NOT_FOUND)
 
     return condition
 
 
 @get_filter_comparator.register(JSONType)
+@get_filter_comparator.register(DateTime)
 @get_filter_comparator.register(Text)
+@get_filter_comparator.register(Date)
 @get_filter_comparator.register(UnicodeText)
 @get_filter_comparator.register(Unicode)
 @get_filter_comparator.register(URLType)
@@ -164,7 +165,7 @@ def _(_):
         elif filter_operator == "EQUALS":
             return field == filter_value
         else:
-            magql_logger.error(NOT_FOUND)
+            magql_logger.error(OP_NOT_FOUND)
 
     return condition
 
@@ -187,7 +188,7 @@ def _(_):
         elif filter_operator == "gte":
             return field >= filter_value
         else:
-            magql_logger.error(NOT_FOUND)
+            magql_logger.error(OP_NOT_FOUND)
 
     return condition
 
@@ -196,11 +197,11 @@ def _(_):
 def _(_):
     def condition(filter_value, filter_operator, field):
         if filter_operator == "EQUALS":
-            return field == filter_value
+            return field
         elif filter_operator == "NOTEQUALS":
-            return field != filter_value
+            return not field
         else:
-            magql_logger.error(NOT_FOUND)
+            magql_logger.error(OP_NOT_FOUND)
 
     return condition
 
@@ -208,10 +209,12 @@ def _(_):
 @get_filter_comparator.register(ChoiceType)
 def _(_):
     def condition(filter_value, filter_operator, field):
-        if filter_operator == "INCLUDES":
+        if filter_operator == "includes":
             return field == filter_value
+        elif filter_operator == "excludes":
+            return field != filter_value
         else:
-            magql_logger.error(NOT_FOUND)
+            magql_logger.error(OP_NOT_FOUND)
 
     return condition
 
