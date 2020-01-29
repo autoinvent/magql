@@ -239,14 +239,14 @@ class MagqlTableManager(MagqlManager):
 
     def generate_single_query(self):
         self.single = MagqlField(
-            self.magql_name,
+            self.magql_name + "Payload",
             {"id": MagqlArgument(MagqlNonNull("Int"))},
             self.single_resolver,
         )
 
     def generate_many_query(self):
         self.many = MagqlField(
-            MagqlList(self.magql_name),
+            MagqlList(self.magql_name + "Payload"),
             {
                 "filter": MagqlArgument(self.magql_name + "Filter"),
                 "sort": MagqlArgument(
@@ -380,7 +380,7 @@ class MagqlTableManager(MagqlManager):
                 self.magql_name + "Payload",
                 {
                     "errors": MagqlField(MagqlList("String")),
-                    js_camelize(self.table_name): MagqlField(
+                    "data": MagqlField(
                         self.magql_name, None, CamelResolver()
                     ),
                 },
