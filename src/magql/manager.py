@@ -13,11 +13,11 @@ from magql.definitions import MagqlList
 from magql.definitions import MagqlNonNull
 from magql.definitions import MagqlObjectType
 from magql.definitions import MagqlUnionType
-from magql.magql_filter import RelFilter
-from magql.magql_logging import magql_logger
-from magql.magql_type import get_magql_filter_type
-from magql.magql_type import get_magql_required_type
-from magql.magql_type import get_magql_type
+from magql.filter import RelFilter
+from magql.logging import magql_logger
+from magql.type import get_magql_filter_type
+from magql.type import get_magql_required_type
+from magql.type import get_magql_type
 from magql.resolver_factory import CamelResolver
 from magql.resolver_factory import CheckDeleteResolver
 from magql.resolver_factory import CreateResolver

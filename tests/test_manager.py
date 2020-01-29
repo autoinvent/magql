@@ -10,7 +10,7 @@ from magql.definitions import MagqlEnumType
 from magql.definitions import MagqlField
 from magql.definitions import MagqlInputObjectType
 from magql.definitions import MagqlObjectType
-from magql.magql_manager import MagqlTableManager
+from magql.manager import MagqlTableManager
 from magql.resolver_factory import CreateResolver
 from magql.resolver_factory import DeleteResolver
 from magql.resolver_factory import ManyResolver

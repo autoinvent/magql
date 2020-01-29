@@ -8,7 +8,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import sessionmaker
 
-from magql.magql_manager import MagqlTableManager, MagqlTableManagerCollection
+from magql.manager import MagqlTableManager, MagqlTableManagerCollection
 
 base = declarative_base()
 Session = sessionmaker()
