@@ -26,7 +26,7 @@ from magql.definitions import MagqlInputField
 from magql.definitions import MagqlInputObjectType
 from magql.logging import magql_logger
 
-OP_NOT_FOUND = "filter operator not found"
+NOT_FOUND = "filter operator not found"
 
 StringFilter = MagqlInputObjectType(
     "StringFilter",
@@ -132,24 +132,47 @@ def EnumFilter(base_type):
 
 @singledispatch
 def get_filter_comparator(_):
-    magql_logger.error("Filter comparator type not found")
+    magql_logger.error(NOT_FOUND)
 
 
 @get_filter_comparator.register(RelationshipProperty)
+def _(rel):
+    direction = rel.direction.name
+    if "TOONE" in direction:
+
+        def condition(filter_value, filter_operator, field):
+            if filter_operator == "INCLUDES":
+                return field == filter_value
+            else:
+                magql_logger.error("filter operator not found")
+
+        return condition
+    elif "TOMANY" in direction:
+
+        def condition(filter_value, filter_operator, field):
+            if filter_operator == "INCLUDES":
+                return field.any(field.contains(filter_value))
+
+        return condition
+    # Raise error
+
+
+@get_filter_comparator.register(DateTime)
+@get_filter_comparator.register(Date)
 def _(_):
     def condition(filter_value, filter_operator, field):
-        if filter_operator == "INCLUDES":
+        if filter_operator == "BEFORE":
+            return field < filter_value
+        elif filter_operator == "ON":
             return field == filter_value
-        else:
-            magql_logger.error(OP_NOT_FOUND)
+        elif filter_operator == "After":
+            return field > filter_value
 
     return condition
 
 
 @get_filter_comparator.register(JSONType)
-@get_filter_comparator.register(DateTime)
 @get_filter_comparator.register(Text)
-@get_filter_comparator.register(Date)
 @get_filter_comparator.register(UnicodeText)
 @get_filter_comparator.register(Unicode)
 @get_filter_comparator.register(URLType)
@@ -165,7 +188,7 @@ def _(_):
         elif filter_operator == "EQUALS":
             return field == filter_value
         else:
-            magql_logger.error(OP_NOT_FOUND)
+            magql_logger.error(NOT_FOUND)
 
     return condition
 
@@ -188,7 +211,7 @@ def _(_):
         elif filter_operator == "gte":
             return field >= filter_value
         else:
-            magql_logger.error(OP_NOT_FOUND)
+            magql_logger.error(NOT_FOUND)
 
     return condition
 
@@ -197,11 +220,11 @@ def _(_):
 def _(_):
     def condition(filter_value, filter_operator, field):
         if filter_operator == "EQUALS":
-            return field
+            return field == filter_value
         elif filter_operator == "NOTEQUALS":
-            return not field
+            return field != filter_value
         else:
-            magql_logger.error(OP_NOT_FOUND)
+            magql_logger.error(NOT_FOUND)
 
     return condition
 
@@ -209,12 +232,10 @@ def _(_):
 @get_filter_comparator.register(ChoiceType)
 def _(_):
     def condition(filter_value, filter_operator, field):
-        if filter_operator == "includes":
+        if filter_operator == "INCLUDES":
             return field == filter_value
-        elif filter_operator == "excludes":
-            return field != filter_value
         else:
-            magql_logger.error(OP_NOT_FOUND)
+            magql_logger.error(NOT_FOUND)
 
     return condition
 
