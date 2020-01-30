@@ -1,5 +1,6 @@
+from decimal import Decimal
+
 import pytest
-from marshmallow_sqlalchemy import ModelSchema
 from tests.conftest import base
 from tests.conftest import Car
 from tests.conftest import House
@@ -38,7 +39,15 @@ def compare(output, test_input):
     "input_data",
     [
         (House, {"name": "House 2", "inhabitants": [1]}),
-        (Car, {"name": "Car 2", "drivers": [1]}),
+        (
+            Car,
+            {
+                "name": "Car 2",
+                "drivers": [1],
+                "mpg": 25.6,
+                "top_speed": Decimal("105.333"),
+            },
+        ),
         (Person, {"name": "Person 2", "age": 30, "car": 1, "house": 1}),
     ],
 )
@@ -57,7 +66,16 @@ def test_create_resolver(input_data, info, session):
     "input_data",
     [
         (House, 1, {"name": "House 2", "inhabitants": [1]}),
-        (Car, 1, {"name": "Car 2", "drivers": [1]}),
+        (
+            Car,
+            1,
+            {
+                "name": "Car 2",
+                "drivers": [1],
+                "mpg": 33.8,
+                "top_speed": Decimal("94.825"),
+            },
+        ),
         (Person, 1, {"name": "Person 2", "age": 30, "car": 1, "house": 1}),
     ],
 )

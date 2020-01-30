@@ -1,9 +1,12 @@
 import pytest
 from sqlalchemy import Column
+from sqlalchemy.types import Float
 from sqlalchemy.types import Integer
+from sqlalchemy.types import Numeric
 from sqlalchemy.types import String
 from sqlalchemy.types import VARCHAR
 
+from magql.definitions import MagqlFloat
 from magql.definitions import MagqlInt
 from magql.definitions import MagqlString
 from magql.filter import IntFilter
@@ -16,6 +19,8 @@ get_magql_type_parameters = [
     (Column(String), MagqlString),
     (Column(VARCHAR), MagqlString),
     (Column(Integer), MagqlInt),
+    (Column(Float), MagqlFloat),
+    (Column(Numeric), MagqlFloat),
 ]
 
 
