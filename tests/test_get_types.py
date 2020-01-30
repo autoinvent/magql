@@ -1,8 +1,10 @@
 import pytest
 from sqlalchemy import Column
+from sqlalchemy import DECIMAL
 from sqlalchemy.types import Float
 from sqlalchemy.types import Integer
 from sqlalchemy.types import Numeric
+from sqlalchemy.types import REAL
 from sqlalchemy.types import String
 from sqlalchemy.types import VARCHAR
 
@@ -21,6 +23,8 @@ get_magql_type_parameters = [
     (Column(Integer), MagqlInt),
     (Column(Float), MagqlFloat),
     (Column(Numeric), MagqlFloat),
+    (Column(REAL), MagqlFloat),
+    (Column(DECIMAL), MagqlFloat),
 ]
 
 
