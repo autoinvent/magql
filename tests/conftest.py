@@ -1,14 +1,16 @@
 import pytest
 from sqlalchemy import Column
 from sqlalchemy import create_engine
+from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import Numeric
 from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import sessionmaker
 
-from magql.manager import MagqlTableManager, MagqlTableManagerCollection
+from magql.manager import MagqlTableManagerCollection
 
 base = declarative_base()
 Session = sessionmaker()
@@ -71,5 +73,7 @@ class Car(base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
+    mpg = Column(Float)
+    top_speed = Column(Numeric)
 
     drivers = relationship("Person", back_populates="car")
