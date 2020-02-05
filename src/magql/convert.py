@@ -1,5 +1,3 @@
-from functools import singledispatch
-
 from graphql import GraphQLBoolean
 from graphql import GraphQLFloat
 from graphql import GraphQLID
@@ -140,4 +138,3 @@ class Convert:
         query = GraphQLObjectType("Query", self.gql_queries)
         mutation = GraphQLObjectType("Mutation", self.gql_mutations)
         return GraphQLSchema(query, mutation)
-

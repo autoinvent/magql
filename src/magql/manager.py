@@ -343,7 +343,23 @@ class MagqlTableManager(MagqlManager):
             )
 
             base_field = target_name
-            input_required_field = input_field = "Int"
+            input_field_types = {
+                str: "String",
+                int: "Int",
+                bool: "Boolean",
+                float: "Float",
+            }
+
+            try:
+                field_type = input_field_types[
+                    rel_table.primary_key.columns.id.type.python_type
+                ]
+            except KeyError:
+                raise KeyError(
+                    "The value set as the primary key for the relationship is not valid"
+                )
+
+            input_required_field = input_field = field_type
 
             if "TOMANY" in direction:
                 base_field = MagqlList(base_field)

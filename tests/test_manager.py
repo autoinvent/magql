@@ -2,15 +2,27 @@ import pytest
 from inflection import camelize
 from inflection import pluralize
 from tests.conftest import base
+from tests.conftest import BadClass
+from tests.conftest import BadRelClass
 from tests.conftest import Car
+from tests.conftest import Hometown
 from tests.conftest import House
 from tests.conftest import Person
+from tests.conftest import Status
+from tests.conftest import Wealth
 
+from magql.definitions import MagqlBoolean
 from magql.definitions import MagqlEnumType
 from magql.definitions import MagqlField
+from magql.definitions import MagqlFloat
+from magql.definitions import MagqlList
 from magql.definitions import MagqlInputObjectType
 from magql.definitions import MagqlObjectType
+from magql.definitions import MagqlString
+from magql.definitions import MagqlInt
+from magql.definitions import MagqlNonNull
 from magql.manager import MagqlTableManager
+from magql.manager import MagqlTableManagerCollection
 from magql.resolver_factory import CreateResolver
 from magql.resolver_factory import DeleteResolver
 from magql.resolver_factory import ManyResolver
@@ -27,6 +39,14 @@ def check_magql_types(manager):
     )
     assert isinstance(manager.magql_types[magql_name + "Filter"], MagqlInputObjectType)
     assert isinstance(manager.magql_types[magql_name + "Sort"], MagqlEnumType)
+
+
+def bad_manager_collection():
+    table = {}
+    for table_name, _table in base.metadata.tables.items():
+        if table_name == "BadClass" or table_name == "BadRelClass":
+            table[table_name] = _table
+    return MagqlTableManagerCollection(table)
 
 
 @pytest.mark.parametrize("model", [House, Car, Person])
@@ -106,3 +126,35 @@ def test_resolver_overrides(model):
     assert isinstance(manager.delete.resolve, DeleteResolverOverride)
     assert isinstance(manager.single.resolve, SingleResolverOverride)
     assert isinstance(manager.many.resolve, ManyResolverOverride)
+
+
+@pytest.mark.parametrize("model", [House, Car, Hometown, Status, Wealth, Person])
+def test_add_rels(model, manager_collection):
+    input_required_types = [MagqlInt, MagqlString, MagqlBoolean, MagqlFloat]
+    input_required_strings = ["String", "Int", "Boolean", "Float"]
+    for k, v in (
+        manager_collection.manager_map[model.__table__]
+        .magql_types[f"{model.__tablename__}InputRequired"]
+        .fields.items()
+    ):
+        if isinstance(v.type_name, MagqlNonNull) or isinstance(v.type_name, MagqlList):
+            field_type = v.type_name.type_
+        else:
+            field_type = v.type_name
+        if type(field_type) in input_required_types:
+            check_type = input_required_types[
+                input_required_types.index(type(field_type))
+            ]
+        else:
+            check_type = input_required_strings[
+                input_required_strings.index(field_type)
+            ]
+        if isinstance(field_type, str):
+            assert field_type == check_type
+        else:
+            assert isinstance(field_type, check_type)
+
+
+def test_bad_rels():
+    with pytest.raises(KeyError):
+        bad_manager_collection()
