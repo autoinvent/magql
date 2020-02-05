@@ -20,10 +20,6 @@ class Resolver:
     performing dot operation on the parent object through the field
     info.field_name
     """
-
-    def __init__(self):
-        self.overriden_resolve = None
-
     def __call__(self, parent, info, *args, **kwargs):
         parent, info, args, kwargs = self.pre_resolve(parent, info, *args, **kwargs)
         try:
@@ -78,11 +74,6 @@ class Resolver:
         value = self.mutate(value, parent, info, *args, **kwargs)
 
         return value
-
-    def override_resolve(self, resolve):
-        self.overriden_resolve = self.resolve
-        self.resolve = resolve
-        return resolve
 
 
 class CamelResolver(Resolver):
