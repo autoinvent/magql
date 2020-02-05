@@ -1,5 +1,6 @@
 /.idea/
 /.vscode/
+/.vim/
 .DS_Store
 __pycache__/
 *.pyc
@@ -14,4 +15,4 @@ __pycache__/
 .coverage.*
 htmlcov/
 venv/
-magql.log
+magql.log*

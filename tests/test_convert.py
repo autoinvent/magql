@@ -61,6 +61,7 @@ class DummyInfo:  # noqa: E501
         }
         self.context = session
 
+
 @pytest.fixture
 def info(session):
     return DummyInfo(session)
@@ -83,9 +84,7 @@ def info(session):
                     "TestInputObject",
                     MagqlNonNull(
                         MagqlUnionType(
-                            "TestUnion",
-                            [MagqlString, MagqlID],
-                            print("test"),
+                            "TestUnion", [MagqlString, MagqlID], print("test"),
                         )
                     ),
                 ),
