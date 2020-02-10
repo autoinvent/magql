@@ -38,12 +38,12 @@ def is_rel_required(rel):
 # TODO: refactor ManagerCollection so it seamlessly integrates regular
 # and table managers
 
-# A different default resolver can be set that will be used as the resolver
-# instead of letting the individual managers default to the magql provided
-# resolvers
-# Tenative: A collection of managers is determined by them using the same
-# resolvers
 class MagqlTableManagerCollection:
+    """
+    The MagqlTableManagerCollection creates a grouping of related
+    managers from the tables that are passed in, if a corresponding
+    manager is not already created.
+    """
     def __init__(
         self,
         tables,
@@ -54,7 +54,17 @@ class MagqlTableManagerCollection:
         single_resolver=SingleResolver,
         many_resolver=ManyResolver,
     ):
-
+        """
+        Creates the managers needed to manange the Magql schema,
+        if they have not already been created.
+        :param tables: A list of tables to create managers for
+        :param managers: A mapping of tables to pre-existing managers
+        :param create_resolver: The class to use as the create resolver
+        :param update_resolver: The class to use as the update resolver
+        :param delete_resolver: The class to use as the delete resolver
+        :param single_resolver: The class to use as the single resolver
+        :param many_resolver: The class to use as the many resolver
+        """
         self.create_resolver = create_resolver
         self.update_resolver = update_resolver
         self.delete_resolver = delete_resolver
@@ -125,6 +135,9 @@ class MagqlTableManagerCollection:
 
 
 class MagqlManager:
+    """
+
+    """
     def __init__(self, magql_name):
         self.query = MagqlObjectType("Query")
         self.mutation = MagqlObjectType("Mutation")
@@ -136,6 +149,9 @@ class MagqlManager:
 
 
 class MagqlTableManager(MagqlManager):
+    """
+    The manager used to manage a single sqlalchemy table
+    """
     def __init__(
         self,
         table,
@@ -146,6 +162,17 @@ class MagqlTableManager(MagqlManager):
         single_resolver=None,
         many_resolver=None,
     ):
+        """
+        The manager for a single sqlalchemy table.
+        :param table: The table that is being managed
+        :param magql_name: Optional name override for how the table is
+        referred to
+        :param create_resolver: Optional override for create resolver
+        :param update_resolver: Optional override for update resolver
+        :param delete_resolver: Optional override for delete resolver
+        :param single_resolver: Optional override for single resolver
+        :param many_resolver: Optional override for many resolver
+        """
         super(MagqlTableManager, self).__init__(
             magql_name if magql_name is not None else camelize(table.name)
         )  # magql_object_name
@@ -183,6 +210,10 @@ class MagqlTableManager(MagqlManager):
 
     @single_query_name.setter
     def single_query_name(self, value):
+        """
+        Overrides the name of the single query to a custom value
+        :param value: The name to change the single query to
+        """
         self._single_query_name_override = value
 
     @property
@@ -196,6 +227,10 @@ class MagqlTableManager(MagqlManager):
 
     @many_query_name.setter
     def many_query_name(self, value):
+        """
+       Overrides the name of the many query to a custom value
+       :param value: The name to change the many query to
+       """
         self._many_query_name_override = value
 
     @property

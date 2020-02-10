@@ -1,12 +1,12 @@
 Get Type
 ========
 
-.. automodule:: magql.get_type
+.. automodule:: magql.type
 
-.. autofunction:: magql.get_type.get_type
+.. autofunction:: magql.type.get_magql_type
 
-.. autofunction:: magql.get_type.is_required
+.. autofunction:: magql.type.is_required
 
-.. autofunction:: magql.get_type.get_required_type
+.. autofunction:: magql.type.get_magql_required_type
 
-.. autofunction:: magql.get_type.get_filter_type
+.. autofunction:: magql.type.get_magql_filter_type
