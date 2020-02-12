@@ -14,9 +14,6 @@ from magql.definitions import MagqlObjectType
 from magql.definitions import MagqlUnionType
 from magql.filter import RelFilter
 from magql.logging import magql_logger
-from magql.type import get_magql_filter_type
-from magql.type import get_magql_required_type
-from magql.type import get_magql_type
 from magql.resolver_factory import CamelResolver
 from magql.resolver_factory import CheckDeleteResolver
 from magql.resolver_factory import CreateResolver
@@ -27,6 +24,9 @@ from magql.resolver_factory import Resolver
 from magql.resolver_factory import SingleResolver
 from magql.resolver_factory import SQLAlchemyTableUnionResolver
 from magql.resolver_factory import UpdateResolver
+from magql.type import get_magql_filter_type
+from magql.type import get_magql_required_type
+from magql.type import get_magql_type
 
 
 def is_rel_required(rel):
@@ -237,14 +237,14 @@ class MagqlTableManager(MagqlManager):
 
     def generate_single_query(self):
         self.single = MagqlField(
-            self.magql_name,
+            self.magql_name + "Payload",
             {"id": MagqlArgument(MagqlNonNull("Int"))},
             self.single_resolver,
         )
 
     def generate_many_query(self):
         self.many = MagqlField(
-            MagqlList(self.magql_name),
+            MagqlList(self.magql_name + "Payload"),
             {
                 "filter": MagqlArgument(self.magql_name + "Filter"),
                 "sort": MagqlArgument(
@@ -392,9 +392,7 @@ class MagqlTableManager(MagqlManager):
                 self.magql_name + "Payload",
                 {
                     "errors": MagqlField(MagqlList("String")),
-                    js_camelize(self.table_name): MagqlField(
-                        self.magql_name, None, CamelResolver()
-                    ),
+                    "result": MagqlField(self.magql_name, None, CamelResolver()),
                 },
             )
         )

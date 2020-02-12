@@ -2,8 +2,6 @@ import pytest
 from inflection import camelize
 from inflection import pluralize
 from tests.conftest import base
-from tests.conftest import BadClass
-from tests.conftest import BadRelClass
 from tests.conftest import Car
 from tests.conftest import Hometown
 from tests.conftest import House
@@ -11,16 +9,17 @@ from tests.conftest import Person
 from tests.conftest import Status
 from tests.conftest import Wealth
 
+from magql.definitions import MagqlArgument
 from magql.definitions import MagqlBoolean
 from magql.definitions import MagqlEnumType
 from magql.definitions import MagqlField
 from magql.definitions import MagqlFloat
-from magql.definitions import MagqlList
 from magql.definitions import MagqlInputObjectType
+from magql.definitions import MagqlInt
+from magql.definitions import MagqlList
+from magql.definitions import MagqlNonNull
 from magql.definitions import MagqlObjectType
 from magql.definitions import MagqlString
-from magql.definitions import MagqlInt
-from magql.definitions import MagqlNonNull
 from magql.manager import MagqlTableManager
 from magql.manager import MagqlTableManagerCollection
 from magql.resolver_factory import CreateResolver
@@ -58,20 +57,6 @@ def test_default_table_manager(model):
     assert table is manager.table
     assert camelize(table_name) == manager.table_name
     assert table_name == manager.table_name
-    assert manager.many_query_name == camelize(pluralize(table_name), False)
-    assert manager.single_query_name == camelize(table_name, False)
-
-    assert isinstance(manager.create.resolve, CreateResolver)
-    assert isinstance(manager.create, MagqlField)
-    assert isinstance(manager.update.resolve, UpdateResolver)
-    assert isinstance(manager.update, MagqlField)
-    assert isinstance(manager.delete.resolve, DeleteResolver)
-    assert isinstance(manager.delete, MagqlField)
-    assert isinstance(manager.single.resolve, SingleResolver)
-    assert isinstance(manager.single, MagqlField)
-    assert isinstance(manager.many.resolve, ManyResolver)
-    assert isinstance(manager.many, MagqlField)
-
     check_magql_types(manager)
 
 
@@ -107,6 +92,142 @@ class ManyResolverOverride(CreateResolver):
 class SingleResolverOverride(CreateResolver):
     def resolve(self, parent, info, *args, **kwargs):
         pass
+
+
+@pytest.mark.parametrize("model", [House, Car, Person])
+def test_generated_names(model):
+    table = model.__table__
+    manager = MagqlTableManager(table)
+
+    assert manager.single_query_name == camelize(table.name, False)
+    assert manager.many_query_name == camelize(pluralize(table.name), False)
+    assert manager.create_mutation_name == "create" + manager.magql_name
+    assert manager.update_mutation_name == "update" + manager.magql_name
+    assert manager.delete_mutation_name == "delete" + manager.magql_name
+
+
+@pytest.mark.parametrize("model", [House, Car, Person])
+def test_generated_field(model):
+    table = model.__table__
+    manager = MagqlTableManager(table)
+    assert isinstance(manager.create, MagqlField)
+    assert isinstance(manager.update, MagqlField)
+    assert isinstance(manager.delete, MagqlField)
+    assert isinstance(manager.single, MagqlField)
+    assert isinstance(manager.many, MagqlField)
+
+
+@pytest.mark.parametrize("model", [House, Car, Person])
+def test_generated_field_name(model):
+    table = model.__table__
+    manager = MagqlTableManager(table)
+
+    assert manager.single.type_name == manager.magql_name + "Payload"
+    assert isinstance(manager.many.type_name, MagqlList)
+    assert manager.many.type_name.type_ == manager.magql_name + "Payload"
+    assert manager.create.type_name == manager.magql_name + "Payload"
+    assert manager.update.type_name == manager.magql_name + "Payload"
+    assert manager.delete.type_name == manager.magql_name + "Payload"
+
+
+@pytest.mark.parametrize("model", [House, Car, Person])
+def test_generated_field_single_resolver_arguments(model):
+    table = model.__table__
+    manager = MagqlTableManager(table)
+
+    single = manager.single
+
+    assert "id" in single.args
+    assert isinstance(single.args["id"], MagqlArgument)
+    assert isinstance(single.args["id"].type_, MagqlNonNull)
+    assert single.args["id"].type_.type_ == "Int"
+
+
+@pytest.mark.parametrize("model", [House, Car, Person])
+def test_generated_field_many_resolver_arguments(model):
+    table = model.__table__
+    manager = MagqlTableManager(table)
+
+    many = manager.many
+
+    assert "filter" in many.args
+    assert "sort" in many.args
+
+    assert isinstance(many.args["filter"], MagqlArgument)
+    assert many.args["filter"].type_ == manager.magql_name + "Filter"
+
+    assert isinstance(many.args["sort"], MagqlArgument)
+    assert isinstance(many.args["sort"].type_, MagqlList)
+    assert isinstance(many.args["sort"].type_.type_, MagqlNonNull)
+    assert many.args["sort"].type_.type_.type_ == manager.magql_name + "Sort"
+
+
+@pytest.mark.parametrize("model", [House, Car, Person])
+def test_generated_field_create_resolver_arguments(model):
+    table = model.__table__
+    manager = MagqlTableManager(table)
+
+    create = manager.create
+
+    assert "input" in create.args
+    assert isinstance(create.args["input"], MagqlArgument)
+    assert isinstance(create.args["input"].type_, MagqlNonNull)
+    assert create.args["input"].type_.type_ == manager.magql_name + "InputRequired"
+
+
+@pytest.mark.parametrize("model", [House, Car, Person])
+def test_generated_field_update_resolver_arguments(model):
+    table = model.__table__
+    manager = MagqlTableManager(table)
+
+    update = manager.update
+
+    assert "input" in update.args
+    assert isinstance(update.args["input"], MagqlArgument)
+    assert isinstance(update.args["input"].type_, MagqlNonNull)
+    assert update.args["input"].type_.type_ == manager.magql_name + "Input"
+
+    assert "id" in update.args
+    assert isinstance(update.args["id"], MagqlArgument)
+    assert isinstance(update.args["id"].type_, MagqlNonNull)
+    assert update.args["id"].type_.type_ == "Int"
+
+
+@pytest.mark.parametrize("model", [House, Car, Person])
+def test_generated_field_delete_resolver_arguments(model):
+    table = model.__table__
+    manager = MagqlTableManager(table)
+
+    delete = manager.delete
+
+    assert "id" in delete.args
+    assert isinstance(delete.args["id"], MagqlArgument)
+    assert isinstance(delete.args["id"].type_, MagqlNonNull)
+    assert delete.args["id"].type_.type_ == "Int"
+
+
+@pytest.mark.parametrize("model", [House, Car, Person])
+def test_generated_field_resolvers(model):
+    table = model.__table__
+    manager = MagqlTableManager(table)
+
+    assert isinstance(manager.single.resolve, SingleResolver)
+    assert isinstance(manager.many.resolve, ManyResolver)
+    assert isinstance(manager.create.resolve, CreateResolver)
+    assert isinstance(manager.update.resolve, UpdateResolver)
+    assert isinstance(manager.delete.resolve, DeleteResolver)
+
+
+@pytest.mark.parametrize("model", [House, Car, Person])
+def test_return_types(model):
+    table = model.__table__
+    manager = MagqlTableManager(table)
+
+    assert manager.single_query_name == camelize(table.name, False)
+    assert manager.many_query_name == camelize(pluralize(table.name), False)
+    assert manager.create_mutation_name == "create" + manager.magql_name
+    assert manager.update_mutation_name == "update" + manager.magql_name
+    assert manager.delete_mutation_name == "delete" + manager.magql_name
 
 
 @pytest.mark.parametrize("model", [House, Car, Person])
