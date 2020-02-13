@@ -1,6 +1,17 @@
 from sqlalchemy_utils import get_mapper
 
-from magql.logging import magql_logger
+
+class SortNotFoundError(Exception):
+    def __init__(self, field_name, direction):
+        super().__init__(field_name, direction)
+        self.field_name = field_name
+        self.direction = direction
+
+    def __str__(self):
+        return (
+            f"Sort not found for"
+            f" (field: {self.field_name}, direction: {self.direction})"
+        )
 
 
 def generate_sorts(table, info, *args, **kwargs):
@@ -16,6 +27,6 @@ def generate_sorts(table, info, *args, **kwargs):
             elif direction == "desc":
                 sort = field.desc()
             else:
-                magql_logger.warn("Sort not found")
+                raise SortNotFoundError(field_name, direction)
             sqla_sorts.append(sort)
     return sqla_sorts
