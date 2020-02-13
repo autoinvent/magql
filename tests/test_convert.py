@@ -1,5 +1,5 @@
 import pytest
-from tests.conftest import base
+from graphql import assert_valid_schema
 from graphql import GraphQLArgument
 from graphql import GraphQLBoolean
 from graphql import GraphQLEnumType
@@ -15,7 +15,6 @@ from graphql import GraphQLObjectType
 from graphql import GraphQLString
 from graphql import GraphQLUnionType
 from graphql import validate_schema
-from graphql import assert_valid_schema
 
 from magql.convert import Convert
 from magql.definitions import MagqlArgument
@@ -32,7 +31,6 @@ from magql.definitions import MagqlNonNull
 from magql.definitions import MagqlObjectType
 from magql.definitions import MagqlString
 from magql.definitions import MagqlUnionType
-from magql.manager import MagqlTableManagerCollection
 
 
 class DummyInfo:  # noqa: E501

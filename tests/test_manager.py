@@ -253,10 +253,10 @@ def test_resolver_overrides(model):
 def test_add_rels(model, manager_collection):
     input_required_types = [MagqlInt, MagqlString, MagqlBoolean, MagqlFloat]
     input_required_strings = ["String", "Int", "Boolean", "Float"]
-    for k, v in (
+    for v in (
         manager_collection.manager_map[model.__table__]
         .magql_types[f"{model.__tablename__}InputRequired"]
-        .fields.items()
+        .fields.values()
     ):
         if isinstance(v.type_name, MagqlNonNull) or isinstance(v.type_name, MagqlList):
             field_type = v.type_name.type_

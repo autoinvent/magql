@@ -20,19 +20,19 @@ from sqlalchemy_utils import JSONType
 from sqlalchemy_utils import PhoneNumberType
 from sqlalchemy_utils import URLType
 
-from magql.definitions import MagqlBoolean
-from magql.definitions import MagqlEnumType
-from magql.definitions import MagqlFloat
-from magql.definitions import MagqlInt
-from magql.definitions import MagqlNonNull
-from magql.definitions import MagqlString
-from magql.filter import BooleanFilter
-from magql.filter import DateFilter
-from magql.filter import EnumFilter
-from magql.filter import FloatFilter
-from magql.filter import IntFilter
-from magql.filter import StringFilter
-from magql.logging import magql_logger
+from .definitions import MagqlBoolean
+from .definitions import MagqlEnumType
+from .definitions import MagqlFloat
+from .definitions import MagqlInt
+from .definitions import MagqlNonNull
+from .definitions import MagqlString
+from .filter import BooleanFilter
+from .filter import DateFilter
+from .filter import EnumFilter
+from .filter import FloatFilter
+from .filter import IntFilter
+from .filter import StringFilter
+from .logging import magql_logger
 
 
 @singledispatch
@@ -107,7 +107,7 @@ def _(type_, column):
     # rm = GraphQLEnumType(name, enums)
     # return rm
     name = camelize(column.table.name) + camelize(column.name) + "EnumType"
-    enums = dict((key, key) for key, value in type_.choices)
+    enums = {key: key for key, value in type_.choices}
     return MagqlEnumType(name, enums)
 
 

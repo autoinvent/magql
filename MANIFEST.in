@@ -1,0 +1,6 @@
+include CHANGES.rst
+include tox.ini
+graft docs
+prune docs/_build
+graft tests
+global-exclude *.pyc

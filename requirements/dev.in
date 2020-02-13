@@ -1,0 +1,5 @@
+-r docs.in
+pre-commit
+pytest
+coverage
+tox

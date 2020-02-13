@@ -3,7 +3,6 @@ This module defines the framework-agnostic logic for handling the multipart
 request spec
 """
 from graphql import GraphQLScalarType
-from six import iteritems
 
 GraphQLFile = GraphQLScalarType(
     name="File",
@@ -27,7 +26,7 @@ def place_files_in_operations(operations, files_map, files):
     request parameter in the multipart request spec"""
     path_to_key_iter = (
         (value.split("."), key)
-        for (key, values) in iteritems(files_map)
+        for (key, values) in files_map.items()
         for value in values
     )
     # Since add_files_to_operations returns a new dict/list, first define

@@ -5,20 +5,18 @@ from graphql import GraphQLInt
 from graphql import GraphQLObjectType
 from graphql import GraphQLSchema
 from graphql import GraphQLString
-from magql.definitions import MagqlBoolean
-from magql.definitions import MagqlEnumType
-from magql.definitions import MagqlField
-from magql.definitions import MagqlFile
-from magql.definitions import MagqlFloat
-from magql.definitions import MagqlID
-from magql.definitions import MagqlInputField
-from magql.definitions import MagqlInt
-from magql.definitions import MagqlString
-from magql.definitions import MagqlUnionType
-from magql.definitions import MagqlWrappingType
 
-from magql.flask_magql_utils import GraphQLFile
-from magql.logging import magql_logger
+from .definitions import MagqlBoolean
+from .definitions import MagqlEnumType
+from .definitions import MagqlField
+from .definitions import MagqlFile
+from .definitions import MagqlFloat
+from .definitions import MagqlID
+from .definitions import MagqlInputField
+from .definitions import MagqlInt
+from .definitions import MagqlString
+from .definitions import MagqlUnionType
+from .definitions import MagqlWrappingType
 
 
 class Convert:
@@ -30,6 +28,7 @@ class Convert:
     schema is then converted to a graphql schema once
     :func:`generate_schema` is called.
     """
+
     def __init__(self, manager_list):
         """
         Generates a graphql schema based on the passed list of managers
@@ -127,8 +126,7 @@ class Convert:
             Convert.convert_str_leafs(manager.query, magql_type_map)
             Convert.convert_str_leafs(manager.mutation, magql_type_map)
 
-
-        #TODO: Look into whether this convert_types is necessary and,
+        # TODO: Look into whether this convert_types is necessary and,
         # if it is whether or not it should be here
         for manager in managers:
             if manager:

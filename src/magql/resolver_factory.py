@@ -3,10 +3,11 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy_utils import ChoiceType
 from sqlalchemy_utils import get_mapper
 
-from magql.filter import generate_filters
-from magql.logging import magql_logger
-from magql.sort import generate_sorts
-from magql.validator import ValidationFailedError
+from .filter import generate_filters
+from .logging import magql_logger
+from .sort import generate_sorts
+from .validator import ValidationFailedError
+
 
 def js_underscore(word):
     # add config
@@ -27,6 +28,7 @@ class Resolver:
     is the suggested way of organizing the resolve order such that overriding
     and/or extending the functionality is easiest.
     """
+
     def __call__(self, parent, info, *args, **kwargs):
         """
         Default resolve method, establishes and executes the default
@@ -158,6 +160,7 @@ class CamelResolver(Resolver):
     :param info: gql info dictionary
     :return: The value to be returned to GraphQL
     """
+
     def retrieve_value(self, parent, info, *args, **kwargs):
         source = parent
         # TODO: Look into a way to generate info
@@ -181,7 +184,7 @@ class CheckDeleteResolver(Resolver):
 
     def __init__(self, table_types):
         self.table_types = table_types
-        super(CheckDeleteResolver, self).__init__()
+        super().__init__()
 
     def retrieve_value(self, parent, info, *args, **kwargs):
         for table in self.table_types.keys():
@@ -212,7 +215,7 @@ class SQLAlchemyTableUnionResolver(Resolver):
 
     def __init__(self, magql_name_to_table):
         self.magql_name_to_table = magql_name_to_table
-        super(SQLAlchemyTableUnionResolver, self).__init__()
+        super().__init__()
 
     def retrieve_value(self, parent, info, *args, **kwargs):
         for magql_name, table in self.magql_name_to_table.items():
@@ -251,7 +254,7 @@ class TableResolver(Resolver):  # noqa: B903
         """
         self.table = table
         self.table_class = get_mapper(table).class_
-        super(TableResolver, self).__init__()
+        super().__init__()
 
 
 class MutationResolver(TableResolver):
@@ -336,7 +339,7 @@ class ModelInputResolver(MutationResolver):
         schema that is automatically generated based on the table by
         Marshmallow-SQLAlchemy.
         """
-        super(ModelInputResolver, self).__init__(table)
+        super().__init__(table)
 
     def pre_resolve(self, parent, info, *args, **kwargs):
         """

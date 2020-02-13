@@ -1,6 +1,6 @@
 import json
 
-from magql.flask_magql_utils import place_files_in_operations
+from .flask_magql_utils import place_files_in_operations
 
 
 def parse_request(request):

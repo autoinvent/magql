@@ -1,19 +1,19 @@
+from datetime import date
+
 import pytest
+from sqlalchemy import Boolean
 from sqlalchemy import Column
 from sqlalchemy import create_engine
+from sqlalchemy import Date
+from sqlalchemy import Enum
 from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Numeric
 from sqlalchemy import String
-from sqlalchemy import Boolean
-from sqlalchemy import Float
-from sqlalchemy import Date
-from sqlalchemy import Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import sessionmaker
-from datetime import date
 
 from magql.manager import MagqlTableManagerCollection
 

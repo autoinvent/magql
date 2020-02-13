@@ -1,34 +1,14 @@
-import io
-
-from setuptools import find_packages
 from setuptools import setup
 
-with io.open("README.md", "rt", encoding="utf8") as f:
-    readme = f.read()
-
-
+# Metadata goes in setup.cfg. These are here for GitHub's dependency graph.
 setup(
     name="magql",
-    version="0.2.1",
-    packages=find_packages("src"),
-    package_dir={"": "src"},
-    include_package_data=True,
     install_requires=[
-        "sqlalchemy",
-        "sqlalchemy_utils",
-        "marshmallow==2.20.0",
-        "marshmallow_sqlalchemy",
+        "GraphQL-core-next",
         "inflection",
-        "graphql-core-next",
+        "marshmallow<3",
+        "marshmallow-sqlalchemy",
+        "SQLAlchemy",
+        "SQLAlchemy-Utils",
     ],
-    extras_require={
-        "dev": [
-            "pytest",
-            "coverage",
-            "tox",
-            "sphinx",
-            "Pallets-Sphinx-Themes",
-            "pre-commit",
-        ]
-    },
 )

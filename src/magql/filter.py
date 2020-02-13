@@ -21,10 +21,10 @@ from sqlalchemy_utils import PhoneNumberType
 from sqlalchemy_utils import URLType
 from sqlalchemy_utils.types import ChoiceType
 
-from magql.definitions import MagqlEnumType
-from magql.definitions import MagqlInputField
-from magql.definitions import MagqlInputObjectType
-from magql.logging import magql_logger
+from .definitions import MagqlEnumType
+from .definitions import MagqlInputField
+from .definitions import MagqlInputObjectType
+from .logging import magql_logger
 
 NOT_FOUND = "filter operator not found"
 

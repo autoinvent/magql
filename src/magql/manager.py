@@ -37,13 +37,13 @@ def is_rel_required(rel):
 
 # TODO: refactor ManagerCollection so it seamlessly integrates regular
 # and table managers
-
 class MagqlTableManagerCollection:
     """
     The MagqlTableManagerCollection creates a grouping of related
     managers from the tables that are passed in, if a corresponding
     manager is not already created.
     """
+
     def __init__(
         self,
         tables,
@@ -135,9 +135,6 @@ class MagqlTableManagerCollection:
 
 
 class MagqlManager:
-    """
-
-    """
     def __init__(self, magql_name):
         self.query = MagqlObjectType("Query")
         self.mutation = MagqlObjectType("Mutation")
@@ -152,6 +149,7 @@ class MagqlTableManager(MagqlManager):
     """
     The manager used to manage a single sqlalchemy table
     """
+
     def __init__(
         self,
         table,
@@ -173,7 +171,7 @@ class MagqlTableManager(MagqlManager):
         :param single_resolver: Optional override for single resolver
         :param many_resolver: Optional override for many resolver
         """
-        super(MagqlTableManager, self).__init__(
+        super().__init__(
             magql_name if magql_name is not None else camelize(table.name)
         )  # magql_object_name
         # Throws ValueError if it cannot find a table
