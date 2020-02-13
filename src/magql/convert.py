@@ -22,7 +22,20 @@ from magql.logging import magql_logger
 
 
 class Convert:
+    """
+    The Convert class is responsible for taking in a finalized magql
+    schema and turning it into a graphql schema. Takes in the magql
+    schema in the form of a list of managers. The magql schema from
+    each manager is extracted and built into one magql schema. That
+    schema is then converted to a graphql schema once
+    :func:`generate_schema` is called.
+    """
     def __init__(self, manager_list):
+        """
+        Generates a graphql schema based on the passed list of managers
+        :param manager_list: A list of managers from which the Magql
+        schema is extracted and turned into a graphql schema
+        """
         # type_map maps magql_names to GraphQL and is needed to translate
         # MagqlTypes to GraphQLTypes
         self.gql_queries = {}
@@ -85,6 +98,12 @@ class Convert:
                     )
 
     def generate_type_map(self, managers):
+        """
+        Creates a mapping of String representations of Magql Types to
+        the Magql types. Then converts the magql_types to grapqhl types.
+        :param managers: The list of managers used to generate the
+        GraphQL schema
+        """
         magql_type_map = {
             "String": MagqlString(),
             "Int": MagqlInt(MagqlInt.parse_value_accepts_string),
@@ -108,6 +127,9 @@ class Convert:
             Convert.convert_str_leafs(manager.query, magql_type_map)
             Convert.convert_str_leafs(manager.mutation, magql_type_map)
 
+
+        #TODO: Look into whether this convert_types is necessary and,
+        # if it is whether or not it should be here
         for manager in managers:
             if manager:
                 self.convert_types(manager)
@@ -127,7 +149,8 @@ class Convert:
                 pass
 
     def convert_manager(self, manager):
-        # TODO: Consider moving the conversion of the query into the manager
+        # TODO: Consider moving the conversion of the query into the
+        #  manager
         for query_name, query in manager.query.fields.items():
             self.gql_queries[query_name] = query.convert(self.type_map)
 
@@ -135,6 +158,10 @@ class Convert:
             self.gql_mutations[mut_name] = mutation.convert(self.type_map)
 
     def generate_schema(self):
+        """
+        Finalizes the GraphQL schema by generating the GraphQLSchema
+        :return: The finalized GraphQL schema
+        """
         query = GraphQLObjectType("Query", self.gql_queries)
         mutation = GraphQLObjectType("Mutation", self.gql_mutations)
         return GraphQLSchema(query, mutation)

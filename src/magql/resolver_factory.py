@@ -8,7 +8,6 @@ from magql.logging import magql_logger
 from magql.sort import generate_sorts
 from magql.validator import ValidationFailedError
 
-
 def js_underscore(word):
     # add config
     return underscore(word)
@@ -16,11 +15,28 @@ def js_underscore(word):
 
 class Resolver:
     """
-    Base Resolver that is a callable that acts as the default resolver
-    performing dot operation on the parent object through the field
-    info.field_name
+    The super class for all other builtin magql resolvers. Establishes
+    the call order of the resolve functions. Resolve is broken down into
+    3 main sections, :func:`pre-resolve`, :func:`resolve`, and
+    :func:`post-resolve`. :func:`re-resolve` allows modification of the
+    arguments that will be passed to :func:`resolve`. :func:`resolve`
+    is broken down into 4 sections, :func:`retrieve_value`, :func:`authorize`,
+    :func:`validate`, and :func:`mutate`. :func:`resolve` returns a value
+    that can be modified by :func:`post_resolve`, which can perform side
+    effects such as commiting the session. The order of these functions
+    is the suggested way of organizing the resolve order such that overriding
+    and/or extending the functionality is easiest.
     """
     def __call__(self, parent, info, *args, **kwargs):
+        """
+        Default resolve method, establishes and executes the default
+        resolve flow
+        :param parent: gql parent. The value returned by the
+        parent resolver. See GraphQL docs for more info
+        :param info: GraphQL info dictionary, see GraphQL docs for more
+        info
+        :return: the resolved value that is returned to GraphQL
+        """
         parent, info, args, kwargs = self.pre_resolve(parent, info, *args, **kwargs)
         try:
             resolved_value = self.resolve(parent, info, *args, **kwargs)
@@ -34,36 +50,93 @@ class Resolver:
         return post_resolved_value
 
     def pre_resolve(self, parent, info, *args, **kwargs):
+        """
+        Allows for modification of the passed parameters
+        :param parent: gql parent. The value returned by the
+        parent resolver. See GraphQL docs for more info
+        :param info: GraphQL info dictionary, see GraphQL docs for more
+        info
+        :return: the parameters that will be passed to :func:`resolve`
+        """
         return parent, info, args, kwargs
 
     def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
+        """
+        Allows for modification of the returned value to GraphQl and
+        performing of side effects
+        :param parent: gql parent. The value returned by the
+        parent resolver. See GraphQL docs for more info
+        :param info: GraphQL info dictionary, see GraphQL docs for more
+        info
+        :return: The value to be returned to GraphQL
+        """
         return resolved_value
 
-    # Authorize should raise an error if it encounters one
-    # This error will then be caughnt and returned by resolve
     def authorize(self, instance, parent, info, *args, **kwargs):
+        """
+        Provides a space to perform authorization. Raise an AuthError
+        to stop execution and have the resolve method return an error
+        message based on the string error in the error object
+        :param instance: The value returned by :func:`retrieve_value`
+        :param parent: gql parent. The value returned by the
+        parent resolver. See GraphQL docs for more info
+        :param info: GraphQL info dictionary, see GraphQL docs for more
+        info
+        """
         return None
 
-    # Validate should return an error if it encounters one
-    # This error will then be returned by resolve
     def validate(self, instance, parent, info, *args, **kwargs):
+        """
+        Provides a space to perform validation. Raise an ValidationError
+        to stop execution and have the resolve method return an error
+        message based on the string error in the error object
+        :param instance: The value returned by :func:`retrieve_value`
+        :param parent: gql parent. The value returned by the
+        parent resolver. See GraphQL docs for more info
+        :param info: GraphQL info dictionary, see GraphQL docs for more
+        info
+        """
         return None
 
-    # Queries will not mutate the value but mutations will override this
-    # to mutate the value as needed
     def mutate(self, value, parent, info, *args, **kwargs):
+        """
+        Provides a space to mutate the resolved value. Necessarily will
+        do nothing in queries.
+        :param value: The value returned by
+        :func:`retrieve_value`
+        :param parent: gql parent. The value returned by the
+        parent resolver. See GraphQL docs for more info
+        :param info: GraphQL info dictionary, see GraphQL docs for more
+        info
+        :return: the value that will be returned to GraphQL
+        """
         return value
 
     def retrieve_value(self, parent, info):
+        """
+        Retrieves (or creates) the value that the resolver will operate
+        on and return. By default performs dot operation on the parent
+        object using the field_name parameter of the info dict
+        :param parent: gql parent. The value returned by the
+        parent resolver. See GraphQL docs for more info
+        :param info: GraphQL info dictionary, see GraphQL docs for more
+        info
+        :return: the value that will be operated on and returned to GraphQL
+        """
         return getattr(parent, underscore(info.field_name))
 
     def resolve(self, parent, info, *args, **kwargs):
         """
-        Default resolve method, performs dot access
+        Establishes the call order of the resolve sub_functions
+        :func:`retrieve_value`, :func:`authorize`, :func:`validate`,
+        and :func:`mutate`. When subclassing, define one of these
+        subfunctions to overwrite or extend the functionality in a
+        granular manner. To override functionality in a more major way
+        define a new resolve function to perform desired behavior.
         :param parent: gql parent. is whatever was returned by the
         parent resolver
         :param info: gql info dictionary
-        :return: getattr(parent, info.field_Name)
+        :return: The value to be returned to GraphQL
         """
         value = self.retrieve_value(parent, info, *args, **kwargs)
 
@@ -77,10 +150,16 @@ class Resolver:
 
 
 class CamelResolver(Resolver):
+    """
+    Identical to graphql's default_field_resolver except the field_name
+    is converted to snake case
+    :param parent: gql parent. is whatever was returned by the
+    parent resolver
+    :param info: gql info dictionary
+    :return: The value to be returned to GraphQL
+    """
     def retrieve_value(self, parent, info, *args, **kwargs):
         source = parent
-        # Identical to graphql's default_field_resolver
-        # except the field_name is snake case
         # TODO: Look into a way to generate info
         #  dictionary so the code does not need to be
         # copied or circumvent all together in a different way
@@ -233,16 +312,19 @@ class MutationResolver(TableResolver):
 
     # Post resolve will add and commit the created value
     def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
+        """
+        Adds and commits the mutated value to the session
+        :param parent: gql parent. The value returned by the
+        parent resolver. See GraphQL docs for more info
+        :param info: GraphQL info dictionary, see GraphQL docs for more
+        info
+        :return: The value to be returned to GraphQL
+        """
         session = info.context
         session.add(resolved_value)
         session.commit()
         table_name = self.table.name
         return {table_name: resolved_value}
-
-    # def resolve(self, parent, info):
-    #     value = super().resolve()
-    #     table_name = self.table.name
-    #     return {table_name: value}
 
 
 class ModelInputResolver(MutationResolver):
@@ -257,6 +339,16 @@ class ModelInputResolver(MutationResolver):
         super(ModelInputResolver, self).__init__(table)
 
     def pre_resolve(self, parent, info, *args, **kwargs):
+        """
+        Converts ids of rels to actual values and handles enums
+        :param parent: parent object required by GraphQL, always None because
+        mutations are always top level.
+        :param info: GraphQL info dictionary
+        :param args: Not used in automatic generation but left in in case
+        overriding the validate or call methods.
+        :param kwargs: Holds user inputs.
+        :return: The modified arguments
+        """
         session = info.context
         mapper = get_mapper(self.table)
         kwargs["input"] = self.input_to_instance_values(
@@ -274,6 +366,16 @@ class CreateResolver(ModelInputResolver):
     """
 
     def retrieve_value(self, parent, info, *args, **kwargs):
+        """
+        Creates an empty row in the table that will be modified by mutate.
+        :param parent: parent object required by GraphQL, always None because
+        mutations are always top level.
+        :param info: GraphQL info dictionary
+        :param args: Not used in automatic generation but left in in case
+        overriding the validate or call methods.
+        :param kwargs: Holds user inputs.
+        :return: The instance with newly modified values
+        """
         mapper = get_mapper(self.table)
 
         # TODO: Replace with dictionary spread operator
@@ -281,6 +383,17 @@ class CreateResolver(ModelInputResolver):
         return instance
 
     def mutate(self, instance, parent, info, *args, **kwargs):
+        """
+        Updates the passed instance to have the values specified
+        in the query arguments
+        :param value: The value returned by
+        :func:`retrieve_value`
+        :param parent: gql parent. The value returned by the
+        parent resolver. See GraphQL docs for more info
+        :param info: GraphQL info dictionary, see GraphQL docs for more
+        info
+        :return: the newly created value that will be returned to GraphQL
+        """
         for key, value in kwargs["input"].items():
             setattr(instance, key, value)
         return instance
@@ -310,12 +423,19 @@ class UpdateResolver(ModelInputResolver):
 
         id_ = kwargs["id"]
         return session.query(mapper.class_).filter_by(id=id_).one()
-        # result = self.schema.load(kwargs["input"], session=info.context, partial=True)
-        # session.rollback()
-        # data = result.data
-        # Current enum implementation is very closely tied to using choice type
 
     def mutate(self, instance, parent, info, *args, **kwargs):
+        """
+        Updates the passed instance to have the values specified
+        in the query arguments
+        :param value: The value returned by
+        :func:`retrieve_value`
+        :param parent: gql parent. The value returned by the
+        parent resolver. See GraphQL docs for more info
+        :param info: GraphQL info dictionary, see GraphQL docs for more
+        info
+        :return: the updated value that will be returned to GraphQL
+        """
         for key, value in kwargs["input"].items():
             setattr(instance, key, value)
         return instance
@@ -329,14 +449,14 @@ class DeleteResolver(MutationResolver):
 
     def retrieve_value(self, parent, info, *args, **kwargs):
         """
-        Deletes the instance of the associated table with the id passed.
-        :param parent: parent object required by GraphQL, always None because
-        mutations are always top level.
-        :param info: GraphQL info dictionary
-        :param args: Not used in automatic generation but left in in case
-        overriding the validate or call methods.
-        :param kwargs: Holds user inputs.
-        :return: The deleted instance
+        Retrieves the row in the table that matches the id in the args,
+        if such a row exists
+        :param parent: gql parent. The value returned by the
+        parent resolver. See GraphQL docs for more info
+        :param info: GraphQL info dictionary, see GraphQL docs for more
+        info
+        :return: the value that will be operated on and returned to GraphQL,
+        in this case the row with id matching the requested id
         """
         session = info.context
         mapper = get_mapper(self.table)
@@ -344,11 +464,30 @@ class DeleteResolver(MutationResolver):
         return session.query(mapper.class_).filter_by(id=id_).one()
 
     def mutate(self, instance, parent, info, *args, **kwargs):
+        """
+        Deletes the passed instance from the session
+        :param value: The value returned by
+        :func:`retrieve_value`
+        :param parent: gql parent. The value returned by the
+        parent resolver. See GraphQL docs for more info
+        :param info: GraphQL info dictionary, see GraphQL docs for more
+        info
+        :return: the value that was deleted
+        """
         session = info.context
         session.delete(instance)
         return instance
 
     def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
+        """
+        Deletes the value from the session and commits the deletion
+        :param parent: gql parent. The value returned by the
+        parent resolver. See GraphQL docs for more info
+        :param info: GraphQL info dictionary, see GraphQL docs for more
+        info
+        :return: The value to be returned to GraphQL, in this case the
+        deleted value
+        """
         session = info.context
         session.delete(resolved_value)
         session.commit()
@@ -358,7 +497,8 @@ class DeleteResolver(MutationResolver):
 
 class QueryResolver(TableResolver):
     """
-    A subclass of :class:`TableResolver`.
+    A subclass of :class:`TableResolver`, the super class for
+    :class:`SingleResolver` and :class:`ManyResolver`
     """
 
     def generate_query(self, info):
@@ -381,12 +521,14 @@ class SingleResolver(QueryResolver):
 
     def retrieve_value(self, parent, info, *args, **kwargs):
         """
-
-        :param parent:
-        :param info: GraphQL info dictionary, holds the SQLA session
-        :param args:
-        :param kwargs: Has the id of the instance of the desired model
-        :return: The instance of the model with the given id
+        Retrieves the row in the table that matches the id in the args,
+        if such a row exists
+        :param parent: gql parent. The value returned by the
+        parent resolver. See GraphQL docs for more info
+        :param info: GraphQL info dictionary, see GraphQL docs for more
+        info
+        :return: the value that will be operated on and returned to GraphQL,
+        in this case the row with id matching the requested id
         """
         query = self.generate_query(info)
         return query.filter_by(id=kwargs["id"]).one_or_none()
@@ -462,17 +604,15 @@ class ManyResolver(QueryResolver):
 
     def retrieve_value(self, parent, info, *args, **kwargs):
         """
-        Returns all objects associated with a table and builds out
-        a SQLAlchemy query that corresponds to the GQL query so
-        that the only one query is performed with multiple subquery
-        loads
+        Returns all rows in a table. Uses subquery loads to improve
+        querying by loading each relationship based on the query request
         :param parent: parent object required by GraphQL, always None because
         mutations are always top level.
         :param info:
         :param args: Not used but left in so that it can be used if a
         method is overriden
         :param kwargs: Holds the filters and sorts that can be used
-        :return: A list of all instances of the model that match the
+        :return: A list of all rows in the table that match the
         filter, sorted by the given sort parameter.
         """
         query = self.generate_query(info)

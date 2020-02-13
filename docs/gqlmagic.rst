@@ -1,3 +1,3 @@
-gqlmagic
+Magql
 ========
-.. autofunction:: magql.convert.convert
+.. autofunction:: magql.convert.Convert

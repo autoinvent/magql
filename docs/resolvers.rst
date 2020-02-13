@@ -8,6 +8,10 @@ Resolvers
    :members:
    :inherited-members:
 
+.. autoclass:: magql.resolver_factory.CamelResolver
+   :members:
+   :inherited-members:
+
 .. autoclass:: magql.resolver_factory.TableResolver
    :members:
    :inherited-members:
