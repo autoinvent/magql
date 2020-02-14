@@ -4,7 +4,6 @@ from pallets_sphinx_themes import get_version
 
 project = "magql"
 copyright = "2019 Moebius Solutions"
-author = "AutoInvent team"
 release, version = get_version("magql")
 
 # General --------------------------------------------------------------
@@ -32,7 +31,3 @@ singlehtml_sidebars = {"index": ["localtoc.html"]}
 html_title = f"{project} Documentation ({version})"
 html_show_sourcelink = False
 html_domain_indices = False
-
-# LaTeX ----------------------------------------------------------------
-
-latex_documents = [(master_doc, f"{html_title}.tex", html_title, author, "manual")]
