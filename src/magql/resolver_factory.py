@@ -335,9 +335,6 @@ class ModelInputResolver(MutationResolver):
         """
         MutationResolver can be overriden by
         :param table:
-        :param schema: Optional, by default it is a generic Marshmallow
-        schema that is automatically generated based on the table by
-        Marshmallow-SQLAlchemy.
         """
         super().__init__(table)
 

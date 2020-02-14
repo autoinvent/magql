@@ -6,8 +6,6 @@ setup(
     install_requires=[
         "graphql-core>=3",
         "inflection",
-        "marshmallow<3",
-        "marshmallow-sqlalchemy",
         "SQLAlchemy",
         "SQLAlchemy-Utils",
     ],
