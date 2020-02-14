@@ -1,5 +1,6 @@
 Resolvers
 =========
+
 .. automodule:: magql.convert
 
 .. automodule:: magql.resolver_factory
