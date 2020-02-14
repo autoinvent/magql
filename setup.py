@@ -5,8 +5,8 @@ setup(
     name="magql",
     install_requires=[
         "graphql-core>=3",
-        "inflection",
-        "SQLAlchemy",
-        "SQLAlchemy-Utils",
+        "inflection>=0.3",
+        "SQLAlchemy>=1.3",
+        "SQLAlchemy-Utils>=0.35",
     ],
 )
