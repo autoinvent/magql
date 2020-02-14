@@ -1,4 +1,6 @@
-v1.0.0
+v0.3.0
 ------
 
-Unreleased
+Released 2020-02-13
+
+-   Initial public version.
