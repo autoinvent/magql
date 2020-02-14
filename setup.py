@@ -4,11 +4,9 @@ from setuptools import setup
 setup(
     name="magql",
     install_requires=[
-        "GraphQL-core-next",
-        "inflection",
-        "marshmallow<3",
-        "marshmallow-sqlalchemy",
-        "SQLAlchemy",
-        "SQLAlchemy-Utils",
+        "graphql-core>=3",
+        "inflection>=0.3",
+        "SQLAlchemy>=1.3",
+        "SQLAlchemy-Utils>=0.35",
     ],
 )
