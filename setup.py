@@ -4,7 +4,7 @@ from setuptools import setup
 setup(
     name="magql",
     install_requires=[
-        "GraphQL-core-next",
+        "graphql-core>=3",
         "inflection",
         "marshmallow<3",
         "marshmallow-sqlalchemy",
