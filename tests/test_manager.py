@@ -123,8 +123,7 @@ def test_generated_field_name(model):
     manager = MagqlTableManager(table)
 
     assert manager.single.type_name == manager.magql_name + "Payload"
-    assert isinstance(manager.many.type_name, MagqlList)
-    assert manager.many.type_name.type_ == manager.magql_name + "Payload"
+    assert manager.many.type_name == manager.magql_name + "ListPayload"
     assert manager.create.type_name == manager.magql_name + "Payload"
     assert manager.update.type_name == manager.magql_name + "Payload"
     assert manager.delete.type_name == manager.magql_name + "Payload"

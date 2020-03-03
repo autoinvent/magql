@@ -16,7 +16,7 @@ def js_underscore(word):
 
 class Resolver:
     """
-    The super class for all other builtin magql resolvers. Establishes
+    The super class for all builtin CRUD magql resolvers. Establishes
     the call order of the resolve functions. Resolve is broken down into
     3 main sections, :func:`pre-resolve`, :func:`resolve`, and
     :func:`post-resolve`. :func:`re-resolve` allows modification of the
@@ -72,7 +72,7 @@ class Resolver:
         info
         :return: The value to be returned to GraphQL
         """
-        return resolved_value
+        return {"result": resolved_value}
 
     def authorize(self, instance, parent, info, *args, **kwargs):
         """
@@ -151,7 +151,24 @@ class Resolver:
         return value
 
 
-class CamelResolver(Resolver):
+class ResultResolver:
+    """
+    Result Resolver retrieves the result key off of the payload object
+    :param parent: GraphQL Payload object
+    :param info: gql info dictionary
+    :return: The results field on the payload object
+    """
+
+    def __call__(self, parent, info, *args, **kwargs):
+        value = (
+            parent.get("result")
+            if isinstance(parent, dict)
+            else getattr(parent, "result", None)
+        )
+        return value
+
+
+class CamelResolver:
     """
     Identical to graphql's default_field_resolver except the field_name
     is converted to snake case
@@ -161,7 +178,7 @@ class CamelResolver(Resolver):
     :return: The value to be returned to GraphQL
     """
 
-    def retrieve_value(self, parent, info, *args, **kwargs):
+    def __call__(self, parent, info, *args, **kwargs):
         source = parent
         # TODO: Look into a way to generate info
         #  dictionary so the code does not need to be
@@ -177,16 +194,15 @@ class CamelResolver(Resolver):
         return value
 
 
-class CheckDeleteResolver(Resolver):
+class CheckDeleteResolver:
     """
     Resolver for the function that checks to see what will be deleted
     """
 
     def __init__(self, table_types):
         self.table_types = table_types
-        super().__init__()
 
-    def retrieve_value(self, parent, info, *args, **kwargs):
+    def __call__(self, parent, info, *args, **kwargs):
         for table in self.table_types.keys():
             try:
                 class_ = get_mapper(table).class_
@@ -207,7 +223,7 @@ class CheckDeleteResolver(Resolver):
                 return cascades
 
 
-class SQLAlchemyTableUnionResolver(Resolver):
+class SQLAlchemyTableUnionResolver:
     """
     Resolver that determines which type is being return from the delete check.
     This resolver is tied to the use of sqlalchemy
@@ -215,9 +231,8 @@ class SQLAlchemyTableUnionResolver(Resolver):
 
     def __init__(self, magql_name_to_table):
         self.magql_name_to_table = magql_name_to_table
-        super().__init__()
 
-    def retrieve_value(self, parent, info, *args, **kwargs):
+    def __call__(self, parent, info, *args, **kwargs):
         for magql_name, table in self.magql_name_to_table.items():
             if isinstance(parent, get_mapper(table).class_):
                 for gql_type in info.return_type.of_type.types:
@@ -326,8 +341,7 @@ class MutationResolver(TableResolver):
         session = info.context
         session.add(resolved_value)
         session.commit()
-        table_name = self.table.name
-        return {table_name: resolved_value}
+        return {"result": resolved_value}
 
 
 class ModelInputResolver(MutationResolver):
@@ -491,8 +505,7 @@ class DeleteResolver(MutationResolver):
         session = info.context
         session.delete(resolved_value)
         session.commit()
-        table_name = self.table.name
-        return {table_name: resolved_value}
+        return {"result": resolved_value}
 
 
 class QueryResolver(TableResolver):
