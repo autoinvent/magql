@@ -22,20 +22,28 @@ Session = sessionmaker()
 
 
 @pytest.fixture
-def session():
-    """Create and configure a new app instance for each test."""
-    # create the app with common test config
-    engine = create_engine("sqlite://")
-    base.metadata.create_all(engine)
-    Session.configure(bind=engine)
-    session = Session()
+def house():
+    return House(name="House 1")
 
-    car = Car(name="Car 1")
-    house = House(name="House 1")
-    hometown = Hometown(id="San Diego", country="United States")
-    status = Status(id=True, date_of_birth=date.today())
-    wealth = Wealth(id=1.5, currency="USD", abbreviation="M")
-    person = Person(
+
+@pytest.fixture
+def car():
+    return Car(name="Car 1")
+
+
+@pytest.fixture
+def hometown():
+    return Hometown(id="San Diego", country="United States")
+
+
+@pytest.fixture
+def wealth():
+    return Wealth(id=1.5, currency="USD", abbreviation="M")
+
+
+@pytest.fixture
+def person(car, house, hometown, status, wealth):
+    return Person(
         name="Person 1",
         car=car,
         house=house,
@@ -43,11 +51,37 @@ def session():
         status=status,
         wealth=wealth,
     )
+
+
+@pytest.fixture
+def status():
+    return Status(id=True, date_of_birth=date.today())
+
+
+@pytest.fixture
+def session(car, house, person):
+    """Create and configure a new app instance for each test."""
+    # create the app with common test config
+    engine = create_engine("sqlite://")
+    base.metadata.create_all(engine)
+    Session.configure(bind=engine)
+    session = Session()
+
     session.add(car)
     session.add(house)
     session.add(person)
     session.commit()
     return session
+
+
+class DummyInfo:  # noqa: E501
+    def __init__(self, session):
+        self.context = session
+
+
+@pytest.fixture
+def info(session):
+    return DummyInfo(session)
 
 
 @pytest.fixture

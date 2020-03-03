@@ -12,16 +12,6 @@ from magql.resolver_factory import SingleResolver
 from magql.resolver_factory import UpdateResolver
 
 
-class DummyInfo:  # noqa: E501
-    def __init__(self, session):
-        self.context = session
-
-
-@pytest.fixture
-def info(session):
-    return DummyInfo(session)
-
-
 def compare(output, test_input):
     for key, value in test_input.items():
         output_value = getattr(output, key)
@@ -54,10 +44,9 @@ def compare(output, test_input):
 def test_create_resolver(input_data, info, session):
     test_class = input_data[0]
     test_input = input_data[1]
-    table_name = test_class.__tablename__
     resolve = CreateResolver(test_class.__table__)
 
-    output = resolve(None, info, input=test_input)[table_name]
+    output = resolve(None, info, input=test_input)
 
     compare(output, test_input)
 
@@ -83,10 +72,9 @@ def test_update_resolver(input_data, info, session):
     test_class = input_data[0]
     test_id = input_data[1]
     test_input = input_data[2]
-    table_name = test_class.__tablename__
     resolve = UpdateResolver(test_class.__table__)
 
-    output = resolve(None, info, id=test_id, input=test_input)[table_name]
+    output = resolve(None, info, id=test_id, input=test_input)
 
     compare(output, test_input)
 
@@ -95,10 +83,9 @@ def test_update_resolver(input_data, info, session):
 def test_delete_resolvers(input_data, info, session):
     test_class = input_data[0]
     test_id = input_data[1]
-    table_name = test_class.__tablename__
     resolve = DeleteResolver(test_class.__table__)
 
-    resolve(None, info, id=test_id)[table_name]
+    resolve(None, info, id=test_id)
 
     del_inst = session.query(test_class).filter_by(id=test_id).one_or_none()
 
