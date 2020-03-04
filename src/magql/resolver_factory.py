@@ -72,7 +72,7 @@ class Resolver:
         info
         :return: The value to be returned to GraphQL
         """
-        return {"result": resolved_value}
+        return resolved_value
 
     def authorize(self, instance, parent, info, *args, **kwargs):
         """
@@ -160,12 +160,7 @@ class ResultResolver:
     """
 
     def __call__(self, parent, info, *args, **kwargs):
-        value = (
-            parent.get("result")
-            if isinstance(parent, dict)
-            else getattr(parent, "result", None)
-        )
-        return value
+        return parent
 
 
 class CamelResolver:
@@ -341,7 +336,7 @@ class MutationResolver(TableResolver):
         session = info.context
         session.add(resolved_value)
         session.commit()
-        return {"result": resolved_value}
+        return resolved_value
 
 
 class ModelInputResolver(MutationResolver):
@@ -505,7 +500,7 @@ class DeleteResolver(MutationResolver):
         session = info.context
         session.delete(resolved_value)
         session.commit()
-        return {"result": resolved_value}
+        return resolved_value
 
 
 class QueryResolver(TableResolver):

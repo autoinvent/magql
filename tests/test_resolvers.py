@@ -56,7 +56,7 @@ def test_create_resolver(input_data, info, session):
     test_input = input_data[1]
     resolve = CreateResolver(test_class.__table__)
 
-    output = resolve(None, info, input=test_input)["result"]
+    output = resolve(None, info, input=test_input)
 
     compare(output, test_input)
 
@@ -84,7 +84,7 @@ def test_update_resolver(input_data, info, session):
     test_input = input_data[2]
     resolve = UpdateResolver(test_class.__table__)
 
-    output = resolve(None, info, id=test_id, input=test_input)["result"]
+    output = resolve(None, info, id=test_id, input=test_input)
 
     compare(output, test_input)
 
@@ -108,4 +108,4 @@ def test_single_resolvers(model, model_id, session, info):
     resolver = SingleResolver(model.__table__)
     resolved_value = resolver(None, info, id=model_id)
     queried_value = session.query(model).filter_by(id=model_id).one_or_none()
-    assert queried_value == resolved_value["result"]
+    assert queried_value == resolved_value
