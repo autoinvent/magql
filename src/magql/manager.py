@@ -21,6 +21,7 @@ from magql.resolver_factory import DeleteResolver
 from magql.resolver_factory import EnumResolver
 from magql.resolver_factory import ManyResolver
 from magql.resolver_factory import Resolver
+from magql.resolver_factory import ResultResolver
 from magql.resolver_factory import SingleResolver
 from magql.resolver_factory import SQLAlchemyTableUnionResolver
 from magql.resolver_factory import UpdateResolver
@@ -277,7 +278,7 @@ class MagqlTableManager(MagqlManager):
 
     def generate_many_query(self):
         self.many = MagqlField(
-            MagqlList(self.magql_name + "Payload"),
+            self.magql_name + "ListPayload",
             {
                 "filter": MagqlArgument(self.magql_name + "Filter"),
                 "sort": MagqlArgument(
@@ -309,9 +310,7 @@ class MagqlTableManager(MagqlManager):
                 base.fields[field_name].resolve = EnumResolver()
             if not col.primary_key:
                 input.fields[field_name] = MagqlInputField(magql_type)
-                input_required.fields[field_name] = MagqlInputField(
-                    required_magql_type
-                )  # noqa: E501
+                input_required.fields[field_name] = MagqlInputField(required_magql_type)
             filter_.fields[field_name] = MagqlInputField(
                 get_magql_filter_type(col, magql_type)
             )
@@ -425,7 +424,19 @@ class MagqlTableManager(MagqlManager):
                 self.magql_name + "Payload",
                 {
                     "errors": MagqlField(MagqlList("String")),
-                    "result": MagqlField(self.magql_name, None, CamelResolver()),
+                    "result": MagqlField(self.magql_name, None, ResultResolver()),
+                },
+            )
+        )
+
+        self.magql_types[self.magql_name + "ListPayload"] = MagqlNonNull(
+            MagqlObjectType(
+                self.magql_name + "ListPayload",
+                {
+                    "errors": MagqlField(MagqlList("String")),
+                    "result": MagqlField(
+                        MagqlList(self.magql_name), None, ResultResolver()
+                    ),
                 },
             )
         )
