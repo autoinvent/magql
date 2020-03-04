@@ -17,6 +17,7 @@ from magql.definitions import MagqlUnionType
 from magql.filter import RelFilter
 from magql.resolver_factory import CamelResolver
 from magql.resolver_factory import CheckDeleteResolver
+from magql.resolver_factory import CountResolver
 from magql.resolver_factory import CreateResolver
 from magql.resolver_factory import DeleteResolver
 from magql.resolver_factory import EnumResolver
@@ -92,6 +93,7 @@ class MagqlTableManagerCollection:
 
         self.magql_name_to_table = {}
         self.generate_check_delete()
+        self.generate_pagination()
 
     def generate_check_delete(self):
         check_delete_manager = MagqlManager("checkDelete")
@@ -120,6 +122,14 @@ class MagqlTableManagerCollection:
             CheckDeleteResolver(list(self.magql_name_to_table.values())),
         )
         self.manager_map["checkDelete"] = check_delete_manager
+
+    def generate_pagination(self):
+        page_manager = MagqlManager("PaginationManager")
+        page_manager.magql_types["PageObject"] = MagqlInputObjectType(
+            "PageObject",
+            {"page": MagqlInputField("Int"), "per_page": MagqlInputField("Int")},
+        )
+        self.manager_map["PaginationManager"] = page_manager
 
     def generate_manager(self, table):
         try:
@@ -286,6 +296,7 @@ class MagqlTableManager(MagqlManager):
                 "sort": MagqlArgument(
                     MagqlList(MagqlNonNull(self.magql_name + "Sort"))
                 ),
+                "pagination": MagqlArgument("PageObject"),
             },
             self.many_resolver,
         )
@@ -441,6 +452,7 @@ class MagqlTableManager(MagqlManager):
                     "result": MagqlField(
                         MagqlList(self.magql_name), None, ResultResolver()
                     ),
+                    "count": MagqlField("Int", None, CountResolver()),
                 },
             )
         )

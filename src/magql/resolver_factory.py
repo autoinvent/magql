@@ -1,6 +1,7 @@
 import logging
 
 from inflection import underscore
+from sqlalchemy import func
 from sqlalchemy.orm import subqueryload
 from sqlalchemy_utils import ChoiceType
 from sqlalchemy_utils import get_mapper
@@ -163,6 +164,11 @@ class ResultResolver:
 
     def __call__(self, parent, info, *args, **kwargs):
         return parent
+
+
+class CountResolver:
+    def __call__(self, parent, info, *args, **kwargs):
+        return info.context.info.get("count")
 
 
 class CamelResolver:
@@ -590,6 +596,16 @@ class ManyResolver(QueryResolver):
         :return: A SQLAlchemy query with any needed subquery loads
         appended
         """
+
+        def get_count(query):
+            count_query = query.statement.with_only_columns([func.count()]).order_by(
+                None
+            )
+            count = query.session.execute(count_query).scalar()
+            return count
+
+        page = info.variable_values.get("pagination").get("page")
+        per_page = info.variable_values.get("pagination").get("per_page")
         field_name = info.field_name
         field_node = [
             selection
@@ -602,9 +618,10 @@ class ManyResolver(QueryResolver):
             )
         options = self.generate_subqueryloads(field_node[0])
         query = QueryResolver.generate_query(self, info)
+        count = get_count(query)
         for option in options:
             query = query.options(option)
-        return query
+        return query.limit(per_page).offset(page), count
 
     def retrieve_value(self, parent, info, *args, **kwargs):
         """
@@ -619,8 +636,9 @@ class ManyResolver(QueryResolver):
         :return: A list of all rows in the table that match the
         filter, sorted by the given sort parameter.
         """
-        query = self.generate_query(info)
+        query, count = self.generate_query(info)
         filters = generate_filters(self.table, info, **kwargs)
+        info.context.info["count"] = count
         for filter_ in filters:
             query = query.filter(filter_)
         sorts = generate_sorts(self.table, info, **kwargs)
