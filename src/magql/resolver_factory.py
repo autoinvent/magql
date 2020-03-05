@@ -2,6 +2,7 @@ import logging
 
 from inflection import underscore
 from sqlalchemy import func
+from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import subqueryload
 from sqlalchemy_utils import ChoiceType
 from sqlalchemy_utils import get_mapper
@@ -550,6 +551,15 @@ class ManyResolver(QueryResolver):
     sorted with keyword args.
     """
 
+    def get_count(self, q):
+        count_func = func.count()
+        count_q = (
+            q.options(lazyload("*"))
+            .statement.with_only_columns([count_func])
+            .order_by(None)
+        )
+        return q.session.execute(count_q).scalar()
+
     def generate_subqueryloads(self, field_node, load_path=None):
         """
         A helper function that allows the generation of the top level
@@ -596,16 +606,15 @@ class ManyResolver(QueryResolver):
         :return: A SQLAlchemy query with any needed subquery loads
         appended
         """
+        paginated = False
 
-        def get_count(query):
-            count_query = query.statement.with_only_columns([func.count()]).order_by(
-                None
-            )
-            count = query.session.execute(count_query).scalar()
-            return count
+        try:
+            page = abs(info.variable_values["page"]["page_num"])
+            per_page = abs(info.variable_values["page"]["per_page"])
+            paginated = True
+        except KeyError:
+            pass
 
-        page = info.variable_values.get("pagination").get("page")
-        per_page = info.variable_values.get("pagination").get("per_page")
         field_name = info.field_name
         field_node = [
             selection
@@ -617,11 +626,13 @@ class ManyResolver(QueryResolver):
                 f"Duplicate queries defined for {field_name!r}."
             )
         options = self.generate_subqueryloads(field_node[0])
-        query = QueryResolver.generate_query(self, info)
-        count = get_count(query)
+        query = QueryResolver.generate_query(self, info).distinct()
+        count = self.get_count(query)
         for option in options:
             query = query.options(option)
-        return query.limit(per_page).offset(page), count
+        if paginated:
+            return query.limit(per_page).offset(page), count
+        return query, None
 
     def retrieve_value(self, parent, info, *args, **kwargs):
         """

@@ -127,7 +127,7 @@ class MagqlTableManagerCollection:
         page_manager = MagqlManager("PaginationManager")
         page_manager.magql_types["PageObject"] = MagqlInputObjectType(
             "PageObject",
-            {"page": MagqlInputField("Int"), "per_page": MagqlInputField("Int")},
+            {"page_num": MagqlInputField("Int"), "per_page": MagqlInputField("Int")},
         )
         self.manager_map["PaginationManager"] = page_manager
 
@@ -296,7 +296,7 @@ class MagqlTableManager(MagqlManager):
                 "sort": MagqlArgument(
                     MagqlList(MagqlNonNull(self.magql_name + "Sort"))
                 ),
-                "pagination": MagqlArgument("PageObject"),
+                "page": MagqlArgument("PageObject"),
             },
             self.many_resolver,
         )
