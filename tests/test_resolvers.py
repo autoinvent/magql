@@ -12,16 +12,6 @@ from magql.resolver_factory import SingleResolver
 from magql.resolver_factory import UpdateResolver
 
 
-class DummyInfo:  # noqa: E501
-    def __init__(self, session):
-        self.context = session
-
-
-@pytest.fixture
-def info(session):
-    return DummyInfo(session)
-
-
 def compare(output, test_input):
     for key, value in test_input.items():
         output_value = getattr(output, key)

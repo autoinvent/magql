@@ -144,18 +144,16 @@ class MagqlInputObjectType:
     def convert(self, type_map):
         if self.name in type_map:
             return type_map[self.name]
+
+        type_map[self.name] = GraphQLInputObjectType(self.name, {}, self.description)
+
         for field_name, field in self.fields.items():
-            if field_name in type_map:
-                self.fields[field_name] = type_map[field_name]
-            else:
-                self.fields[field_name] = field.convert(type_map)
-        type_map[self.name] = GraphQLInputObjectType(
-            self.name, self.fields, self.description
-        )
+            type_map[self.name].fields[field_name] = field.convert(type_map)
+
         return type_map[self.name]
 
 
-class MagqlInputField:  # noqa: E501
+class MagqlInputField:
     def __init__(self, type_name, description=None):
         self.type_name = type_name
         self.description = description
