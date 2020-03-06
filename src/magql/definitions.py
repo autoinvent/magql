@@ -291,12 +291,12 @@ class MagqlID:
 
 
 class MagqlCustomScalar:
-    def __init__(self, name, description, serialize, parse_value, parse_literal):
+    def __init__(self, name, description):
         self.name = name
         self.description = description
-        self.serialize = serialize
-        self.parse_value = parse_value
-        self.parse_literal = parse_literal
+        self.serialize = self.serialize
+        self.parse_value = self.parse_value
+        self.parse_literal = self.parse_literal
 
     def convert(self, type_map):
         if self.name in type_map:
@@ -314,15 +314,11 @@ class MagqlCustomScalar:
 class MagqlCustomInt(MagqlCustomScalar):
     def __init__(self, min_int, max_int):
         self.name = "CustomInt"
-        self.description = "description"
+        self.description = "A custom integer type with defined min and max values."
         self.min_int = min_int
         self.max_int = max_int
         super().__init__(
-            self.name,
-            self.description,
-            self.serialize,
-            self.parse_value,
-            self.parse_literal,
+            self.name, self.description,
         )
 
     def serialize(self, output_value):
