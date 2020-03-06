@@ -2,6 +2,10 @@ from inflection import underscore
 from sqlalchemy.orm import subqueryload
 from sqlalchemy_utils import ChoiceType
 from sqlalchemy_utils import get_mapper
+from sqlalchemy.inspection import inspect
+from sqlalchemy.orm.collections import InstrumentedList
+from sqlalchemy_utils import dependent_objects
+from sqlalchemy_utils.functions.foreign_keys import get_referencing_foreign_keys
 
 from .filter import generate_filters
 from .logging import magql_logger
@@ -188,34 +192,6 @@ class CamelResolver:
             return value(info, **args)
         return value
 
-
-class CheckDeleteResolver:
-    """
-    Resolver for the function that checks to see what will be deleted
-    """
-
-    def __init__(self, table_types):
-        self.table_types = table_types
-
-    def __call__(self, parent, info, *args, **kwargs):
-        for table in self.table_types.keys():
-            try:
-                class_ = get_mapper(table).class_
-            except ValueError:
-                continue
-            # TODO: switch over frontend to class name
-            if class_.__name__ == kwargs["tableName"]:
-                id_ = kwargs["id"]
-                session = info.context
-                instance = session.query(class_).filter_by(id=id_).one()
-                session.delete(instance)
-                cascades = []
-                for obj in session.deleted:
-                    cascades.append(obj)
-
-                session.rollback()
-
-                return cascades
 
 
 class SQLAlchemyTableUnionResolver:
@@ -631,3 +607,88 @@ class ManyResolver(QueryResolver):
         for sort in sorts:
             query = query.order_by(sort)
         return query.all()
+
+
+class CheckDeleteResolver(QueryResolver):
+    """
+    Resolver for the function that checks to see what will be deleted
+    """
+
+    def check_delete(self, instance, session):
+        deleted = session.deleted
+        seen = {}
+        rels = inspect(instance)
+
+        class DeleteProperties:
+            def __init__(self, entity, back_populate, cascade):
+                self.entity = entity
+                self.back_populate = back_populate
+                self.cascade = cascade
+
+        def check_cascade(cascade):
+            if cascade.delete and cascade.delete_orphan:
+                return True
+            return False
+
+        def get_affected_models(del_props):
+            return [
+                prop.entity
+                for prop in del_props
+                if not (
+                    check_cascade(prop.cascade)
+                    and instance.__table__.name == prop.back_populate
+                )
+                and seen.get(prop.entity) is None
+            ]
+
+        def get_related_models(_instance):
+            models = []
+            for k in dir(_instance):
+                if k[:2] != "__":
+                    v = getattr(_instance, k)
+                    if isinstance(v, InstrumentedList) and v != []:
+                        models.append((k, v))
+            return models
+
+        def get_delete_props(models, _rels):
+            props = []
+            for name, entity in models:
+                for obj in entity:
+                    rel = _rels.mapper.relationships.get(name)
+                    if rel is not None:
+                        cascade = rel.cascade
+                        back_populate = rel.back_populates
+                        del_props = DeleteProperties(obj, back_populate, cascade)
+                        props.append(del_props)
+            return list(set(props))
+
+        related_models = get_related_models(instance)
+        delete_props = get_delete_props(related_models, rels)
+        affected = get_affected_models(delete_props)
+        session.rollback()
+        # session.query(type(instance)).filter(type(instance).id==instance.id).delete()
+        prevented = list(
+            dependent_objects(
+                instance,
+                (
+                    fk
+                    for fk in get_referencing_foreign_keys(instance)
+                    if fk.parent.nullable is False
+                ),
+            ).limit(15)
+        )
+        # affected = list(set(prevented) - set(affected))
+        # prevented = list(set(prevented) - set(affected))
+        return {"deleted": list(deleted), "affected": affected, "prevented": prevented}
+
+    def retrieve_value(self, parent, info, *args, **kwargs):
+        # TODO: switch over msd-react to class name
+        # if class_.__name__ == kwargs["tableName"]:
+        id_ = kwargs["id"]
+        session = info.context
+        mapper = get_mapper(self.table)
+        instance = session.query(mapper.class_).filter_by(id=id_).one()
+        session.delete(instance)
+        cascades = self.check_delete(instance, session)
+        session.rollback()
+        return cascades

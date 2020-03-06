@@ -27,6 +27,7 @@ from magql.resolver_factory import DeleteResolver
 from magql.resolver_factory import ManyResolver
 from magql.resolver_factory import SingleResolver
 from magql.resolver_factory import UpdateResolver
+from magql.resolver_factory import CheckDeleteResolver
 
 
 def check_magql_types(manager):
@@ -113,6 +114,8 @@ def test_generated_field(model):
     assert isinstance(manager.create, MagqlField)
     assert isinstance(manager.update, MagqlField)
     assert isinstance(manager.delete, MagqlField)
+    assert isinstance(manager.check_delete.resolve, CheckDeleteResolver)
+    assert isinstance(manager.check_delete, MagqlField)
     assert isinstance(manager.single, MagqlField)
     assert isinstance(manager.many, MagqlField)
 
@@ -229,6 +232,11 @@ def test_return_types(model):
     assert manager.delete_mutation_name == "delete" + manager.magql_name
 
 
+class CheckDeleteResolverOverride(CreateResolver):
+    def resolve(self, parent, info, *args, **kwargs):
+        pass
+
+
 @pytest.mark.parametrize("model", [House, Car, Person])
 def test_resolver_overrides(model):
     table = model.__table__
@@ -238,6 +246,7 @@ def test_resolver_overrides(model):
         CreateResolverOverride(table),
         UpdateResolverOverride(table),
         DeleteResolverOverride(table),
+        CheckDeleteResolverOverride(table),
         SingleResolverOverride(table),
         ManyResolverOverride(table),
     )

@@ -52,6 +52,7 @@ class MagqlTableManagerCollection:
         create_resolver=CreateResolver,
         update_resolver=UpdateResolver,
         delete_resolver=DeleteResolver,
+        check_delete_resolver=CheckDeleteResolver,
         single_resolver=SingleResolver,
         many_resolver=ManyResolver,
     ):
@@ -69,6 +70,7 @@ class MagqlTableManagerCollection:
         self.create_resolver = create_resolver
         self.update_resolver = update_resolver
         self.delete_resolver = delete_resolver
+        self.check_delete_resolver = check_delete_resolver
         self.single_resolver = single_resolver
         self.many_resolver = many_resolver
 
@@ -87,37 +89,56 @@ class MagqlTableManagerCollection:
         for _table, manager in self.manager_map.items():
             if manager:
                 manager.add_rels(self.manager_map)
+        self.generate_global_types()
 
-        self.magql_name_to_table = {}
-        self.generate_check_delete()
+        # self.magql_name_to_table = {}
+        # self.generate_check_delete()
 
-    def generate_check_delete(self):
-        check_delete_manager = MagqlManager("checkDelete")
-
-        self.magql_names = []
-        for _magql_name, manager in self.manager_map.items():
+    def generate_global_types(self):
+        magql_name_to_table = {}
+        magql_names = []
+        global_manager = MagqlManager("global")
+        for magql_name, manager in self.manager_map.items():
             if manager:
-                self.magql_names.append(manager.magql_name)
-
-        for _magql_name, manager in self.manager_map.items():
+                magql_names.append(manager.magql_name)
+        for magql_name, manager in self.manager_map.items():
             if isinstance(manager, MagqlTableManager) and manager:
-                self.magql_name_to_table[manager.magql_name] = manager.table
-
-        check_delete_manager.magql_types["SQLAlchemyTableUnion"] = MagqlUnionType(
+                magql_name_to_table[manager.magql_name] = manager.table
+        global_manager.magql_types["SQLAlchemyTableUnion"] = MagqlUnionType(
             "SQLAlchemyTableUnion",
-            self.magql_names,
-            SQLAlchemyTableUnionResolver(self.magql_name_to_table),
+            magql_names,
+            SQLAlchemyTableUnionResolver(magql_name_to_table),
         )
+        self.manager_map["global"] = global_manager
 
-        check_delete_manager.query.fields["checkDelete"] = MagqlField(
-            MagqlList("SQLAlchemyTableUnion"),
-            {
-                "tableName": MagqlArgument("String"),
-                "id": MagqlArgument(MagqlNonNull("Int")),
-            },
-            CheckDeleteResolver(self.manager_map),
-        )
-        self.manager_map["checkDelete"] = check_delete_manager
+
+    # def generate_check_delete(self):
+    #     check_delete_manager = MagqlManager("checkDelete")
+    #
+    #     self.magql_names = []
+    #     for _magql_name, manager in self.manager_map.items():
+    #         if manager:
+    #             self.magql_names.append(manager.magql_name)
+    #
+    #     for _magql_name, manager in self.manager_map.items():
+    #         if isinstance(manager, MagqlTableManager) and manager:
+    #             self.magql_name_to_table[manager.magql_name] = manager.table
+    #
+    #     check_delete_manager.magql_types["SQLAlchemyTableUnion"] = MagqlUnionType(
+    #         "SQLAlchemyTableUnion",
+    #         self.magql_names,
+    #         SQLAlchemyTableUnionResolver(self.magql_name_to_table),
+    #     )
+    #
+    #     check_delete_manager.query.fields["checkDelete"] = MagqlField(
+    #         MagqlList("SQLAlchemyTableUnion"),
+    #         {
+    #             "tableName": MagqlArgument("String"),
+    #             "id": MagqlArgument(MagqlNonNull("Int")),
+    #         },
+    #         CheckDeleteResolver(self.manager_map),
+    #     )
+    #     self.manager_map["checkDelete"] = check_delete_manager
 
     def generate_manager(self, table):
         try:
@@ -130,6 +151,7 @@ class MagqlTableManagerCollection:
             create_resolver=self.create_resolver(table),
             update_resolver=self.update_resolver(table),
             delete_resolver=self.delete_resolver(table),
+            check_delete_resolver=self.check_delete_resolver(table),
             single_resolver=self.single_resolver(table),
             many_resolver=self.many_resolver(table),
         )
@@ -158,6 +180,7 @@ class MagqlTableManager(MagqlManager):
         create_resolver=None,
         update_resolver=None,
         delete_resolver=None,
+        check_delete_resolver=None,
         single_resolver=None,
         many_resolver=None,
     ):
@@ -189,6 +212,11 @@ class MagqlTableManager(MagqlManager):
         self.delete_resolver = (
             delete_resolver if delete_resolver else DeleteResolver(self.table)
         )
+        self.check_delete_resolver = (
+            check_delete_resolver
+            if check_delete_resolver
+            else CheckDeleteResolver(self.table)
+        )
         self.single_resolver = (
             single_resolver if single_resolver else SingleResolver(self.table)
         )
@@ -214,6 +242,10 @@ class MagqlTableManager(MagqlManager):
         :param value: The name to change the single query to
         """
         self._single_query_name_override = value
+
+    @property
+    def check_delete_query_name(self):
+        return "checkDelete" + self.magql_name
 
     @property
     def many_query_name(self):
@@ -267,6 +299,13 @@ class MagqlTableManager(MagqlManager):
             self.magql_name + "Payload",
             {"id": MagqlArgument(MagqlNonNull("Int"))},
             self.delete_resolver,
+        )
+
+    def generate_check_delete_query(self):
+        self.check_delete = MagqlField(
+            self.magql_name + "CheckDeletePayload",
+            {"id": MagqlArgument(MagqlNonNull("Int"))},
+            self.check_delete_resolver,
         )
 
     def generate_single_query(self):
@@ -328,6 +367,7 @@ class MagqlTableManager(MagqlManager):
         self.generate_create_mutation()
         self.generate_update_mutation()
         self.generate_delete_mutation()
+        self.generate_check_delete_query()
         self.generate_single_query()
         self.generate_many_query()
 
@@ -341,6 +381,8 @@ class MagqlTableManager(MagqlManager):
             self.mutation.fields[self.update_mutation_name] = self.update
         if self.delete:
             self.mutation.fields[self.delete_mutation_name] = self.delete
+        if self.check_delete:
+            self.query.fields[self.check_delete_query_name] = self.check_delete
         if self.single:
             self.query.fields[self.single_query_name] = self.single
         if self.many:
@@ -355,6 +397,8 @@ class MagqlTableManager(MagqlManager):
             magql_logger.warning(f"No Mapper for table {self.table.name}")
             return
 
+        rel_name_to_table = {}
+        rel_name_to_table[managers[self.table].magql_name] = self.table
         for rel_name, rel in table_mapper.relationships.items():
             rel_table = rel.target
 
@@ -373,6 +417,8 @@ class MagqlTableManager(MagqlManager):
             target_name = (
                 rel_manager.magql_name if rel_manager else camelize(rel.target.name)
             )
+            if rel_manager.magql_name not in rel_name_to_table:
+                rel_name_to_table[rel_manager.magql_name] = rel_manager.table
 
             base_field = target_name
             input_field_types = {
@@ -440,3 +486,44 @@ class MagqlTableManager(MagqlManager):
                 },
             )
         )
+        magql_names = []
+        for rel_name, table in rel_name_to_table.items():
+            magql_names.append(rel_name)
+        self.magql_types[self.magql_name + "TableUnion"] = MagqlUnionType(
+            self.magql_name + "TableUnion",
+            magql_names,
+            SQLAlchemyTableUnionResolver(rel_name_to_table),
+        )
+        self.magql_types[self.magql_name + "CheckDeletePayload"] = MagqlObjectType(
+            self.magql_name + "CheckDeletePayload",
+            {
+                "deleted": MagqlField(
+                    MagqlList(
+                        MagqlUnionType(
+                            self.magql_name + "TableUnion",
+                            magql_names,
+                            SQLAlchemyTableUnionResolver(rel_name_to_table),
+                        )
+                    )
+                ),
+                "affected": MagqlField(
+                    MagqlList(
+                        MagqlUnionType(
+                            self.magql_name + "TableUnion",
+                            magql_names,
+                            SQLAlchemyTableUnionResolver(rel_name_to_table),
+                        )
+                    )
+                ),
+                "prevented": MagqlField(
+                    MagqlList(
+                        MagqlUnionType(
+                            self.magql_name + "TableUnion",
+                            magql_names,
+                            SQLAlchemyTableUnionResolver(rel_name_to_table),
+                        )
+                    )
+                ),
+            },
+        )
+
