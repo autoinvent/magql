@@ -109,8 +109,17 @@ class MagqlTableManagerCollection:
             SQLAlchemyTableUnionResolver(self.magql_name_to_table),
         )
 
+        check_delete_manager.magql_types["CheckDeletePayload"] = MagqlObjectType(
+            "CheckDeletePayload",
+            {
+                "affected": MagqlField("SQLAlchemyTableUnion"),
+                "deleted": MagqlField("SQLAlchemyTableUnion"),
+                "prevented": MagqlField("SQLAlchemyTableUnion"),
+            },
+        )
+
         check_delete_manager.query.fields["checkDelete"] = MagqlField(
-            MagqlList("SQLAlchemyTableUnion"),
+            MagqlList("CheckDeletePayload"),
             {
                 "tableName": MagqlArgument("String"),
                 "id": MagqlArgument(MagqlNonNull("Int")),
