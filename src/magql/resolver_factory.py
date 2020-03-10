@@ -542,7 +542,7 @@ class SingleResolver(QueryResolver):
         return query.filter_by(id=kwargs["id"]).one_or_none()
 
 
-class DisplayNameResolver(QueryResolver):
+class DisplayValueResolver(QueryResolver):
     def retrieve_value(self, instance, info, *args, **kwargs):
         metadata = instance.ViewMeta.metadata
         if ("displayField" in metadata) and (metadata["displayField"] is not None):

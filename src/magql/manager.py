@@ -19,7 +19,7 @@ from magql.resolver_factory import CamelResolver
 from magql.resolver_factory import CheckDeleteResolver
 from magql.resolver_factory import CreateResolver
 from magql.resolver_factory import DeleteResolver
-from magql.resolver_factory import DisplayNameResolver
+from magql.resolver_factory import DisplayValueResolver
 from magql.resolver_factory import EnumResolver
 from magql.resolver_factory import ManyResolver
 from magql.resolver_factory import Resolver
@@ -319,8 +319,8 @@ class MagqlTableManager(MagqlManager):
             sort.values[field_name + "_asc"] = (col_name + "_asc",)
             sort.values[field_name + "_desc"] = (col_name + "_desc",)
 
-        base.fields["displayName"] = MagqlField(
-            MagqlString(), None, DisplayNameResolver(self.table)
+        base.fields["displayValue"] = MagqlField(
+            MagqlString(), None, DisplayValueResolver(self.table)
         )  # noqa: E501
         self.magql_types[self.magql_name] = base
 

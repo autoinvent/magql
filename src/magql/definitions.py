@@ -95,7 +95,7 @@ class MagqlObjectType:
 
     def common_field(self, field_name=None, return_type=None, args=None):
         if field_name is None:
-            field_name = "displayName"
+            field_name = "displayValue"
         if return_type is None:
             return_type = MagqlString()
 
