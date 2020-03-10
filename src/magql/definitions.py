@@ -93,9 +93,12 @@ class MagqlObjectType:
 
         return decorator
 
-    def common_field(
-        self, field_name="displayName", return_type=MagqlString(), args=None
-    ):
+    def common_field(self, field_name=None, return_type=None, args=None):
+        if field_name is None:
+            field_name = "displayName"
+        if return_type is None:
+            return_type = MagqlString()
+
         def decorator(resolve):
             self.fields[field_name] = MagqlField(return_type, args, resolve)
             return resolve
