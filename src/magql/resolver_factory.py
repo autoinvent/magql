@@ -1,7 +1,11 @@
 from inflection import underscore
+from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy_utils import ChoiceType
+from sqlalchemy_utils import dependent_objects
 from sqlalchemy_utils import get_mapper
+from sqlalchemy_utils.functions.foreign_keys import get_referencing_foreign_keys
 
 from .filter import generate_filters
 from .logging import magql_logger
@@ -337,6 +341,160 @@ class MutationResolver(TableResolver):
         session.add(resolved_value)
         session.commit()
         return resolved_value
+
+
+class DeleteProperties:
+    def __init__(self, entity, back_populate, cascade):
+        self.entity = entity
+        self.back_populate = back_populate
+        self.cascade = cascade
+
+
+class CheckDeleteAffected:
+    def __init__(self, instance, session):
+        self.instance = (instance,)
+        self.session = session
+        self.seen = {}
+        self.rels = inspect(instance)
+
+    def _check_cascade(self, cascade):
+        if cascade.delete and cascade.delete_orphan:
+            return True
+        return False
+
+    def _get_affected_models(self, del_props):
+        return (
+            prop.entity
+            for prop in del_props
+            if not (
+                self._check_cascade(prop.cascade)
+                and self.instance.__table__.name == prop.back_populate
+            )
+            and self.seen.get(prop.entity) is None
+        )
+
+    def _get_related_models(self, _instance):
+        models = []
+        for k in dir(_instance):
+            if k[:2] != "__":
+                v = getattr(_instance, k)
+                if isinstance(v, InstrumentedList) and v != []:
+                    models.append((k, v))
+        return models
+
+    def _get_delete_props(self, models, _rels):
+        props = []
+        for name, entity in models:
+            for obj in entity:
+                rel = _rels.mapper.relationships.get(name)
+                if rel is not None:
+                    cascade = rel.cascade
+                    back_populate = rel.back_populates
+                    del_props = DeleteProperties(obj, back_populate, cascade)
+                    props.append(del_props)
+        return list(set(props))
+
+    def get_values(self):
+        related_models = self._get_related_models(self.instance)
+        delete_props = self._get_delete_props(related_models, self.rels)
+        affected = self._get_affected_models(delete_props)
+        return [affected]
+
+
+class CheckDeleteDeleted:
+    def __init__(self, instance, session):
+        self.instance = (instance,)
+        self.session = session
+        self.deleted = session.deleted
+
+    def get_values(self):
+        return self.deleted
+
+
+class CheckDeletePrevented:
+    def __init__(self, instance, session):
+        self.instance = instance
+        self.session = session
+
+    def get_values(self):
+        return [
+            dependent_objects(
+                self.instance,
+                (
+                    fk
+                    for fk in get_referencing_foreign_keys(self.instance)
+                    if fk.parent.nullable is False
+                ),
+            ).limit(15)
+        ]
+
+
+class SimpleModelRefResolver:
+    def retrieve_value(self, parent, info, *args, **kwargs):
+        name = parent.name
+        id = parent.id
+        display_value_func = (
+            parent.displayValue
+            if parent.displayValue is not None
+            else self.displayValue(parent)
+        )
+
+    def displayValue(self, model):
+        return model.name + " " + model.id
+
+
+class AffectedResolver:
+    def __init__(self, table_types):
+        self.table_types = table_types
+
+    def __call__(self, parent, info, *args, **kwargs):
+        for table in self.table_types.keys():
+            try:
+                class_ = get_mapper(table).class_
+            except ValueError:
+                continue
+            # TODO: switch over frontend to class name
+            if class_.__name__ == kwargs["tableName"]:
+                id_ = kwargs["id"]
+                session = info.context
+                instance = session.query(class_).filter_by(id=id_).one()
+                return CheckDeleteAffected(session, instance).get_values()
+
+
+class PreventedResolver:
+    def __init__(self, table_types):
+        self.table_types = table_types
+
+    def __call__(self, parent, info, *args, **kwargs):
+        for table in self.table_types.keys():
+            try:
+                class_ = get_mapper(table).class_
+            except ValueError:
+                continue
+            # TODO: switch over frontend to class name
+            if class_.__name__ == kwargs["tableName"]:
+                id_ = kwargs["id"]
+                session = info.context
+                instance = session.query(class_).filter_by(id=id_).one()
+                return CheckDeletePrevented(session, instance).get_values()
+
+
+class DeletedResolver:
+    def __init__(self, table_types):
+        self.table_types = table_types
+
+    def __call__(self, parent, info, *args, **kwargs):
+        for table in self.table_types.keys():
+            try:
+                class_ = get_mapper(table).class_
+            except ValueError:
+                continue
+            # TODO: switch over frontend to class name
+            if class_.__name__ == kwargs["tableName"]:
+                id_ = kwargs["id"]
+                session = info.context
+                instance = session.query(class_).filter_by(id=id_).one()
+                return CheckDeleteDeleted.get_values()
 
 
 class ModelInputResolver(MutationResolver):
