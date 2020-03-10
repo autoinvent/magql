@@ -291,13 +291,6 @@ class MagqlID:
 
 
 class MagqlCustomScalar:
-    def __init__(self, name, description):
-        self.name = name
-        self.description = description
-        self.serialize = self.serialize
-        self.parse_value = self.parse_value
-        self.parse_literal = self.parse_literal
-
     def convert(self, type_map):
         if self.name in type_map:
             return type_map[self.name]
@@ -313,13 +306,10 @@ class MagqlCustomScalar:
 
 class MagqlCustomInt(MagqlCustomScalar):
     def __init__(self, min_int, max_int):
-        self.name = "CustomInt"
+        self.name = "PositiveInteger"
         self.description = "A custom integer type with defined min and max values."
         self.min_int = min_int
         self.max_int = max_int
-        super().__init__(
-            self.name, self.description,
-        )
 
     def serialize(self, output_value):
         if isinstance(output_value, bool):
@@ -339,14 +329,14 @@ class MagqlCustomInt(MagqlCustomScalar):
         except (OverflowError, ValueError, TypeError):
             raise GraphQLError("Int cannot represent non-integer value")
         if not self.min_int <= num <= self.max_int:
-            raise GraphQLError("Int cannot represent non 32-bit signed integer value")
+            raise ValueError()
         return num
 
     def parse_value(self, input_value):
         if not is_integer(input_value):
             raise GraphQLError("Int cannot represent non-integer value")
         if not self.min_int <= input_value <= self.max_int:
-            raise GraphQLError("Int cannot represent non 32-bit signed integer value: ")
+            raise ValueError()
         return int(input_value)
 
     def parse_literal(self, value_node, _variables=None):
@@ -355,5 +345,5 @@ class MagqlCustomInt(MagqlCustomScalar):
             raise GraphQLError("Int cannot represent non-integer value: ")
         num = int(value_node.value)
         if not self.min_int <= num <= self.max_int:
-            raise GraphQLError("Int cannot represent non 32-bit signed integer value: ")
+            raise ValueError()
         return num

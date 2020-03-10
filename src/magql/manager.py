@@ -125,13 +125,13 @@ class MagqlTableManagerCollection:
         self.manager_map["checkDelete"] = check_delete_manager
 
     def generate_pagination(self):
-        custom_int = MagqlCustomInt(min_int=0, max_int=5)
+        page_int = MagqlCustomInt(min_int=0, max_int=100)
         page_manager = MagqlManager("PaginationManager")
         page_manager.magql_types["PageObject"] = MagqlInputObjectType(
             "PageObject",
             {
-                "page_num": MagqlInputField(custom_int),
-                "per_page": MagqlInputField(custom_int),
+                "page_num": MagqlInputField(page_int),
+                "per_page": MagqlInputField(page_int),
             },
         )
         self.manager_map["PaginationManager"] = page_manager
