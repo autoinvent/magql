@@ -542,6 +542,23 @@ class SingleResolver(QueryResolver):
         return query.filter_by(id=kwargs["id"]).one_or_none()
 
 
+class DisplayNameResolver(QueryResolver):
+
+    def retrieve_value(self, instance, info, *args, **kwargs):
+        metadata = instance.ViewMeta.metadata
+        if ('displayField' in metadata) and (metadata['displayField'] is not None):
+            display_field = underscore(metadata['displayField'])
+            display = getattr(instance, display_field, None)
+        elif hasattr(instance, 'name'):
+            display = getattr(instance, 'name', None)
+        elif hasattr(instance, 'id'):
+            display = getattr(instance, 'id', None)
+        else:
+            display = None
+
+        return display
+
+
 class ManyResolver(QueryResolver):
     """
     A subclass of :class:`QueryResolver`. By default queries for all

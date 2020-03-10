@@ -3,6 +3,7 @@ from inflection import pluralize
 from sqlalchemy_utils import get_mapper
 
 from magql.definitions import js_camelize
+from magql.definitions import MagqlString
 from magql.definitions import MagqlArgument
 from magql.definitions import MagqlEnumType
 from magql.definitions import MagqlField
@@ -20,6 +21,7 @@ from magql.resolver_factory import CreateResolver
 from magql.resolver_factory import DeleteResolver
 from magql.resolver_factory import EnumResolver
 from magql.resolver_factory import ManyResolver
+from magql.resolver_factory import DisplayNameResolver
 from magql.resolver_factory import Resolver
 from magql.resolver_factory import ResultResolver
 from magql.resolver_factory import SingleResolver
@@ -317,6 +319,9 @@ class MagqlTableManager(MagqlManager):
             sort.values[field_name + "_asc"] = (col_name + "_asc",)
             sort.values[field_name + "_desc"] = (col_name + "_desc",)
 
+        base.fields['displayName'] = MagqlField(
+            MagqlString(), None, DisplayNameResolver(self.table)
+        )
         self.magql_types[self.magql_name] = base
 
         self.magql_types[self.magql_name + "Input"] = input
