@@ -3,7 +3,6 @@ from inflection import pluralize
 from sqlalchemy_utils import get_mapper
 
 from magql.definitions import js_camelize
-from magql.definitions import MagqlString
 from magql.definitions import MagqlArgument
 from magql.definitions import MagqlEnumType
 from magql.definitions import MagqlField
@@ -12,6 +11,7 @@ from magql.definitions import MagqlInputObjectType
 from magql.definitions import MagqlList
 from magql.definitions import MagqlNonNull
 from magql.definitions import MagqlObjectType
+from magql.definitions import MagqlString
 from magql.definitions import MagqlUnionType
 from magql.filter import RelFilter
 from magql.logging import magql_logger
@@ -19,9 +19,9 @@ from magql.resolver_factory import CamelResolver
 from magql.resolver_factory import CheckDeleteResolver
 from magql.resolver_factory import CreateResolver
 from magql.resolver_factory import DeleteResolver
+from magql.resolver_factory import DisplayNameResolver
 from magql.resolver_factory import EnumResolver
 from magql.resolver_factory import ManyResolver
-from magql.resolver_factory import DisplayNameResolver
 from magql.resolver_factory import Resolver
 from magql.resolver_factory import ResultResolver
 from magql.resolver_factory import SingleResolver
@@ -319,9 +319,9 @@ class MagqlTableManager(MagqlManager):
             sort.values[field_name + "_asc"] = (col_name + "_asc",)
             sort.values[field_name + "_desc"] = (col_name + "_desc",)
 
-        base.fields['displayName'] = MagqlField(
+        base.fields["displayName"] = MagqlField(
             MagqlString(), None, DisplayNameResolver(self.table)
-        )
+        )  # noqa: E501
         self.magql_types[self.magql_name] = base
 
         self.magql_types[self.magql_name + "Input"] = input
