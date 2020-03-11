@@ -3,6 +3,15 @@ v0.4.0
 
 Unreleased
 
+-   Add ``AuthorizationError`` and remove ``PermissionsError``.
+    :issue:`23`
+-   Add ``ListPayload`` type for list return types. :pr:`15`
+-   Remove ``Resolver`` superclass on non-CRUD resolvers. :pr:`15`
+-   Fix bug where queries returned none caused by upgrading return type.
+    :pr:`10`
+-   Remove unused marshmallow-sqlalchemy dependency. :pr:`6`
+-   Update and set minimum version for some dependencies :pr:`6`
+
 
 v0.3.0
 ------
