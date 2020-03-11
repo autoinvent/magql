@@ -78,30 +78,30 @@ def get_magql_required_type(col):
 @_get_magql_type.register(Time)
 @_get_magql_type.register(String)
 @_get_magql_type.register(VARCHAR)
-def _(type, column):
+def _get_string_type(type, column):
     # if "image" in column.info:
     #     return MagqlFile()
     return MagqlString()
 
 
 @_get_magql_type.register(Boolean)
-def _(type, column):
+def _get_boolean_type(type, column):
     return MagqlBoolean()
 
 
 @_get_magql_type.register(Integer)
-def _(type, column):
+def _get_integer_type(type, column):
     return MagqlInt(MagqlInt.parse_value_accepts_string)
 
 
 @_get_magql_type.register(Float)
 @_get_magql_type.register(Numeric)
-def _(type, column):
+def _get_float_type(type, column):
     return MagqlFloat(MagqlFloat.parse_value_accepts_string)
 
 
 @_get_magql_type.register(ChoiceType)
-def _(type_, column):
+def _get_choice_type(type_, column):
     # name = camelize(column.table.name) + camelize(column.name) + "EnumType"
     # enums = dict((key, value) for key, value in type.choices)
     # rm = GraphQLEnumType(name, enums)
@@ -138,32 +138,32 @@ def _get_magql_filter_type(column, base_type):
 @_get_magql_filter_type.register(Time)
 @_get_magql_filter_type.register(String)
 @_get_magql_filter_type.register(VARCHAR)
-def _(type, base_type):
+def _get_string_filter(type, base_type):
     return StringFilter
 
 
 @_get_magql_filter_type.register(Date)
 @_get_magql_filter_type.register(DateTime)
-def _(type, base_type):
+def _get_date_filter(type, base_type):
     return DateFilter
 
 
 @_get_magql_filter_type.register(Integer)
-def _(type, base_type):
+def _get_integer_filter(type, base_type):
     return IntFilter
 
 
 @_get_magql_filter_type.register(Float)
 @_get_magql_filter_type.register(Numeric)
-def _(type, base_type):
+def _get_float_filter(type, base_type):
     return FloatFilter
 
 
 @_get_magql_filter_type.register(Boolean)
-def _(type, base_type):
+def _get_boolean_filter(type, base_type):
     return BooleanFilter
 
 
 @_get_magql_filter_type.register(ChoiceType)
-def _(type_, base_type):
+def _get_choice_filter(type_, base_type):
     return EnumFilter(base_type)

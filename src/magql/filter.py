@@ -136,7 +136,7 @@ def get_filter_comparator(_):
 
 
 @get_filter_comparator.register(RelationshipProperty)
-def _(rel):
+def _get_relationship_comparator(rel):
     direction = rel.direction.name
     if "TOONE" in direction:
 
@@ -159,7 +159,7 @@ def _(rel):
 
 @get_filter_comparator.register(DateTime)
 @get_filter_comparator.register(Date)
-def _(_):
+def _get_date_comparator(_):
     def condition(filter_value, filter_operator, field):
         if filter_operator == "BEFORE":
             return field < filter_value
@@ -181,7 +181,7 @@ def _(_):
 @get_filter_comparator.register(Time)
 @get_filter_comparator.register(String)
 @get_filter_comparator.register(VARCHAR)
-def _(_):
+def _get_string_comparator(_):
     def condition(filter_value, filter_operator, field):
         if filter_operator == "INCLUDES":
             return field.like(f"%{filter_value}%")
@@ -196,7 +196,7 @@ def _(_):
 @get_filter_comparator.register(Float)
 @get_filter_comparator.register(Numeric)
 @get_filter_comparator.register(Integer)
-def _(_):
+def _get_number_comparator(_):
     def condition(filter_value, filter_operator, field):
         if filter_operator == "lt":
             return field < filter_value
@@ -217,7 +217,7 @@ def _(_):
 
 
 @get_filter_comparator.register(Boolean)
-def _(_):
+def _get_boolean_comparator(_):
     def condition(filter_value, filter_operator, field):
         if filter_operator == "EQUALS":
             return field == filter_value
@@ -230,7 +230,7 @@ def _(_):
 
 
 @get_filter_comparator.register(ChoiceType)
-def _(_):
+def _get_choice_comparator(_):
     def condition(filter_value, filter_operator, field):
         if filter_operator == "INCLUDES":
             return field == filter_value
