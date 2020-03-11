@@ -11,6 +11,8 @@ Unreleased
     :pr:`10`
 -   Remove unused marshmallow-sqlalchemy dependency. :pr:`6`
 -   Update and set minimum version for some dependencies :pr:`6`
+-   ``singledispatch`` functions raise ``TypeError`` if no handler is
+    registered for a type. :issue:`40`
 
 
 v0.3.0
