@@ -341,13 +341,6 @@ class MutationResolver(TableResolver):
 
 
 class ModelInputResolver(MutationResolver):
-    def __init__(self, table):
-        """
-        MutationResolver can be overriden by
-        :param table:
-        """
-        super().__init__(table)
-
     def pre_resolve(self, parent, info, *args, **kwargs):
         """
         Converts ids of rels to actual values and handles enums
