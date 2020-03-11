@@ -253,7 +253,7 @@ def test_add_rels(model, manager_collection):
     input_required_types = [MagqlInt, MagqlString, MagqlBoolean, MagqlFloat]
     input_required_strings = ["String", "Int", "Boolean", "Float"]
     for v in (
-        manager_collection.manager_map[model.__table__]
+        manager_collection.manager_map[model.__tablename__]
         .magql_types[f"{model.__tablename__}InputRequired"]
         .fields.values()
     ):

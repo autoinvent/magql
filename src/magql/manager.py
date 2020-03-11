@@ -74,18 +74,19 @@ class MagqlTableManagerCollection:
         self.many_resolver = many_resolver
 
         self.manager_map = {}
-        for _table_name, table in tables.items():
-            if managers and table in managers:
-                manager = managers[table]
+        for table_name, table in tables.items():
+            if managers and table_name in managers:
+                manager = managers[table_name]
             else:
                 manager = self.generate_manager(table)
-                # skip tables that do not have a manager
-            if manager:
-                # manager.generate_validation_schema()
-                manager.to_magql()
-            self.manager_map[table] = manager
 
-        for _table, manager in self.manager_map.items():
+            # skip tables that do not have a manager
+            if manager:
+                manager.to_magql()
+
+            self.manager_map[table_name] = manager
+
+        for _table_name, manager in self.manager_map.items():
             if manager:
                 manager.add_rels(self.manager_map)
 
@@ -96,11 +97,11 @@ class MagqlTableManagerCollection:
         check_delete_manager = MagqlManager("checkDelete")
 
         self.magql_names = []
-        for _magql_name, manager in self.manager_map.items():
+        for _table_name, manager in self.manager_map.items():
             if manager:
                 self.magql_names.append(manager.magql_name)
 
-        for _magql_name, manager in self.manager_map.items():
+        for _table_name, manager in self.manager_map.items():
             if isinstance(manager, MagqlTableManager) and manager:
                 self.magql_name_to_table[manager.magql_name] = manager.table
 
@@ -116,7 +117,7 @@ class MagqlTableManagerCollection:
                 "tableName": MagqlArgument("String"),
                 "id": MagqlArgument(MagqlNonNull("Int")),
             },
-            CheckDeleteResolver(self.manager_map),
+            CheckDeleteResolver(list(self.magql_name_to_table.values())),
         )
         self.manager_map["checkDelete"] = check_delete_manager
 

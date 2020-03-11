@@ -196,11 +196,11 @@ class CheckDeleteResolver:
     Resolver for the function that checks to see what will be deleted
     """
 
-    def __init__(self, table_types):
-        self.table_types = table_types
+    def __init__(self, tables):
+        self.tables = tables
 
     def __call__(self, parent, info, *args, **kwargs):
-        for table in self.table_types.keys():
+        for table in self.tables:
             try:
                 class_ = get_mapper(table).class_
             except ValueError:

@@ -13,6 +13,8 @@ Unreleased
 -   Update and set minimum version for some dependencies :pr:`6`
 -   ``singledispatch`` functions raise ``TypeError`` if no handler is
     registered for a type. :issue:`40`
+-   ``Manager.manager_map`` uses table names instead of tables as keys.
+    :issue:`24`
 
 
 v0.3.0
