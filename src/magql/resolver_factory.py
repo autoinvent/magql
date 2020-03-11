@@ -1,3 +1,5 @@
+import logging
+
 from inflection import underscore
 from sqlalchemy.orm import subqueryload
 from sqlalchemy_utils import ChoiceType
@@ -6,7 +8,6 @@ from sqlalchemy_utils import get_mapper
 from .errors import AuthorizationError
 from .errors import ValidationFailedError
 from .filter import generate_filters
-from .logging import magql_logger
 from .sort import generate_sorts
 
 
@@ -590,14 +591,15 @@ class ManyResolver(QueryResolver):
         appended
         """
         field_name = info.field_name
-        field_node = list(
-            filter(
-                lambda selection: selection.name.value == field_name,
-                info.operation.selection_set.selections,
-            )
-        )
+        field_node = [
+            selection
+            for selection in info.operation.selection_set.selections
+            if selection.name.value == field_name
+        ]
         if len(field_node) != 1:
-            magql_logger.error("Duplicate queries not allowed")
+            logging.getLogger(__name__).warning(
+                f"Duplicate queries defined for {field_name!r}."
+            )
         options = self.generate_subqueryloads(field_node[0])
         query = QueryResolver.generate_query(self, info)
         for option in options:

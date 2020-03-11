@@ -1,3 +1,5 @@
+import logging
+
 from inflection import camelize
 from inflection import pluralize
 from sqlalchemy_utils import get_mapper
@@ -13,7 +15,6 @@ from magql.definitions import MagqlNonNull
 from magql.definitions import MagqlObjectType
 from magql.definitions import MagqlUnionType
 from magql.filter import RelFilter
-from magql.logging import magql_logger
 from magql.resolver_factory import CamelResolver
 from magql.resolver_factory import CheckDeleteResolver
 from magql.resolver_factory import CreateResolver
@@ -123,7 +124,7 @@ class MagqlTableManagerCollection:
         try:
             get_mapper(table)
         except ValueError:
-            magql_logger.warning(f"No Mapper for table {table.name}")
+            logging.getLogger(__name__).warning(f"No mapper for table {table.name!r}.")
             return
         return MagqlTableManager(
             table,
@@ -352,7 +353,9 @@ class MagqlTableManager(MagqlManager):
         try:
             table_mapper = get_mapper(self.table)
         except ValueError:
-            magql_logger.warning(f"No Mapper for table {self.table.name}")
+            logging.getLogger(__name__).warning(
+                f"No mapper for table {self.table.name!r}."
+            )
             return
 
         for rel_name, rel in table_mapper.relationships.items():
