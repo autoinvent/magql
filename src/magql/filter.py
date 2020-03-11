@@ -131,8 +131,8 @@ def EnumFilter(base_type):
 
 
 @singledispatch
-def get_filter_comparator(_):
-    magql_logger.error(NOT_FOUND)
+def get_filter_comparator(type):
+    raise TypeError(f"No comparator registered for {type.__class__.__name__!r}.")
 
 
 @get_filter_comparator.register(RelationshipProperty)
