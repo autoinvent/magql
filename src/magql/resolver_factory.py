@@ -3,10 +3,11 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy_utils import ChoiceType
 from sqlalchemy_utils import get_mapper
 
+from .errors import AuthorizationError
+from .errors import ValidationFailedError
 from .filter import generate_filters
 from .logging import magql_logger
 from .sort import generate_sorts
-from .validator import ValidationFailedError
 
 
 def js_underscore(word):
@@ -44,8 +45,8 @@ class Resolver:
             resolved_value = self.resolve(parent, info, *args, **kwargs)
         except ValidationFailedError as validation_errors:
             return {"errors": list(validation_errors.args)}
-        except PermissionError as authorize_error:
-            return {"errors": list(authorize_error.args)}
+        except AuthorizationError as authorize_errors:
+            return {"errors": list(authorize_errors.args)}
         post_resolved_value = self.post_resolve(
             resolved_value, parent, info, *args, **kwargs
         )
