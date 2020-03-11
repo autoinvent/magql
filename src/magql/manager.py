@@ -15,21 +15,25 @@ from magql.definitions import MagqlString
 from magql.definitions import MagqlUnionType
 from magql.filter import RelFilter
 from magql.logging import magql_logger
+from magql.resolver_factory import AffectedResolver
 from magql.resolver_factory import CamelResolver
-from magql.resolver_factory import CheckDeleteResolver
 from magql.resolver_factory import CreateResolver
+from magql.resolver_factory import DeletedResolver
 from magql.resolver_factory import DeleteResolver
 from magql.resolver_factory import DisplayValueResolver
 from magql.resolver_factory import EnumResolver
 from magql.resolver_factory import ManyResolver
+from magql.resolver_factory import PreventedResolver
 from magql.resolver_factory import Resolver
 from magql.resolver_factory import ResultResolver
 from magql.resolver_factory import SingleResolver
-from magql.resolver_factory import SQLAlchemyTableUnionResolver
 from magql.resolver_factory import UpdateResolver
 from magql.type import get_magql_filter_type
 from magql.type import get_magql_required_type
 from magql.type import get_magql_type
+
+# from magql.resolver_factory import CheckDeleteResolver
+# from magql.resolver_factory import SQLAlchemyTableUnionResolver
 
 
 def is_rel_required(rel):
@@ -105,19 +109,45 @@ class MagqlTableManagerCollection:
             if isinstance(manager, MagqlTableManager) and manager:
                 self.magql_name_to_table[manager.magql_name] = manager.table
 
-        check_delete_manager.magql_types["SQLAlchemyTableUnion"] = MagqlUnionType(
-            "SQLAlchemyTableUnion",
-            self.magql_names,
-            SQLAlchemyTableUnionResolver(self.magql_name_to_table),
+        # check_delete_manager.magql_types["SQLAlchemyTableUnion"] = MagqlUnionType(
+        #     "SQLAlchemyTableUnion",
+        #     self.magql_names,
+        #     SQLAlchemyTableUnionResolver(self.magql_name_to_table),
+        # )
+
+        check_delete_manager.magql_types["SimpleModelRef"] = MagqlObjectType(
+            "SimpleModelRef",
+            {
+                "model": MagqlField(MagqlString),
+                "id": MagqlField("Int"),
+                "displayName": MagqlField(
+                    MagqlString, resolve=DisplayValueResolver(self.manager_map)
+                ),
+            },
+        )
+
+        check_delete_manager.magql_types["CheckDeletePayload"] = MagqlObjectType(
+            "CheckDeletePayload",
+            {
+                "affected": MagqlField(
+                    MagqlList("SimpleModelRef"),
+                    resolve=AffectedResolver(self.manager_map),
+                ),
+                "deleted": MagqlField(
+                    "SimpleModelRef", resolve=DeletedResolver(self.manager_map)
+                ),
+                "prevented": MagqlField(
+                    "SimpleModelRef", resolve=PreventedResolver(self.manager_map)
+                ),
+            },
         )
 
         check_delete_manager.query.fields["checkDelete"] = MagqlField(
-            MagqlList("SQLAlchemyTableUnion"),
+            MagqlList("CheckDeletePayload"),
             {
                 "tableName": MagqlArgument("String"),
                 "id": MagqlArgument(MagqlNonNull("Int")),
             },
-            CheckDeleteResolver(self.manager_map),
         )
         self.manager_map["checkDelete"] = check_delete_manager
 

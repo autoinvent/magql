@@ -193,33 +193,35 @@ class CamelResolver:
         return value
 
 
-class CheckDeleteResolver:
-    """
-    Resolver for the function that checks to see what will be deleted
-    """
-
-    def __init__(self, table_types):
-        self.table_types = table_types
-
-    def __call__(self, parent, info, *args, **kwargs):
-        for table in self.table_types.keys():
-            try:
-                class_ = get_mapper(table).class_
-            except ValueError:
-                continue
-            # TODO: switch over frontend to class name
-            if class_.__name__ == kwargs["tableName"]:
-                id_ = kwargs["id"]
-                session = info.context
-                instance = session.query(class_).filter_by(id=id_).one()
-                session.delete(instance)
-                cascades = []
-                for obj in session.deleted:
-                    cascades.append(obj)
-
-                session.rollback()
-
-                return cascades
+# old check delete resolver, use prevented, deleted, and affected for seperate fields
+# now
+# class CheckDeleteResolver:
+#     """
+#     Resolver for the function that checks to see what will be deleted
+#     """
+#
+#     def __init__(self, table_types):
+#         self.table_types = table_types
+#
+#     def __call__(self, parent, info, *args, **kwargs):
+#         for table in self.table_types.keys():
+#             try:
+#                 class_ = get_mapper(table).class_
+#             except ValueError:
+#                 continue
+#             # TODO: switch over frontend to class name
+#             if class_.__name__ == kwargs["tableName"]:
+#                 id_ = kwargs["id"]
+#                 session = info.context
+#                 instance = session.query(class_).filter_by(id=id_).one()
+#                 session.delete(instance)
+#                 cascades = []
+#                 for obj in session.deleted:
+#                     cascades.append(obj)
+#
+#                 session.rollback()
+#
+#                 return cascades
 
 
 class SQLAlchemyTableUnionResolver:
@@ -443,6 +445,7 @@ class SimpleModelRefResolver:
         return model.name + " " + model.id
 
 
+# checkDelete resolver doesn't inherit, should affected/prevented/deleted inherit?
 class AffectedResolver:
     def __init__(self, table_types):
         self.table_types = table_types
@@ -458,7 +461,7 @@ class AffectedResolver:
                 id_ = kwargs["id"]
                 session = info.context
                 instance = session.query(class_).filter_by(id=id_).one()
-                return CheckDeleteAffected(session, instance).get_values()
+                result = CheckDeleteAffected(session, instance).get_values()
 
 
 class PreventedResolver:
@@ -476,7 +479,7 @@ class PreventedResolver:
                 id_ = kwargs["id"]
                 session = info.context
                 instance = session.query(class_).filter_by(id=id_).one()
-                return CheckDeletePrevented(session, instance).get_values()
+                result = CheckDeletePrevented(session, instance).get_values()
 
 
 class DeletedResolver:
@@ -494,7 +497,7 @@ class DeletedResolver:
                 id_ = kwargs["id"]
                 session = info.context
                 instance = session.query(class_).filter_by(id=id_).one()
-                return CheckDeleteDeleted.get_values()
+                result = CheckDeleteDeleted.get_values()
 
 
 class ModelInputResolver(MutationResolver):
