@@ -19,6 +19,7 @@ extensions = [
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
 }
+issues_github_path = "autoinvent/magql"
 
 # HTML -----------------------------------------------------------------
 

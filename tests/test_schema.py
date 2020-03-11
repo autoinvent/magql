@@ -27,9 +27,7 @@ query test {
 
 @pytest.fixture
 def schema(manager_collection):
-    manager_list = [
-        manager for _manager_name, manager in manager_collection.manager_map.items()
-    ]
+    manager_list = list(manager_collection.manager_map.values())
     return Convert(manager_list).generate_schema()
 
 
