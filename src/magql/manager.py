@@ -6,11 +6,11 @@ from sqlalchemy_utils import get_mapper
 
 from magql.definitions import js_camelize
 from magql.definitions import MagqlArgument
-from magql.definitions import MagqlCustomInt
 from magql.definitions import MagqlEnumType
 from magql.definitions import MagqlField
 from magql.definitions import MagqlInputField
 from magql.definitions import MagqlInputObjectType
+from magql.definitions import MagqlInt
 from magql.definitions import MagqlList
 from magql.definitions import MagqlNonNull
 from magql.definitions import MagqlObjectType
@@ -125,13 +125,12 @@ class MagqlTableManagerCollection:
         self.manager_map["checkDelete"] = check_delete_manager
 
     def generate_pagination(self):
-        page_int = MagqlCustomInt(min_int=0, max_int=100)
         page_manager = MagqlManager("PaginationManager")
-        page_manager.magql_types["PageObject"] = MagqlInputObjectType(
-            "PageObject",
+        page_manager.magql_types["Page"] = MagqlInputObjectType(
+            "Page",
             {
-                "page_num": MagqlInputField(page_int),
-                "per_page": MagqlInputField(page_int),
+                "current": MagqlInputField(MagqlInt()),
+                "per_page": MagqlInputField(MagqlInt()),
             },
         )
         self.manager_map["PaginationManager"] = page_manager
@@ -301,7 +300,7 @@ class MagqlTableManager(MagqlManager):
                 "sort": MagqlArgument(
                     MagqlList(MagqlNonNull(self.magql_name + "Sort"))
                 ),
-                "page": MagqlArgument("PageObject"),
+                "page": MagqlArgument("Page"),
             },
             self.many_resolver,
         )

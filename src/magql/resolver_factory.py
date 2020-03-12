@@ -609,8 +609,11 @@ class ManyResolver(QueryResolver):
         paginated = False
 
         try:
-            page = abs(info.variable_values["page"]["page_num"])
-            per_page = abs(info.variable_values["page"]["per_page"])
+            current = info.variable_values["page"]["current"]
+            per_page = info.variable_values["page"]["per_page"]
+            offset = current * per_page
+            if current < 0 or per_page < 0:
+                raise ValueError("Page inputs must be positive")
             paginated = True
         except KeyError:
             pass
@@ -631,7 +634,7 @@ class ManyResolver(QueryResolver):
         for option in options:
             query = query.options(option)
         if paginated:
-            return query.limit(per_page).offset(page), count
+            return query.limit(per_page).offset(offset), count
         return query, None
 
     def retrieve_value(self, parent, info, *args, **kwargs):

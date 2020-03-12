@@ -3,7 +3,6 @@ from functools import wraps
 from graphql import GraphQLArgument
 from graphql import GraphQLBoolean
 from graphql import GraphQLEnumType
-from graphql import GraphQLError
 from graphql import GraphQLField
 from graphql import GraphQLFloat
 from graphql import GraphQLID
@@ -13,11 +12,8 @@ from graphql import GraphQLInt
 from graphql import GraphQLList
 from graphql import GraphQLNonNull
 from graphql import GraphQLObjectType
-from graphql import GraphQLScalarType
 from graphql import GraphQLString
 from graphql import GraphQLUnionType
-from graphql.language.ast import IntValueNode
-from graphql.pyutils import is_integer
 from graphql.type.scalars import coerce_float
 from graphql.type.scalars import coerce_int
 from inflection import camelize
@@ -288,62 +284,3 @@ class MagqlString:
 class MagqlID:
     def convert(self, type_map):
         return GraphQLID
-
-
-class MagqlCustomScalar:
-    def convert(self, type_map):
-        if self.name in type_map:
-            return type_map[self.name]
-        type_map[self.name] = GraphQLScalarType(
-            name=self.name,
-            description=self.description,
-            serialize=self.serialize,
-            parse_literal=self.parse_literal,
-            parse_value=self.parse_value,
-        )
-        return type_map[self.name]
-
-
-class MagqlCustomInt(MagqlCustomScalar):
-    def __init__(self, min_int, max_int):
-        self.name = "PositiveInteger"
-        self.description = "A custom integer type with defined min and max values."
-        self.min_int = min_int
-        self.max_int = max_int
-
-    def serialize(self, output_value):
-        if isinstance(output_value, bool):
-            return 1 if output_value else 0
-        try:
-            if isinstance(output_value, int):
-                num = output_value
-            elif isinstance(output_value, float):
-                num = int(output_value)
-                if num != output_value:
-                    raise ValueError
-            elif not output_value and isinstance(output_value, str):
-                output_value = ""
-                raise ValueError
-            else:
-                num = int(output_value)  # raises ValueError if not an integer
-        except (OverflowError, ValueError, TypeError):
-            raise GraphQLError("Int cannot represent non-integer value")
-        if not self.min_int <= num <= self.max_int:
-            raise ValueError()
-        return num
-
-    def parse_value(self, input_value):
-        if not is_integer(input_value):
-            raise GraphQLError("Int cannot represent non-integer value")
-        if not self.min_int <= input_value <= self.max_int:
-            raise ValueError()
-        return int(input_value)
-
-    def parse_literal(self, value_node, _variables=None):
-        """Parse an integer value node in the AST."""
-        if not isinstance(value_node, IntValueNode):
-            raise GraphQLError("Int cannot represent non-integer value: ")
-        num = int(value_node.value)
-        if not self.min_int <= num <= self.max_int:
-            raise ValueError()
-        return num
