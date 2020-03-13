@@ -3,6 +3,7 @@ v0.4.0
 
 Unreleased
 
+-   Add pagination support. :pr:`20`
 -   Add ``AuthorizationError`` and remove ``PermissionsError``.
     :issue:`23`
 -   Add ``ListPayload`` type for list return types. :pr:`15`
