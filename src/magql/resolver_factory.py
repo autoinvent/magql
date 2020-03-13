@@ -606,17 +606,6 @@ class ManyResolver(QueryResolver):
         :return: A SQLAlchemy query with any needed subquery loads
         appended
         """
-        paginated = False
-
-        if info.variable_values.get("page") is not None:
-            paginated = True
-            current = info.variable_values.get("page").get("current")
-            per_page = info.variable_values.get("page").get("per_page")
-            if current is None or current < 1:
-                current = 1
-            if per_page is None or per_page < 1:
-                per_page = 10
-
         field_name = info.field_name
         field_node = [
             selection
@@ -629,13 +618,10 @@ class ManyResolver(QueryResolver):
             )
         options = self.generate_subqueryloads(field_node[0])
         query = QueryResolver.generate_query(self, info).distinct()
-        count = self.get_count(query)
         for option in options:
             query = query.options(option)
-        if paginated:
-            offset = (current - 1) * per_page
-            return query.limit(per_page).offset(offset), count
-        return query, None
+
+        return query
 
     def retrieve_value(self, parent, info, *args, **kwargs):
         """
@@ -650,12 +636,30 @@ class ManyResolver(QueryResolver):
         :return: A list of all rows in the table that match the
         filter, sorted by the given sort parameter.
         """
-        query, count = self.generate_query(info)
+        query = self.generate_query(info)
+
         filters = generate_filters(self.table, info, **kwargs)
-        info.context.info["count"] = count
         for filter_ in filters:
             query = query.filter(filter_)
         sorts = generate_sorts(self.table, info, **kwargs)
         for sort in sorts:
             query = query.order_by(sort)
+
+        paginated = False
+
+        if info.variable_values.get("page") is not None:
+            paginated = True
+            current = info.variable_values.get("page").get("current")
+            per_page = info.variable_values.get("page").get("per_page")
+            if current is None or current < 1:
+                current = 1
+            if per_page is None or per_page < 1:
+                per_page = 10
+
+        info.context.info["count"] = self.get_count(query)
+
+        if paginated:
+            offset = (current - 1) * per_page
+            return query.distinct().limit(per_page).offset(offset).all()
+
         return query.all()
