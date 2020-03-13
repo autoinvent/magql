@@ -1,6 +1,8 @@
 import logging
 
 from inflection import underscore
+from sqlalchemy import func
+from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import subqueryload
 from sqlalchemy_utils import ChoiceType
 from sqlalchemy_utils import get_mapper
@@ -163,6 +165,11 @@ class ResultResolver:
 
     def __call__(self, parent, info, *args, **kwargs):
         return parent
+
+
+class CountResolver:
+    def __call__(self, parent, info, *args, **kwargs):
+        return info.context.info.get("count")
 
 
 class CamelResolver:
@@ -544,6 +551,15 @@ class ManyResolver(QueryResolver):
     sorted with keyword args.
     """
 
+    def get_count(self, q):
+        count_func = func.count()
+        count_q = (
+            q.options(lazyload("*"))
+            .statement.with_only_columns([count_func])
+            .order_by(None)
+        )
+        return q.session.execute(count_q).scalar()
+
     def generate_subqueryloads(self, field_node, load_path=None):
         """
         A helper function that allows the generation of the top level
@@ -601,9 +617,10 @@ class ManyResolver(QueryResolver):
                 f"Duplicate queries defined for {field_name!r}."
             )
         options = self.generate_subqueryloads(field_node[0])
-        query = QueryResolver.generate_query(self, info)
+        query = QueryResolver.generate_query(self, info).distinct()
         for option in options:
             query = query.options(option)
+
         return query
 
     def retrieve_value(self, parent, info, *args, **kwargs):
@@ -620,10 +637,29 @@ class ManyResolver(QueryResolver):
         filter, sorted by the given sort parameter.
         """
         query = self.generate_query(info)
+
         filters = generate_filters(self.table, info, **kwargs)
         for filter_ in filters:
             query = query.filter(filter_)
         sorts = generate_sorts(self.table, info, **kwargs)
         for sort in sorts:
             query = query.order_by(sort)
+
+        paginated = False
+
+        if info.variable_values.get("page") is not None:
+            paginated = True
+            current = info.variable_values.get("page").get("current")
+            per_page = info.variable_values.get("page").get("per_page")
+            if current is None or current < 1:
+                current = 1
+            if per_page is None or per_page < 1:
+                per_page = 10
+
+        info.context.info["count"] = self.get_count(query)
+
+        if paginated:
+            offset = (current - 1) * per_page
+            return query.distinct().limit(per_page).offset(offset).all()
+
         return query.all()
