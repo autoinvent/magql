@@ -103,3 +103,9 @@ def test_page(session, schema):
         schema, document, context_value=session, variable_values=generate_page(2, 5)
     )
     assert len(result.data["cars"]["result"]) == 0
+
+    # ask for per_page that exceeds total count
+    result = execute(
+        schema, document, context_value=session, variable_values=generate_page(0, 100)
+    )
+    assert len(result.data["cars"]["result"]) == 3
