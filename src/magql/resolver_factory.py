@@ -610,15 +610,12 @@ class ManyResolver(QueryResolver):
 
         if info.variable_values.get("page") is not None:
             paginated = True
-            try:
-                current = info.variable_values.get("page").get("current")
-                per_page = info.variable_values.get("page").get("per_page")
-                if current is None or current < 1:
-                    current = 1
-                if per_page is None or per_page < 1:
-                    per_page = 10
-            except KeyError:
-                pass
+            current = info.variable_values.get("page").get("current")
+            per_page = info.variable_values.get("page").get("per_page")
+            if current is None or current < 1:
+                current = 1
+            if per_page is None or per_page < 1:
+                per_page = 10
 
         field_name = info.field_name
         field_node = [
