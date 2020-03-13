@@ -52,8 +52,8 @@ def test_schema(session, schema):
 
 
 def test_page(session, schema):
-    def generate_page(current, per):
-        return {"page": {"current": current, "per_page": per}}
+    def generate_page(current, per_page):
+        return {"page": {"current": current, "per_page": per_page}}
 
     car2 = Car(name="Car 2")
     car3 = Car(name="Car 3")
@@ -65,7 +65,7 @@ def test_page(session, schema):
 
     # first page, one per page
     result = execute(
-        schema, document, context_value=session, variable_values=generate_page(0, 1)
+        schema, document, context_value=session, variable_values=generate_page(1, 1)
     )
     assert len(result.data["cars"]["result"]) == 1
     assert result.data["cars"]["result"][0]["name"] == "Car 1"
@@ -73,7 +73,7 @@ def test_page(session, schema):
 
     # second page, one per page
     result = execute(
-        schema, document, context_value=session, variable_values=generate_page(1, 1)
+        schema, document, context_value=session, variable_values=generate_page(2, 1)
     )
     assert len(result.data["cars"]["result"]) == 1
     assert result.data["cars"]["result"][0]["name"] == "Car 2"
@@ -81,31 +81,46 @@ def test_page(session, schema):
 
     # first page, two per page
     result = execute(
-        schema, document, context_value=session, variable_values=generate_page(0, 2)
+        schema, document, context_value=session, variable_values=generate_page(1, 2)
     )
     assert len(result.data["cars"]["result"]) == 2
     assert result.data["cars"]["count"] == 3
 
-    # bad page, -2 per page
+    # negative pages
     result = execute(
-        schema, document, context_value=session, variable_values=generate_page(0, -2)
+        schema, document, context_value=session, variable_values=generate_page(-1, -2)
     )
-    assert result.errors[0].message == "Page inputs must be positive"
+    assert len(result.data["cars"]["result"]) == 3
+
+    # current negative, per_page positive
+    result = execute(
+        schema, document, context_value=session, variable_values=generate_page(-1, 2)
+    )
+    assert len(result.data["cars"]["result"]) == 2
 
     # ask for a page # greater than total count
     result = execute(
-        schema, document, context_value=session, variable_values=generate_page(5, 1)
+        schema, document, context_value=session, variable_values=generate_page(6, 1)
     )
     assert len(result.data["cars"]["result"]) == 0
 
     # ask for current, per_page that exceeds total count
     result = execute(
-        schema, document, context_value=session, variable_values=generate_page(2, 5)
+        schema, document, context_value=session, variable_values=generate_page(5, 5)
     )
     assert len(result.data["cars"]["result"]) == 0
 
     # ask for per_page that exceeds total count
     result = execute(
-        schema, document, context_value=session, variable_values=generate_page(0, 100)
+        schema, document, context_value=session, variable_values=generate_page(1, 100)
+    )
+    assert len(result.data["cars"]["result"]) == 3
+
+    # empty page
+    result = execute(
+        schema,
+        document,
+        context_value=session,
+        variable_values=generate_page(None, None),
     )
     assert len(result.data["cars"]["result"]) == 3

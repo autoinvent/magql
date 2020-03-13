@@ -608,15 +608,17 @@ class ManyResolver(QueryResolver):
         """
         paginated = False
 
-        try:
-            current = info.variable_values["page"]["current"]
-            per_page = info.variable_values["page"]["per_page"]
-            offset = current * per_page
-            if current < 0 or per_page < 0:
-                raise ValueError("Page inputs must be positive")
+        if info.variable_values.get("page") is not None:
             paginated = True
-        except KeyError:
-            pass
+            try:
+                current = info.variable_values.get("page").get("current")
+                per_page = info.variable_values.get("page").get("per_page")
+                if current is None or current < 1:
+                    current = 1
+                if per_page is None or per_page < 1:
+                    per_page = 10
+            except KeyError:
+                pass
 
         field_name = info.field_name
         field_node = [
@@ -634,6 +636,7 @@ class ManyResolver(QueryResolver):
         for option in options:
             query = query.options(option)
         if paginated:
+            offset = (current - 1) * per_page
             return query.limit(per_page).offset(offset), count
         return query, None
 
