@@ -15,6 +15,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import sessionmaker
 
+from magql.definitions import MagqlField
+from magql.manager import MagqlTableManager
 from magql.manager import MagqlTableManagerCollection
 
 base = declarative_base()
@@ -85,13 +87,25 @@ def info(session):
 
 
 @pytest.fixture
-def manager_collection():
+def po_box_manager():
+    base_manager = MagqlTableManager(POBox.__table__, "POBox")
+    base_manager.single_query_name = "POBox"
+    base_manager.many_query_name = "POBoxes"
+    base_manager.magql_types["POBox"].fields["customField"] = MagqlField(
+        "Int", resolve=lambda x: 1
+    )
+    return base_manager
+
+
+@pytest.fixture
+def manager_collection(po_box_manager):
     table = {}
+    managers = {"pobox": po_box_manager}
     for table_name, _table in base.metadata.tables.items():
         if table_name == "BadClass" or table_name == "BadRelClass":
             continue
         table[table_name] = _table
-    return MagqlTableManagerCollection(table)
+    return MagqlTableManagerCollection(table, managers=managers)
 
 
 class Person(base):
@@ -115,6 +129,19 @@ class Person(base):
 
     wealth_id = Column(ForeignKey("Wealth.id"))
     wealth = relationship("Wealth", back_populates="person_of_note")
+
+    po_box_id = Column(ForeignKey("pobox.id"))
+    po_box = relationship("POBox", back_populates="owner")
+
+
+class POBox(base):
+    __tablename__ = "pobox"
+    id = Column(Integer, primary_key=True)
+    number = Column(Integer)
+
+    owner = relationship(
+        "Person", cascade="all, delete-orphan", back_populates="po_box"
+    )
 
 
 class House(base):
