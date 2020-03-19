@@ -377,8 +377,8 @@ class MagqlTableManager(MagqlManager):
         for rel_name, rel in table_mapper.relationships.items():
             rel_table = rel.target
 
-            if rel_table in managers:
-                rel_manager = managers[rel_table]
+            if rel_table.name in managers:
+                rel_manager = managers[rel_table.name]
                 if rel_manager is None:
                     continue
             else:
