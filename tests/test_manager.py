@@ -275,6 +275,24 @@ def test_add_rels(model, manager_collection):
             assert isinstance(field_type, check_type)
 
 
+def test_magql_name_rel_override(manager_collection):
+    assert (
+        manager_collection.manager_map["Person"]
+        .magql_types["Person"]
+        .fields["poBox"]
+        .type_name
+        == "POBox"
+    )
+
+
+def test_custom_fields(manager_collection):
+    assert (
+        manager_collection.manager_map["pobox"]
+        .magql_types["POBox"]
+        .fields["customField"]
+    )
+
+
 def test_bad_rels():
     with pytest.raises(KeyError):
         bad_manager_collection()
