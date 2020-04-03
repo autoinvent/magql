@@ -98,4 +98,7 @@ def test_single_resolvers(model, model_id, session, info):
     resolver = SingleResolver(model.__table__)
     resolved_value = resolver(None, info, id=model_id)
     queried_value = session.query(model).filter_by(id=model_id).one_or_none()
-    assert queried_value == resolved_value
+    if queried_value is not None:
+        assert queried_value == resolved_value
+    else:
+        assert resolved_value["result"] is None

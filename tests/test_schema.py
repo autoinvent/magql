@@ -5,25 +5,6 @@ from graphql import parse
 from .conftest import Car
 from magql.convert import Convert
 
-query = """
-query test {
-  people {
-    result {
-      name
-    }
-  }
-  cars {
-    result {
-      name
-    }
-  }
-  houses {
-    result {
-      name
-    }
-  }
-}
-"""
 
 query_pagination = """
 query test($page: Page) {
@@ -47,8 +28,16 @@ def schema(manager_collection):
     return Convert(manager_list).generate_schema()
 
 
-def test_schema(session, schema):
-    document = parse(query)
+def test_single_query(session, schema, single_query):
+    document = parse(single_query)
+    result = execute(schema, document, context_value=session)
+    assert result.data["person"]["result"]["name"] == "Person 1"
+    assert result.data["car"]["result"]["name"] is None
+    assert result.data["house"]["result"]["name"] is None
+
+
+def test_many_query(session, schema, many_query):
+    document = parse(many_query)
     result = execute(schema, document, context_value=session)
     assert result.data["people"]["result"][0]["name"] == "Person 1"
     assert result.data["cars"]["result"][0]["name"] == "Car 1"
