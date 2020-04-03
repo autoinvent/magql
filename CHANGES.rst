@@ -1,7 +1,13 @@
-v0.4.0
+v0.5.0
 ------
 
 Unreleased
+
+
+v0.4.0
+------
+
+Released 2020-04-02
 
 -   Add pagination support. :pr:`20`
 -   Add ``AuthorizationError`` and remove ``PermissionsError``.
