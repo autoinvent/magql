@@ -3,6 +3,13 @@ v0.5.0
 
 Unreleased
 
+v0.4.1
+------
+
+Released 2020-04-06
+
+-   Return None, not error, in single queries with no row found :pr:`52`
+
 
 v0.4.0
 ------
