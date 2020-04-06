@@ -61,6 +61,52 @@ def status():
 
 
 @pytest.fixture
+def single_query():
+    return """
+query test {
+  person(id: 1) {
+    result {
+      name
+    }
+  }
+  car(id: 2) {
+    result {
+      name
+    }
+  }
+  house(id: 3) {
+    result {
+      name
+    }
+  }
+}
+"""
+
+
+@pytest.fixture
+def many_query():
+    return """
+query test {
+  people {
+    result {
+      name
+    }
+  }
+  cars {
+    result {
+      name
+    }
+  }
+  houses {
+    result {
+      name
+    }
+  }
+}
+"""
+
+
+@pytest.fixture
 def session(car, house, person):
     """Create and configure a new app instance for each test."""
     # create the app with common test config

@@ -529,6 +529,9 @@ class SingleResolver(QueryResolver):
     the instance specified by id.
     """
 
+    def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
+        return resolved_value if resolved_value else {"result": resolved_value}
+
     def retrieve_value(self, parent, info, *args, **kwargs):
         """
         Retrieves the row in the table that matches the id in the args,
