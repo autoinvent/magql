@@ -171,6 +171,10 @@ def _get_date_comparator(_):
     return condition
 
 
+def props(cls):
+    return [i for i in cls.__dict__.keys() if i[:1] != "_"]
+
+
 @get_filter_comparator.register(JSONType)
 @get_filter_comparator.register(Text)
 @get_filter_comparator.register(UnicodeText)
@@ -188,9 +192,9 @@ def _get_string_comparator(_):
         elif filter_operator == "EQUALS":
             return field == filter_value
         elif filter_operator == "EXISTS":
-            return field is not None
+            return field.like("%")
         elif filter_operator == "DOESNOTEXIST":
-            return field is None
+            return field == None  # noqa: E711
 
     return condition
 
