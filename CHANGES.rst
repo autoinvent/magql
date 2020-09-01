@@ -3,6 +3,8 @@ v0.5.0
 
 Unreleased
 
+-   Added EXISTS and DOESNOTEXIST string operators for filtering
+
 v0.4.1
 ------
 
