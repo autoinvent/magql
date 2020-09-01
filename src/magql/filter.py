@@ -30,7 +30,13 @@ StringFilter = MagqlInputObjectType(
     {
         "operator": MagqlInputField(
             MagqlEnumType(
-                "StringOperator", {"INCLUDES": "INCLUDES", "EQUALS": "EQUALS"}
+                "StringOperator",
+                {
+                    "INCLUDES": "INCLUDES",
+                    "EQUALS": "EQUALS",
+                    "EXISTS": "EXISTS",
+                    "DOESNOTEXIST": "DOESNOTEXIST",
+                },
             )
         ),
         "value": MagqlInputField("String"),
@@ -181,6 +187,10 @@ def _get_string_comparator(_):
             return field.like(f"%{filter_value}%")
         elif filter_operator == "EQUALS":
             return field == filter_value
+        elif filter_operator == "EXISTS":
+            return field.like("%")
+        elif filter_operator == "DOESNOTEXIST":
+            return field.is_(None)
 
     return condition
 
