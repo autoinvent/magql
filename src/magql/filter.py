@@ -190,7 +190,7 @@ def _get_string_comparator(_):
         elif filter_operator == "EXISTS":
             return field.like("%")
         elif filter_operator == "DOESNOTEXIST":
-            return field == None  # noqa: E711
+            return field.is_(None)
 
     return condition
 
