@@ -485,8 +485,6 @@ class DeleteResolver(MutationResolver):
         info
         :return: the value that was deleted
         """
-        session = info.context
-        session.delete(instance)
         return instance
 
     def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
