@@ -118,7 +118,7 @@ class MagqlTableManagerCollection:
             MagqlList("SQLAlchemyTableUnion"),
             {
                 "tableName": MagqlArgument("String"),
-                "id": MagqlArgument(MagqlNonNull("Int")),
+                "id": MagqlArgument(MagqlNonNull("ID")),
             },
             CheckDeleteResolver(list(self.magql_name_to_table.values())),
         )
@@ -243,9 +243,9 @@ class MagqlTableManager(MagqlManager):
     @many_query_name.setter
     def many_query_name(self, value):
         """
-       Overrides the name of the many query to a custom value
-       :param value: The name to change the many query to
-       """
+        Overrides the name of the many query to a custom value
+        :param value: The name to change the many query to
+        """
         self._many_query_name_override = value
 
     @property
@@ -272,7 +272,7 @@ class MagqlTableManager(MagqlManager):
         self.update = MagqlField(
             self.magql_name + "Payload",
             {
-                "id": MagqlArgument(MagqlNonNull("Int")),
+                "id": MagqlArgument(MagqlNonNull("ID")),
                 "input": MagqlArgument(MagqlNonNull(self.magql_name + "Input")),
             },
             self.update_resolver,
@@ -281,14 +281,14 @@ class MagqlTableManager(MagqlManager):
     def generate_delete_mutation(self):
         self.delete = MagqlField(
             self.magql_name + "Payload",
-            {"id": MagqlArgument(MagqlNonNull("Int"))},
+            {"id": MagqlArgument(MagqlNonNull("ID"))},
             self.delete_resolver,
         )
 
     def generate_single_query(self):
         self.single = MagqlField(
             self.magql_name + "Payload",
-            {"id": MagqlArgument(MagqlNonNull("Int"))},
+            {"id": MagqlArgument(MagqlNonNull("ID"))},
             self.single_resolver,
         )
 
