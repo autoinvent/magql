@@ -5,12 +5,21 @@
 #
 #    pip-compile-multi
 #
-attrs==19.3.0             # via pytest
-more-itertools==8.2.0     # via pytest
-packaging==20.1           # via pytest
-pluggy==0.13.1            # via pytest
-py==1.8.1                 # via pytest
-pyparsing==2.4.6          # via packaging
+attrs==19.3.0
+    # via pytest
+more-itertools==8.2.0
+    # via pytest
+packaging==20.1
+    # via pytest
+pluggy==0.13.1
+    # via pytest
+py==1.10.0
+    # via pytest
+pyparsing==2.4.6
+    # via packaging
 pytest==5.3.5
-six==1.14.0               # via packaging
-wcwidth==0.1.8            # via pytest
+    # via -r tests.in
+six==1.14.0
+    # via packaging
+wcwidth==0.1.8
+    # via pytest
