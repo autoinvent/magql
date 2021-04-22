@@ -59,6 +59,25 @@ def check_name(init):
     return wrapper
 
 
+class MagqlFile:
+    pass
+
+
+class MagqlBoolean:
+    def convert(self, type_map):
+        return GraphQLBoolean
+
+
+class MagqlString:
+    def convert(self, type_map):
+        return GraphQLString
+
+
+class MagqlID:
+    def convert(self, type_map):
+        return GraphQLID
+
+
 class MagqlObjectType:
     @check_name
     def __init__(self, name, fields=None, description=None):
@@ -68,6 +87,18 @@ class MagqlObjectType:
         self.description = description
 
     def field(self, field_name, return_type, args=None):
+        def decorator(resolve):
+            self.fields[field_name] = MagqlField(return_type, args, resolve)
+            return resolve
+
+        return decorator
+
+    def display_value(self, field_name=None, return_type=None, args=None):
+        if field_name is None:
+            field_name = "displayValue"
+        if return_type is None:
+            return_type = MagqlString()
+
         def decorator(resolve):
             self.fields[field_name] = MagqlField(return_type, args, resolve)
             return resolve
@@ -265,22 +296,3 @@ class MagqlFloat:
         if self.parse_value:
             gql_float.parse_value = self.parse_value
         return gql_float
-
-
-class MagqlFile:
-    pass
-
-
-class MagqlBoolean:
-    def convert(self, type_map):
-        return GraphQLBoolean
-
-
-class MagqlString:
-    def convert(self, type_map):
-        return GraphQLString
-
-
-class MagqlID:
-    def convert(self, type_map):
-        return GraphQLID
