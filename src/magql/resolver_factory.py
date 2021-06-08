@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import logging
+import typing as t
 
 from inflection import underscore
 from sqlalchemy import func
 from sqlalchemy.orm import lazyload
+from sqlalchemy.orm import mapper
 from sqlalchemy.orm import subqueryload
 from sqlalchemy_utils import ChoiceType
 from sqlalchemy_utils import get_mapper
@@ -13,7 +17,7 @@ from .filter import generate_filters
 from .sort import generate_sorts
 
 
-def js_underscore(word):
+def js_underscore(word: str) -> str:
     # add config
     return underscore(word)
 
@@ -33,7 +37,9 @@ class Resolver:
     and/or extending the functionality is easiest.
     """
 
-    def __call__(self, parent, info, *args, **kwargs):
+    def __call__(
+        self, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         """
         Default resolve method, establishes and executes the default
         resolve flow
@@ -55,7 +61,9 @@ class Resolver:
         )
         return post_resolved_value
 
-    def pre_resolve(self, parent, info, *args, **kwargs):
+    def pre_resolve(
+        self, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Tuple[t.Any, ...]:
         """
         Allows for modification of the passed parameters
         :param parent: gql parent. The value returned by the
@@ -66,7 +74,14 @@ class Resolver:
         """
         return parent, info, args, kwargs
 
-    def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
+    def post_resolve(
+        self,
+        resolved_value: t.Any,
+        parent: t.Any,
+        info: t.Any,
+        *args: t.Any,
+        **kwargs: t.Any,
+    ) -> t.Any:
         """
         Allows for modification of the returned value to GraphQl and
         performing of side effects
@@ -78,7 +93,9 @@ class Resolver:
         """
         return resolved_value
 
-    def authorize(self, instance, parent, info, *args, **kwargs):
+    def authorize(
+        self, instance: t.Any, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> None:
         """
         Provides a space to perform authorization. Raise an AuthError
         to stop execution and have the resolve method return an error
@@ -91,7 +108,9 @@ class Resolver:
         """
         return None
 
-    def validate(self, instance, parent, info, *args, **kwargs):
+    def validate(
+        self, instance: t.Any, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> None:
         """
         Provides a space to perform validation. Raise an ValidationError
         to stop execution and have the resolve method return an error
@@ -104,11 +123,13 @@ class Resolver:
         """
         return None
 
-    def mutate(self, value, parent, info, *args, **kwargs):
+    def mutate(
+        self, instance: t.Any, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         """
         Provides a space to mutate the resolved value. Necessarily will
         do nothing in queries.
-        :param value: The value returned by
+        :param instance: The value returned by
         :func:`retrieve_value`
         :param parent: gql parent. The value returned by the
         parent resolver. See GraphQL docs for more info
@@ -116,9 +137,11 @@ class Resolver:
         info
         :return: the value that will be returned to GraphQL
         """
-        return value
+        return instance
 
-    def retrieve_value(self, parent, info):
+    def retrieve_value(
+        self, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         """
         Retrieves (or creates) the value that the resolver will operate
         on and return. By default performs dot operation on the parent
@@ -131,7 +154,9 @@ class Resolver:
         """
         return getattr(parent, underscore(info.field_name))
 
-    def resolve(self, parent, info, *args, **kwargs):
+    def resolve(
+        self, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         """
         Establishes the call order of the resolve sub_functions
         :func:`retrieve_value`, :func:`authorize`, :func:`validate`,
@@ -163,12 +188,16 @@ class ResultResolver:
     :return: The results field on the payload object
     """
 
-    def __call__(self, parent, info, *args, **kwargs):
+    def __call__(
+        self, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         return parent
 
 
 class CountResolver:
-    def __call__(self, parent, info, *args, **kwargs):
+    def __call__(
+        self, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         return info.context.info.get("count")
 
 
@@ -182,7 +211,9 @@ class CamelResolver:
     :return: The value to be returned to GraphQL
     """
 
-    def __call__(self, parent, info, *args, **kwargs):
+    def __call__(
+        self, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         source = parent
         # TODO: Look into a way to generate info
         #  dictionary so the code does not need to be
@@ -203,10 +234,12 @@ class CheckDeleteResolver:
     Resolver for the function that checks to see what will be deleted
     """
 
-    def __init__(self, tables):
+    def __init__(self, tables: t.List[t.Any]):
         self.tables = tables
 
-    def __call__(self, parent, info, *args, **kwargs):
+    def __call__(
+        self, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Optional[t.List[t.Any]]:
         for table in self.tables:
             try:
                 class_ = get_mapper(table).class_
@@ -225,6 +258,7 @@ class CheckDeleteResolver:
                 session.rollback()
 
                 return cascades
+        return None
 
 
 class SQLAlchemyTableUnionResolver:
@@ -233,10 +267,12 @@ class SQLAlchemyTableUnionResolver:
     This resolver is tied to the use of sqlalchemy
     """
 
-    def __init__(self, magql_name_to_table):
+    def __init__(self, magql_name_to_table: t.Dict[str, t.Any]):
         self.magql_name_to_table = magql_name_to_table
 
-    def __call__(self, parent, info, *args, **kwargs):
+    def __call__(
+        self, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Optional[t.Any]:
         for magql_name, table in self.magql_name_to_table.items():
             if isinstance(parent, get_mapper(table).class_):
                 for gql_type in info.return_type.of_type.types:
@@ -246,7 +282,9 @@ class SQLAlchemyTableUnionResolver:
 
 
 class EnumResolver(Resolver):
-    def retrieve_value(self, parent, info):
+    def retrieve_value(
+        self, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         """
         Resolve Enums which need to get the code from the value
         :param parent: gql parent. is whatever was returned by
@@ -266,7 +304,7 @@ class TableResolver(Resolver):  # noqa: B903
     reused in :class:`QueryResolver` and :class:`MutationResolver`.
     """
 
-    def __init__(self, table):
+    def __init__(self, table: t.Any):
         """
         MutationResolver can be overriden by
         :param table: a sqlalchemy table
@@ -298,7 +336,9 @@ class MutationResolver(TableResolver):
     #     """
     #     return super(MutationResolver, self).__call__(parent, info, *args, **kwargs)
 
-    def input_to_instance_values(self, input, mapper, session):
+    def input_to_instance_values(
+        self, input: t.Dict[str, t.Any], mapper: mapper, session: t.Any
+    ) -> t.Dict[str, t.Any]:
         """
         Helper method that converts the values in the input into values
         that can be passed into the creation of the instance. This
@@ -333,7 +373,14 @@ class MutationResolver(TableResolver):
         return instance_values
 
     # Post resolve will add and commit the created value
-    def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
+    def post_resolve(
+        self,
+        resolved_value: t.Any,
+        parent: t.Any,
+        info: t.Any,
+        *args: t.Any,
+        **kwargs: t.Any,
+    ) -> t.Any:
         """
         Adds and commits the mutated value to the session
         :param parent: gql parent. The value returned by the
@@ -349,7 +396,9 @@ class MutationResolver(TableResolver):
 
 
 class ModelInputResolver(MutationResolver):
-    def pre_resolve(self, parent, info, *args, **kwargs):
+    def pre_resolve(
+        self, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Tuple[t.Any, t.Any, t.Any, t.Any]:
         """
         Converts ids of rels to actual values and handles enums
         :param parent: parent object required by GraphQL, always None because
@@ -376,7 +425,9 @@ class CreateResolver(ModelInputResolver):
     fields.
     """
 
-    def retrieve_value(self, parent, info, *args, **kwargs):
+    def retrieve_value(
+        self, parent: None, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         """
         Creates an empty row in the table that will be modified by mutate.
         :param parent: parent object required by GraphQL, always None because
@@ -393,7 +444,9 @@ class CreateResolver(ModelInputResolver):
         instance = mapper.class_()
         return instance
 
-    def mutate(self, instance, parent, info, *args, **kwargs):
+    def mutate(
+        self, instance: t.Any, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         """
         Updates the passed instance to have the values specified
         in the query arguments
@@ -417,7 +470,9 @@ class UpdateResolver(ModelInputResolver):
     fields specified by fields.
     """
 
-    def retrieve_value(self, parent, info, *args, **kwargs):
+    def retrieve_value(
+        self, parent: None, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         """
         Updates the instance of the associated table with the id passed.
         Performs setattr on the key/value pairs.
@@ -435,7 +490,9 @@ class UpdateResolver(ModelInputResolver):
         id_ = kwargs["id"]
         return session.query(mapper.class_).filter_by(id=id_).one()
 
-    def mutate(self, instance, parent, info, *args, **kwargs):
+    def mutate(
+        self, instance: t.Any, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         """
         Updates the passed instance to have the values specified
         in the query arguments
@@ -458,7 +515,9 @@ class DeleteResolver(MutationResolver):
     the instance specified by id.
     """
 
-    def retrieve_value(self, parent, info, *args, **kwargs):
+    def retrieve_value(
+        self, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         """
         Retrieves the row in the table that matches the id in the args,
         if such a row exists
@@ -474,7 +533,9 @@ class DeleteResolver(MutationResolver):
         id_ = kwargs["id"]
         return session.query(mapper.class_).filter_by(id=id_).one()
 
-    def mutate(self, instance, parent, info, *args, **kwargs):
+    def mutate(
+        self, instance: t.Any, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         """
         Deletes the passed instance from the session
         :param value: The value returned by
@@ -487,7 +548,14 @@ class DeleteResolver(MutationResolver):
         """
         return instance
 
-    def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
+    def post_resolve(
+        self,
+        resolved_value: t.Any,
+        parent: t.Any,
+        info: t.Any,
+        *args: t.Any,
+        **kwargs: t.Any,
+    ) -> t.Any:
         """
         Deletes the value from the session and commits the deletion
         :param parent: gql parent. The value returned by the
@@ -509,7 +577,7 @@ class QueryResolver(TableResolver):
     :class:`SingleResolver` and :class:`ManyResolver`
     """
 
-    def generate_query(self, info):
+    def generate_query(self, info: t.Any) -> t.Any:
         """
         Generates a basic query based on the mapped class
         :param info: GraphQL info dict, used to hold the SQLA session
@@ -527,10 +595,19 @@ class SingleResolver(QueryResolver):
     the instance specified by id.
     """
 
-    def post_resolve(self, resolved_value, parent, info, *args, **kwargs):
+    def post_resolve(
+        self,
+        resolved_value: t.Any,
+        parent: t.Any,
+        info: t.Any,
+        *args: t.Any,
+        **kwargs: t.Any,
+    ) -> t.Any:
         return resolved_value if resolved_value else {"result": resolved_value}
 
-    def retrieve_value(self, parent, info, *args, **kwargs):
+    def retrieve_value(
+        self, parent: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         """
         Retrieves the row in the table that matches the id in the args,
         if such a row exists
@@ -552,7 +629,7 @@ class ManyResolver(QueryResolver):
     sorted with keyword args.
     """
 
-    def get_count(self, q):
+    def get_count(self, q: t.Any) -> t.Any:
         count_func = func.count()
         count_q = (
             q.options(lazyload("*"))
@@ -561,7 +638,9 @@ class ManyResolver(QueryResolver):
         )
         return q.session.execute(count_q).scalar()
 
-    def generate_subqueryloads(self, field_node, load_path=None):
+    def generate_subqueryloads(
+        self, field_node: t.Any, load_path: t.Optional[t.Any] = None
+    ) -> t.List[t.Any]:
         """
         A helper function that allows the generation of the top level
         query to only have to perform one query with subqueryloads to
@@ -575,7 +654,7 @@ class ManyResolver(QueryResolver):
         :return:  A list of all subqueries needed to eagerly load
         all data accessed as a result of the query
         """
-        options = []
+        options: t.List[t.Any] = []
 
         # A node is a lead if all of its children are scalars
         for selection in field_node.selection_set.selections:
@@ -600,7 +679,7 @@ class ManyResolver(QueryResolver):
             return [load_path] if load_path is not None else []
         return options
 
-    def generate_query(self, info):
+    def generate_query(self, info: t.Any) -> t.Any:
         """
         Generates a query based on the document ast
         :param info: GraphQL info dict.
@@ -624,7 +703,9 @@ class ManyResolver(QueryResolver):
 
         return query
 
-    def retrieve_value(self, parent, info, *args, **kwargs):
+    def retrieve_value(
+        self, parent: None, info: t.Any, *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         """
         Returns all rows in a table. Uses subquery loads to improve
         querying by loading each relationship based on the query request

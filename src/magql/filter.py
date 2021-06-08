@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import typing as t
 from functools import singledispatch
 
 from inflection import underscore
@@ -123,7 +126,7 @@ BooleanFilter = MagqlInputObjectType(
 EnumOperator = MagqlEnumType("EnumOperator", {"INCLUDES": "INCLUDES"})
 
 
-def EnumFilter(base_type):
+def EnumFilter(base_type: t.Any) -> MagqlInputObjectType:
     name = base_type.name + "Filter"
 
     input_ = {
@@ -134,39 +137,47 @@ def EnumFilter(base_type):
 
 
 @singledispatch
-def get_filter_comparator(type):
+def get_filter_comparator(type: t.Any) -> t.Any:
     raise TypeError(f"No comparator registered for {type.__class__.__name__!r}.")
 
 
 @get_filter_comparator.register(RelationshipProperty)
-def _get_relationship_comparator(rel):
+def _get_relationship_comparator(rel: RelationshipProperty) -> t.Optional[t.Callable]:
     direction = rel.direction.name
     if "TOONE" in direction:
 
-        def condition(filter_value, filter_operator, field):
+        def condition(filter_value: t.Any, filter_operator: str, field: t.Any) -> t.Any:
             if filter_operator == "INCLUDES":
                 return field == filter_value
+            return None
 
         return condition
     elif "TOMANY" in direction:
 
-        def condition(filter_value, filter_operator, field):
+        def condition(filter_value: t.Any, filter_operator: str, field: t.Any) -> t.Any:
             if filter_operator == "INCLUDES":
                 return field.any(field.contains(filter_value))
+            return None
 
         return condition
+    return None
 
 
 @get_filter_comparator.register(DateTime)
 @get_filter_comparator.register(Date)
-def _get_date_comparator(_):
-    def condition(filter_value, filter_operator, field):
+def _get_date_comparator(_: t.Union[DateTime, Date]) -> t.Callable:
+    def condition(
+        filter_value: t.Union[DateTime, Date],
+        filter_operator: str,
+        field: t.Union[DateTime, Date],
+    ) -> t.Any:
         if filter_operator == "BEFORE":
             return field < filter_value
         elif filter_operator == "ON":
             return field == filter_value
         elif filter_operator == "After":
             return field > filter_value
+        return None
 
     return condition
 
@@ -181,8 +192,8 @@ def _get_date_comparator(_):
 @get_filter_comparator.register(Time)
 @get_filter_comparator.register(String)
 @get_filter_comparator.register(VARCHAR)
-def _get_string_comparator(_):
-    def condition(filter_value, filter_operator, field):
+def _get_string_comparator(_: t.Any) -> t.Callable:
+    def condition(filter_value: t.Any, filter_operator: str, field: t.Any) -> t.Any:
         if filter_operator == "INCLUDES":
             return field.like(f"%{filter_value}%")
         elif filter_operator == "EQUALS":
@@ -198,8 +209,8 @@ def _get_string_comparator(_):
 @get_filter_comparator.register(Float)
 @get_filter_comparator.register(Numeric)
 @get_filter_comparator.register(Integer)
-def _get_number_comparator(_):
-    def condition(filter_value, filter_operator, field):
+def _get_number_comparator(_: t.Any) -> t.Callable:
+    def condition(filter_value: t.Any, filter_operator: str, field: t.Any) -> t.Any:
         if filter_operator == "lt":
             return field < filter_value
         elif filter_operator == "lte":
@@ -217,8 +228,8 @@ def _get_number_comparator(_):
 
 
 @get_filter_comparator.register(Boolean)
-def _get_boolean_comparator(_):
-    def condition(filter_value, filter_operator, field):
+def _get_boolean_comparator(_: t.Any) -> t.Callable:
+    def condition(filter_value: t.Any, filter_operator: str, field: t.Any) -> t.Any:
         if filter_operator == "EQUALS":
             return field == filter_value
         elif filter_operator == "NOTEQUALS":
@@ -228,15 +239,15 @@ def _get_boolean_comparator(_):
 
 
 @get_filter_comparator.register(ChoiceType)
-def _get_choice_comparator(_):
-    def condition(filter_value, filter_operator, field):
+def _get_choice_comparator(_: t.Any) -> t.Callable:
+    def condition(filter_value: t.Any, filter_operator: str, field: t.Any) -> t.Any:
         if filter_operator == "INCLUDES":
             return field == filter_value
 
     return condition
 
 
-def generate_filters(table, info, *args, **kwargs):
+def generate_filters(table: t.Any, info: t.Any, *args: t.Any, **kwargs: t.Any) -> t.Any:
     sqla_filters = []
     if "filter" in kwargs and kwargs["filter"] is not None:
         mapper = get_mapper(table)

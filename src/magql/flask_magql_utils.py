@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 """Utils
 This module defines the framework-agnostic logic for handling the multipart
 request spec
 """
 from graphql import GraphQLScalarType
+import typing as t
+
 
 GraphQLFile = GraphQLScalarType(
     name="File",
@@ -16,11 +20,13 @@ GraphQLFile = GraphQLScalarType(
     "graphene_file_upload/utils.py",
     serialize=lambda x: x,
     parse_value=lambda x: x,
-    parse_literal=lambda x: x,
+    parse_literal=lambda x, _: x,
 )
 
 
-def place_files_in_operations(operations, files_map, files):
+def place_files_in_operations(
+    operations: t.Any, files_map: t.Any, files: t.Any
+) -> t.Any:
     """Replaces None placeholders in operations with file objects in the files
     dictionary, by following the files_map logic as specified within the 'map'
     request parameter in the multipart request spec"""
@@ -38,7 +44,7 @@ def place_files_in_operations(operations, files_map, files):
     return output
 
 
-def add_file_to_operations(operations, file_obj, path):
+def add_file_to_operations(operations: t.Any, file_obj: t.Any, path: t.Any) -> t.Any:
     """Handles the recursive algorithm for adding a file to the operations
     object"""
     if not path:
@@ -56,7 +62,7 @@ def add_file_to_operations(operations, file_obj, path):
     raise TypeError("Operations must be a dict or a list of dicts")
 
 
-def new_merged_dict(*dicts):
+def new_merged_dict(*dicts: t.Any) -> t.Any:
     """Merges dictionaries into a new dictionary. Necessary for python2 and
     python34 since neither have PEP448 implemented."""
     # Necessary for python2 support
@@ -66,7 +72,9 @@ def new_merged_dict(*dicts):
     return output
 
 
-def new_list_with_replaced_item(input_list, index, new_value):
+def new_list_with_replaced_item(
+    input_list: t.List[t.Any], index: int, new_value: t.Any
+) -> t.Any:
     """Creates new list with replaced item at specified index"""
     output = [i for i in input_list]
     output[index] = new_value

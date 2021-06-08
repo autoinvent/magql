@@ -1,7 +1,11 @@
+from __future__ import annotations
+
+import typing as t
 from functools import singledispatch
 
 from inflection import camelize
 from sqlalchemy import Boolean
+from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy import Float
@@ -23,6 +27,7 @@ from sqlalchemy_utils import URLType
 from .definitions import MagqlBoolean
 from .definitions import MagqlEnumType
 from .definitions import MagqlFloat
+from .definitions import MagqlInputObjectType
 from .definitions import MagqlInt
 from .definitions import MagqlNonNull
 from .definitions import MagqlString
@@ -35,7 +40,7 @@ from .filter import StringFilter
 
 
 @singledispatch
-def _get_magql_type(type_, column):
+def _get_magql_type(type_: t.Any, column: Column) -> t.Any:
     """
     Returns the corrsponding GraphQL type to the given SQLA column type
     :param type: The type of the SQLA column
@@ -47,11 +52,11 @@ def _get_magql_type(type_, column):
     )
 
 
-def get_magql_type(col):
+def get_magql_type(col: Column) -> t.Any:
     return _get_magql_type(col.type, col)
 
 
-def is_required(col):
+def is_required(col: Column) -> bool:
     """
     Checks whether a scalar SQLAlchemy column is required or not
     :param col: SQLAlchemy column
@@ -60,7 +65,7 @@ def is_required(col):
     return not col.nullable and not col.default and not col.primary_key
 
 
-def get_magql_required_type(col):
+def get_magql_required_type(col: Column) -> t.Any:
     type_ = get_magql_type(col)
     if is_required(col):
         return MagqlNonNull(type_)
@@ -81,30 +86,47 @@ def get_magql_required_type(col):
 @_get_magql_type.register(Time)
 @_get_magql_type.register(String)
 @_get_magql_type.register(VARCHAR)
-def _get_string_type(type, column):
+def _get_string_type(
+    type: t.Union[
+        JSON,
+        JSONType,
+        DateTime,
+        Text,
+        Date,
+        UnicodeText,
+        Unicode,
+        URLType,
+        PhoneNumberType,
+        EmailType,
+        Time,
+        String,
+        VARCHAR,
+    ],
+    column: Column,
+) -> MagqlString:
     # if "image" in column.info:
     #     return MagqlFile()
     return MagqlString()
 
 
 @_get_magql_type.register(Boolean)
-def _get_boolean_type(type, column):
+def _get_boolean_type(type: Boolean, column: Column) -> MagqlBoolean:
     return MagqlBoolean()
 
 
 @_get_magql_type.register(Integer)
-def _get_integer_type(type, column):
+def _get_integer_type(type: Integer, column: Column) -> MagqlInt:
     return MagqlInt(MagqlInt.parse_value_accepts_string)
 
 
 @_get_magql_type.register(Float)
 @_get_magql_type.register(Numeric)
-def _get_float_type(type, column):
+def _get_float_type(type: t.Union[Float, Numeric], column: Column) -> MagqlFloat:
     return MagqlFloat(MagqlFloat.parse_value_accepts_string)
 
 
 @_get_magql_type.register(ChoiceType)
-def _get_choice_type(type_, column):
+def _get_choice_type(type_: ChoiceType, column: Column) -> MagqlEnumType:
     # name = camelize(column.table.name) + camelize(column.name) + "EnumType"
     # enums = dict((key, value) for key, value in type.choices)
     # rm = GraphQLEnumType(name, enums)
@@ -114,12 +136,12 @@ def _get_choice_type(type_, column):
     return MagqlEnumType(name, enums)
 
 
-def get_magql_filter_type(type_, base_type):
+def get_magql_filter_type(type_: t.Any, base_type: t.Any) -> MagqlInputObjectType:
     return _get_magql_filter_type(type_.type, base_type)
 
 
 @singledispatch
-def _get_magql_filter_type(column, base_type):
+def _get_magql_filter_type(column: Column, base_type: t.Any) -> MagqlInputObjectType:
     """
     Returns the filter based on the given type
     :param type: The type of the SQLAlchemy column
@@ -143,32 +165,53 @@ def _get_magql_filter_type(column, base_type):
 @_get_magql_filter_type.register(Time)
 @_get_magql_filter_type.register(String)
 @_get_magql_filter_type.register(VARCHAR)
-def _get_string_filter(type, base_type):
+def _get_string_filter(
+    type: t.Union[
+        JSON,
+        JSONType,
+        DateTime,
+        Text,
+        Date,
+        UnicodeText,
+        Unicode,
+        URLType,
+        PhoneNumberType,
+        EmailType,
+        Time,
+        String,
+        VARCHAR,
+    ],
+    base_type: t.Any,
+) -> MagqlInputObjectType:
     return StringFilter
 
 
 @_get_magql_filter_type.register(Date)
 @_get_magql_filter_type.register(DateTime)
-def _get_date_filter(type, base_type):
+def _get_date_filter(
+    type: t.Union[Date, DateTime], base_type: t.Any
+) -> MagqlInputObjectType:
     return DateFilter
 
 
 @_get_magql_filter_type.register(Integer)
-def _get_integer_filter(type, base_type):
+def _get_integer_filter(type: Integer, base_type: t.Any) -> MagqlInputObjectType:
     return IntFilter
 
 
 @_get_magql_filter_type.register(Float)
 @_get_magql_filter_type.register(Numeric)
-def _get_float_filter(type, base_type):
+def _get_float_filter(
+    type: t.Union[Float, Numeric], base_type: t.Any
+) -> MagqlInputObjectType:
     return FloatFilter
 
 
 @_get_magql_filter_type.register(Boolean)
-def _get_boolean_filter(type, base_type):
+def _get_boolean_filter(type: Boolean, base_type: t.Any) -> MagqlInputObjectType:
     return BooleanFilter
 
 
 @_get_magql_filter_type.register(ChoiceType)
-def _get_choice_filter(type_, base_type):
+def _get_choice_filter(type_: ChoiceType, base_type: t.Any) -> MagqlInputObjectType:
     return EnumFilter(base_type)
