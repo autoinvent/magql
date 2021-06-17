@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import logging
+import typing as t
 
 from inflection import camelize
 from inflection import pluralize
@@ -33,7 +36,7 @@ from magql.type import get_magql_required_type
 from magql.type import get_magql_type
 
 
-def is_rel_required(rel):
+def is_rel_required(rel: t.Any) -> bool:
     calc_keys = rel._calculated_foreign_keys
     fk = rel._user_defined_foreign_keys.union(calc_keys).pop()
     return not fk.nullable
@@ -50,13 +53,13 @@ class MagqlTableManagerCollection:
 
     def __init__(
         self,
-        tables,
-        managers=None,
-        create_resolver=CreateResolver,
-        update_resolver=UpdateResolver,
-        delete_resolver=DeleteResolver,
-        single_resolver=SingleResolver,
-        many_resolver=ManyResolver,
+        tables: t.Mapping[str, t.Any],
+        managers: t.Optional[t.Mapping[str, t.Any]] = None,
+        create_resolver: t.Type[CreateResolver] = CreateResolver,
+        update_resolver: t.Type[UpdateResolver] = UpdateResolver,
+        delete_resolver: t.Type[DeleteResolver] = DeleteResolver,
+        single_resolver: t.Type[SingleResolver] = SingleResolver,
+        many_resolver: t.Type[ManyResolver] = ManyResolver,
     ):
         """
         Creates the managers needed to manange the Magql schema,
@@ -92,11 +95,11 @@ class MagqlTableManagerCollection:
             if manager:
                 manager.add_rels(self.manager_map)
 
-        self.magql_name_to_table = {}
+        self.magql_name_to_table: t.Dict[str, t.Any] = {}
         self.generate_check_delete()
         self.generate_pagination()
 
-    def generate_check_delete(self):
+    def generate_check_delete(self) -> None:
         check_delete_manager = MagqlManager("checkDelete")
 
         self.magql_names = []
@@ -124,7 +127,7 @@ class MagqlTableManagerCollection:
         )
         self.manager_map["checkDelete"] = check_delete_manager
 
-    def generate_pagination(self):
+    def generate_pagination(self) -> None:
         page_manager = MagqlManager("PaginationManager")
         page_manager.magql_types["Page"] = MagqlInputObjectType(
             "Page",
@@ -135,12 +138,12 @@ class MagqlTableManagerCollection:
         )
         self.manager_map["PaginationManager"] = page_manager
 
-    def generate_manager(self, table):
+    def generate_manager(self, table: t.Any) -> t.Optional[MagqlTableManager]:
         try:
             get_mapper(table)
         except ValueError:
             logging.getLogger(__name__).warning(f"No mapper for table {table.name!r}.")
-            return
+            return None
         return MagqlTableManager(
             table,
             create_resolver=self.create_resolver(table),
@@ -152,10 +155,10 @@ class MagqlTableManagerCollection:
 
 
 class MagqlManager:
-    def __init__(self, magql_name):
+    def __init__(self, magql_name: str):
         self.query = MagqlObjectType("Query")
         self.mutation = MagqlObjectType("Mutation")
-        self.magql_types = {}
+        self.magql_types: t.Dict[str, t.Any] = {}
         # The check delete union type resolver ( and likely more resolvers)
         # relies on the fact that the magql_name and the base object type
         # share the same name
@@ -169,13 +172,13 @@ class MagqlTableManager(MagqlManager):
 
     def __init__(
         self,
-        table,
-        magql_name=None,
-        create_resolver=None,
-        update_resolver=None,
-        delete_resolver=None,
-        single_resolver=None,
-        many_resolver=None,
+        table: t.Any,
+        magql_name: t.Optional[str] = None,
+        create_resolver: t.Optional[CreateResolver] = None,
+        update_resolver: t.Optional[UpdateResolver] = None,
+        delete_resolver: t.Optional[DeleteResolver] = None,
+        single_resolver: t.Optional[SingleResolver] = None,
+        many_resolver: t.Optional[ManyResolver] = None,
     ):
         """
         The manager for a single sqlalchemy table.
@@ -215,16 +218,16 @@ class MagqlTableManager(MagqlManager):
         self.generate_magql_types()
 
     @property
-    def single_query_name(self):
+    def single_query_name(self) -> str:
         if hasattr(self, "_single_query_name_override"):
             if callable(self._single_query_name_override):
-                return self._single_query_name_override()
+                return t.cast(str, self._single_query_name_override())
             else:
                 return self._single_query_name_override
         return js_camelize(self.table.name)
 
     @single_query_name.setter
-    def single_query_name(self, value):
+    def single_query_name(self, value: str) -> None:
         """
         Overrides the name of the single query to a custom value
         :param value: The name to change the single query to
@@ -232,16 +235,16 @@ class MagqlTableManager(MagqlManager):
         self._single_query_name_override = value
 
     @property
-    def many_query_name(self):
+    def many_query_name(self) -> str:
         if hasattr(self, "_many_query_name_override"):
             if callable(self._many_query_name_override):
-                return self._many_query_name_override()
+                return t.cast(str, self._many_query_name_override())
             else:
                 return self._many_query_name_override
         return js_camelize(pluralize(self.table.name))
 
     @many_query_name.setter
-    def many_query_name(self, value):
+    def many_query_name(self, value: str) -> None:
         """
         Overrides the name of the many query to a custom value
         :param value: The name to change the many query to
@@ -249,18 +252,18 @@ class MagqlTableManager(MagqlManager):
         self._many_query_name_override = value
 
     @property
-    def create_mutation_name(self):
+    def create_mutation_name(self) -> str:
         return "create" + self.magql_name
 
     @property
-    def update_mutation_name(self):
+    def update_mutation_name(self) -> str:
         return "update" + self.magql_name
 
     @property
-    def delete_mutation_name(self):
+    def delete_mutation_name(self) -> str:
         return "delete" + self.magql_name
 
-    def generate_create_mutation(self):
+    def generate_create_mutation(self) -> None:
         # TODO: Move backend auth functions into manager collection
         self.create = MagqlField(
             self.magql_name + "Payload",
@@ -268,7 +271,7 @@ class MagqlTableManager(MagqlManager):
             self.create_resolver,
         )
 
-    def generate_update_mutation(self):
+    def generate_update_mutation(self) -> None:
         self.update = MagqlField(
             self.magql_name + "Payload",
             {
@@ -278,21 +281,21 @@ class MagqlTableManager(MagqlManager):
             self.update_resolver,
         )
 
-    def generate_delete_mutation(self):
+    def generate_delete_mutation(self) -> None:
         self.delete = MagqlField(
             self.magql_name + "Payload",
             {"id": MagqlArgument(MagqlNonNull("ID"))},
             self.delete_resolver,
         )
 
-    def generate_single_query(self):
+    def generate_single_query(self) -> None:
         self.single = MagqlField(
             self.magql_name + "Payload",
             {"id": MagqlArgument(MagqlNonNull("ID"))},
             self.single_resolver,
         )
 
-    def generate_many_query(self):
+    def generate_many_query(self) -> None:
         self.many = MagqlField(
             self.magql_name + "ListPayload",
             {
@@ -305,7 +308,7 @@ class MagqlTableManager(MagqlManager):
             self.many_resolver,
         )
 
-    def generate_types(self):
+    def generate_types(self) -> None:
         base = MagqlObjectType(self.magql_name)
         input = MagqlInputObjectType(self.magql_name + "Input")
         input_required = MagqlInputObjectType(self.magql_name + "InputRequired")
@@ -341,7 +344,7 @@ class MagqlTableManager(MagqlManager):
         self.magql_types[self.magql_name + "Filter"] = filter_
         self.magql_types[self.magql_name + "Sort"] = sort
 
-    def generate_magql_types(self):
+    def generate_magql_types(self) -> None:
         self.generate_create_mutation()
         self.generate_update_mutation()
         self.generate_delete_mutation()
@@ -351,7 +354,7 @@ class MagqlTableManager(MagqlManager):
         self.generate_types()
 
     # Allows fields to be added directly to mutation and query
-    def to_magql(self):
+    def to_magql(self) -> None:
         if self.create:
             self.mutation.fields[self.create_mutation_name] = self.create
         if self.update:
@@ -365,20 +368,21 @@ class MagqlTableManager(MagqlManager):
 
     # a manager map can be passed in to give information about
     # other managers, such as an overriden name, otherwise a default is used
-    def add_rels(self, managers=None):
+    def add_rels(self, managers: t.Optional[t.List[MagqlManager]] = None) -> None:
+        # TODO managers shouldn't be None, no checks for it.
         try:
             table_mapper = get_mapper(self.table)
         except ValueError:
             logging.getLogger(__name__).warning(
                 f"No mapper for table {self.table.name!r}."
             )
-            return
+            return None
 
         for rel_name, rel in table_mapper.relationships.items():
             rel_table = rel.target
 
-            if rel_table.name in managers:
-                rel_manager = managers[rel_table.name]
+            if rel_table.name in t.cast(t.List[MagqlManager], managers):
+                rel_manager = t.cast(t.List[MagqlManager], managers)[rel_table.name]
                 if rel_manager is None:
                     continue
             else:
@@ -410,7 +414,8 @@ class MagqlTableManager(MagqlManager):
                     "The value set as the primary key for the relationship is not valid"
                 )
 
-            input_required_field = input_field = field_type
+            input_field: t.Union[str, MagqlList] = field_type
+            input_required_field: t.Union[str, MagqlList, MagqlNonNull] = field_type
 
             if "TOMANY" in direction:
                 base_field = MagqlList(base_field)
@@ -460,3 +465,4 @@ class MagqlTableManager(MagqlManager):
                 },
             )
         )
+        return None

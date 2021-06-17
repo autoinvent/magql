@@ -14,3 +14,4 @@ __pycache__/
 /htmlcov/
 /docs/_build/
 magql.log*
+.mypy_cache/

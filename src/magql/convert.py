@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import typing as t
+
 from graphql import GraphQLBoolean
 from graphql import GraphQLFloat
 from graphql import GraphQLID
@@ -14,9 +18,12 @@ from .definitions import MagqlFloat
 from .definitions import MagqlID
 from .definitions import MagqlInputField
 from .definitions import MagqlInt
+from .definitions import MagqlList
+from .definitions import MagqlNonNull
 from .definitions import MagqlString
 from .definitions import MagqlUnionType
 from .definitions import MagqlWrappingType
+from .manager import MagqlManager
 
 
 class Convert:
@@ -29,7 +36,7 @@ class Convert:
     :func:`generate_schema` is called.
     """
 
-    def __init__(self, manager_list):
+    def __init__(self, manager_list: t.List[MagqlManager]):
         """
         Generates a graphql schema based on the passed list of managers
         :param manager_list: A list of managers from which the Magql
@@ -37,8 +44,8 @@ class Convert:
         """
         # type_map maps magql_names to GraphQL and is needed to translate
         # MagqlTypes to GraphQLTypes
-        self.gql_queries = {}
-        self.gql_mutations = {}
+        self.gql_queries: t.Dict[str, t.Any] = {}
+        self.gql_mutations: t.Dict[str, t.Any] = {}
 
         self.type_map = {
             "String": GraphQLString,
@@ -57,11 +64,11 @@ class Convert:
     # TODO: Update convert_str_leafs and convert_type to either recursive or
     # functions on MagqlTypes
     @staticmethod
-    def convert_type(ret_type, magql_type_map):
-        wrapping_types_stack2 = []
+    def convert_type(ret_type: t.Any, magql_type_map: t.Mapping[str, t.Any]) -> t.Any:
+        wrapping_types_stack2: t.List[t.Any] = []
         while isinstance(ret_type, MagqlWrappingType):
             wrapping_types_stack2.append(type(ret_type))
-            ret_type = ret_type.type_
+            ret_type = t.cast(t.Union[MagqlNonNull, MagqlList], ret_type).type_
         if isinstance(ret_type, str):
             ret_type = magql_type_map[ret_type]
         while wrapping_types_stack2:
@@ -69,16 +76,16 @@ class Convert:
         return ret_type
 
     @staticmethod
-    def convert_str_leafs(type_, magql_type_map):
+    def convert_str_leafs(type_: t.Any, magql_type_map: t.Mapping[str, t.Any]) -> None:
         wrapping_types_stack = []
         while isinstance(type_, MagqlWrappingType):
             wrapping_types_stack.append(type(type_))
-            type_ = type_.type_
+            type_ = t.cast(t.Union[MagqlNonNull, MagqlList], type_).type_
         if isinstance(type_, MagqlEnumType):
-            return
+            return None
 
         if isinstance(type_, MagqlUnionType):
-            return
+            return None
         for field_name, field in type_.fields.items():
             if not (
                 isinstance(field, MagqlField) or isinstance(field, MagqlInputField)
@@ -95,8 +102,9 @@ class Convert:
                     field.args[arg_name] = Convert.convert_type(
                         arg.type_, magql_type_map
                     )
+        return None
 
-    def generate_type_map(self, managers):
+    def generate_type_map(self, managers: t.List[MagqlManager]) -> None:
         """
         Creates a mapping of String representations of Magql Types to
         the Magql types. Then converts the magql_types to grapqhl types.
@@ -131,22 +139,25 @@ class Convert:
         for manager in managers:
             if manager:
                 self.convert_types(manager)
+        return None
 
-    def convert_types(self, manager):
+    def convert_types(self, manager: MagqlManager) -> None:
         for _magql_name, magql_type in manager.magql_types.items():
             magql_type.convert(self.type_map)
         for _magql_name, magql_type in manager.magql_types.items():
             magql_type.convert(self.type_map)
+        return None
 
-    def generate_mutations(self, manager):
+    def generate_mutations(self, manager: MagqlManager) -> None:
         for _mutation_name, magql_field in manager.mutation.fields.items():
             for _argument_name, argument in magql_field.args.items():
                 argument.convert(self.type_map)
 
             if magql_field.type_name not in self.type_map:
                 pass
+        return None
 
-    def convert_manager(self, manager):
+    def convert_manager(self, manager: MagqlManager) -> None:
         # TODO: Consider moving the conversion of the query into the
         #  manager
         for query_name, query in manager.query.fields.items():
@@ -155,7 +166,7 @@ class Convert:
         for mut_name, mutation in manager.mutation.fields.items():
             self.gql_mutations[mut_name] = mutation.convert(self.type_map)
 
-    def generate_schema(self):
+    def generate_schema(self) -> GraphQLSchema:
         """
         Finalizes the GraphQL schema by generating the GraphQLSchema
         :return: The finalized GraphQL schema
