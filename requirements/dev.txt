@@ -58,7 +58,7 @@ pluggy==0.13.1
     # via pytest
 pre-commit==2.0.1
     # via -r dev.in
-py==1.8.1
+py==1.10.0
     # via
     #   nox
     #   pytest
