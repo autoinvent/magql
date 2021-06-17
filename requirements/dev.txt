@@ -62,7 +62,7 @@ py==1.8.1
     # via
     #   nox
     #   pytest
-pygments==2.5.2
+pygments==2.7.4
     # via sphinx
 pyparsing==2.4.6
     # via packaging
