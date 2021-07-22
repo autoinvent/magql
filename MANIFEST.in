@@ -1,6 +1,7 @@
 include CHANGES.rst
 include noxfile.py
 include requirements/*.txt
+include src/magql/py.typed
 graft docs
 prune docs/_build
 graft tests
