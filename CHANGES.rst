@@ -1,3 +1,12 @@
+v0.6.0
+------
+
+Released 2021-07-22
+
+-   Add static typing annotations.
+-   Added validation helpers from autoinvent-example.
+
+
 v0.5.0
 ------
 
