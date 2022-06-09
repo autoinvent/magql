@@ -1,3 +1,8 @@
+UNRELEASED
+------
+
+- Update the INCLUDES filter operator to be case-insensitive
+
 v0.6.0
 ------
 
