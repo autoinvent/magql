@@ -195,7 +195,7 @@ def _get_date_comparator(_: t.Union[DateTime, Date]) -> t.Callable:
 def _get_string_comparator(_: t.Any) -> t.Callable:
     def condition(filter_value: t.Any, filter_operator: str, field: t.Any) -> t.Any:
         if filter_operator == "INCLUDES":
-            return field.like(f"%{filter_value}%")
+            return field.ilike(f"%{filter_value}%")
         elif filter_operator == "EQUALS":
             return field == filter_value
         elif filter_operator == "EXISTS":
