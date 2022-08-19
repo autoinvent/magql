@@ -10,6 +10,7 @@ from sqlalchemy import Text
 from sqlalchemy import Time
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
+from sqlalchemy import func
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.types import Boolean
 from sqlalchemy.types import Float
@@ -197,7 +198,7 @@ def _get_string_comparator(_: t.Any) -> t.Callable:
         if filter_operator == "INCLUDES":
             return field.ilike(f"%{filter_value}%")
         elif filter_operator == "EQUALS":
-            return field == filter_value
+            return func.lower(field) == filter_value.lower()
         elif filter_operator == "EXISTS":
             return field.like("%")
         elif filter_operator == "DOESNOTEXIST":
