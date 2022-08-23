@@ -1,7 +1,10 @@
-UNRELEASED
+v0.7.0
 ------
 
+Released 2022-08-22
+
 - Update the INCLUDES filter operator to be case-insensitive
+- Make EQUALS operator case insensitive
 
 v0.6.0
 ------
