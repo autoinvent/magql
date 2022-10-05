@@ -142,7 +142,6 @@ class MagqlTableManagerCollection:
         try:
             get_mapper(table)
         except ValueError:
-            logging.getLogger(__name__).warning(f"No mapper for table {table.name!r}.")
             return None
         return MagqlTableManager(
             table,
