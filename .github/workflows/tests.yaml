@@ -2,26 +2,41 @@ name: Tests
 on:
   push:
     branches:
-      - master
+      - main
+      - '*.x'
   pull_request:
-    branches:
-      - master
 jobs:
   tests:
-    name: ${{ matrix.nox-session }}
+    name: ${{ matrix.python }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        nox-session: ['tests', 'style', 'docs']
+        python: ['3.12', '3.11', '3.10', '3.9', '3.8']
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v1
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+      - uses: actions/setup-python@bd6b4b6205c4dbad673328db7b31b7fab9e241c0
         with:
-          path: ~/.cache/pip
-          key: pip-${{ hashFiles('setup.py') }}-${ hashFiles('requirements/*.txt') }}
-      - uses: actions/cache@v1
+          python-version: ${{ matrix.python }}
+          allow-prereleases: true
+          cache: pip
+          cache-dependency-path: requirements/*.txt
+      - run: pip install tox
+      - run: tox run -e py${{ matrix.python }}
+  typing:
+    name: Types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+      - uses: actions/setup-python@bd6b4b6205c4dbad673328db7b31b7fab9e241c0
         with:
-          path: ~/.cache/pre-commit
-          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-      - uses: excitedleigh/setup-nox@0.1.0
-      - run: nox -s ${{ matrix.nox-session }}
+          python-version: '3.x'
+          cache: pip
+          cache-dependency-path: requirements/*.txt
+      - name: cache mypy
+        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8
+        with:
+          path: ./.mypy_cache
+          key: mypy|${{ hashFiles('pyproject.toml') }}
+      - run: pip install tox
+      - run: tox run -e typing
