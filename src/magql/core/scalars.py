@@ -14,6 +14,7 @@ from .nodes import Scalar
 # reference them.
 
 String = Scalar("String")
+"""Built-in GraphQL ``String` type."""
 String._graphql_node = graphql.GraphQLString
 
 
@@ -28,6 +29,9 @@ def parse_int(value: t.Any) -> t.Any:
 
 
 Int = Scalar("Int")
+"""Built-in GraphQL ``Int`` type. Extends GraphQL-Core implementation to accept string
+values. Strings are common when using HTML forms.
+"""
 Int._graphql_node = graphql.GraphQLInt
 graphql.GraphQLInt.parse_value = parse_int
 
@@ -43,6 +47,9 @@ def parse_float(value: t.Any) -> t.Any:
 
 
 Float = Scalar("Float")
+"""Built-in GraphQL ``Float`` type. Extends GraphQL-Core implementation to accept string
+values. Strings are common when using HTML forms.
+"""
 Float._graphql_node = graphql.GraphQLFloat
 graphql.GraphQLFloat.parse_value = parse_float
 
@@ -60,10 +67,17 @@ def parse_boolean(value: t.Any) -> t.Any:
 
 
 Boolean = Scalar("Boolean")
+"""Built-in GraphQL ``Boolean`` type. Extends GraphQL-Core implementation to accept
+common case-insensitive string values; 1, on, true; 0, off, false. In particular, HTML
+forms send "on".
+"""
 Boolean._graphql_node = graphql.GraphQLBoolean
 graphql.GraphQLBoolean.parse_value = parse_boolean
 
 ID = Scalar("ID")
+"""Built-in GraphQL ``ID` type. Accepts strings, ints, and floats, converting them all
+to strings.
+"""
 ID._graphql_node = graphql.GraphQLID
 
 graphql_default_scalars = [String, Int, Float, Boolean, ID]
@@ -87,9 +101,13 @@ DateTime = Scalar(
     "DateTime",
     serialize=datetime.isoformat,
     parse_value=parse_datetime,
-    description="A date and time in ISO 8601 format.",
+    description="A date, time, and timezone in ISO 8601 format.",
     specified_by="ISO 8601",
 )
+"""Date, time, and timezone in ISO 8601 format. Uses dateutil's ``isoparse``. Input
+without a timezone is assumed to be UTC. Always returns a timezone-aware
+:class:`~datetime.DateTime` value.
+"""
 
 JSON = Scalar(
     "JSON",
@@ -98,6 +116,9 @@ JSON = Scalar(
         " through the GraphQL schema."
     ),
 )
+"""A raw JSON value. The inner shape of the object is not specified by or queried
+through the GraphQL schema. Useful for large blobs of opaque data, such as GeoJSON.
+"""
 
 Upload = Scalar(
     "Upload",
@@ -107,5 +128,9 @@ Upload = Scalar(
     ),
     specified_by="https://github.com/jaydenseric/graphql-multipart-request-spec",
 )
+"""An uploaded file, provided alongside the GraphQL request. Should only be used as an
+input type. See https://github.com/jaydenseric/graphql-multipart-request-spec. The spec
+is implemented by Magql's Flask integration.
+"""
 
 default_scalars = [DateTime, JSON, Upload]
