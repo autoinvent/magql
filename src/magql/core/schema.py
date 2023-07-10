@@ -148,6 +148,7 @@ class Schema:
             query=query,
             mutation=mutation,
             description=self.description,
+            extensions={"magql_schema": self},
         )
         return schema
 

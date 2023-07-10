@@ -395,6 +395,7 @@ class _BaseObject(NamedType, t.Generic[_OT]):
             fields=lambda: {k: v._to_graphql() for k, v in self.fields.items()},
             interfaces=lambda: [v._to_graphql() for v in self.interfaces],
             description=self.description,
+            extensions={"magql_node": self},
         )
 
 
@@ -512,6 +513,7 @@ class Union(NamedType):
             types=lambda: [o._to_graphql() for o in self.types],
             resolve_type=self.resolve_type,
             description=self.description,
+            extensions={"magql_node": self},
         )
 
 
@@ -630,6 +632,7 @@ class Field(_DataValidatorNode["Argument"]):
             resolve=self.resolve,
             description=self.description,
             deprecation_reason=self.deprecation,
+            extensions={"magql_node": self},
         )
 
 
@@ -684,6 +687,7 @@ class Argument(_ValueValidatorNode):
             default_value=self.default,
             description=self.description,
             deprecation_reason=self.deprecation,
+            extensions={"magql_node": self},
         )
 
 
@@ -732,6 +736,7 @@ class InputObject(NamedType, _DataValidatorNode["InputField"]):
             name=self.name,
             fields=lambda: {k: v._to_graphql() for k, v in self.fields.items()},
             description=self.description,
+            extensions={"magql_node": self},
         )
 
 
@@ -786,6 +791,7 @@ class InputField(_ValueValidatorNode):
             default_value=self.default,
             description=self.description,
             deprecation_reason=self.deprecation,
+            extensions={"magql_node": self},
         )
 
 
@@ -835,6 +841,7 @@ class Enum(NamedType):
             name=self.name,
             values=self.values,
             description=self.description,
+            extensions={"magql_node": self},
         )
 
 
@@ -914,6 +921,7 @@ class Scalar(NamedType):
             parse_value=self.parse_value,
             description=self.description,
             specified_by_url=self.specified_by,
+            extensions={"magql_node": self},
         )
 
 
