@@ -43,7 +43,7 @@ source = ["src", "*/site-packages"]
 
 [tool.mypy]
 python_version = "3.8"
-files = ["src/magql", "tests/types"]
+files = ["src/magql"]
 show_error_codes = true
 pretty = true
-#strict = true
+strict = true

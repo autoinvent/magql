@@ -76,34 +76,34 @@ class Schema:
         here anyway.
         """
         type_map = self.type_map
-        q: t.Deque[nodes.Type] = deque(type_map.values())
+        q: t.Deque[nodes.Node | str | None] = deque(type_map.values())
         q.append(self.query)
         q.append(self.mutation)
-        seen: t.Set[nodes.Node] = set()
+        seen: t.Set[nodes.Node | str] = set()
 
         # Breadth-first traversal of the graph to collect all nodes, starting at the
         # top-level query and mutation objects.
         while q:
-            type = q.popleft()
+            node = q.popleft()
 
-            if type is None or type in seen:
+            if node is None or node in seen:
                 continue
 
-            seen.add(type)
+            seen.add(node)
 
-            if isinstance(type, str):
-                if type not in type_map:
+            if isinstance(node, str):
+                if node not in type_map:
                     # Record a type name with no definition.
-                    type_map[type] = None
+                    type_map[node] = None
 
                 continue
 
-            if isinstance(type, nodes.NamedType):
+            if isinstance(node, nodes.NamedType):
                 # Record a defined named type.
-                type_map[type.name] = type
+                type_map[node.name] = node
 
             # Add all nodes this one can see to the end of the queue.
-            q.extend(type._find_nodes())
+            q.extend(node._find_nodes())
 
         # Remove the top-level query and mutation objects from the map, they can't be
         # used as types elsewhere.
@@ -111,7 +111,10 @@ class Schema:
 
         # For each node seen, replace any type name reference with its instance. If the
         # types were fully defined, no string names will remain in the graph.
-        for node in (n for n in seen if not isinstance(n, str)):
+        for node in seen:
+            if isinstance(node, str):
+                continue
+
             node._apply_types(type_map)
 
     def to_graphql(self) -> graphql.GraphQLSchema:

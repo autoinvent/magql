@@ -33,7 +33,7 @@ Int = Scalar("Int")
 values. Strings are common when using HTML forms.
 """
 Int._graphql_node = graphql.GraphQLInt
-graphql.GraphQLInt.parse_value = parse_int
+graphql.GraphQLInt.parse_value = parse_int  # type: ignore[method-assign]
 
 
 def parse_float(value: t.Any) -> t.Any:
@@ -51,7 +51,7 @@ Float = Scalar("Float")
 values. Strings are common when using HTML forms.
 """
 Float._graphql_node = graphql.GraphQLFloat
-graphql.GraphQLFloat.parse_value = parse_float
+graphql.GraphQLFloat.parse_value = parse_float  # type: ignore[method-assign]
 
 
 def parse_boolean(value: t.Any) -> t.Any:
@@ -72,7 +72,7 @@ common case-insensitive string values; 1, on, true; 0, off, false. In particular
 forms send "on".
 """
 Boolean._graphql_node = graphql.GraphQLBoolean
-graphql.GraphQLBoolean.parse_value = parse_boolean
+graphql.GraphQLBoolean.parse_value = parse_boolean  # type: ignore[method-assign]
 
 ID = Scalar("ID")
 """Built-in GraphQL ``ID` type. Accepts strings, ints, and floats, converting them all

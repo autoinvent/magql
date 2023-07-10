@@ -20,13 +20,13 @@ class Node:
     _graphql_node: t.Any | None = None
     """Cached result of :meth:`_to_graphql`."""
 
-    def _find_nodes(self) -> t.Iterable[str | Type]:
+    def _find_nodes(self) -> t.Iterable[str | Node]:
         """Iterate over all the nodes that this node references directly. Used by
         :meth:`.Schema._find_nodes` to perform a breadth-first traversal of the graph.
         """
         raise NotImplementedError
 
-    def _apply_types(self, type_map: dict[str, NamedType]) -> None:
+    def _apply_types(self, type_map: dict[str, NamedType | None]) -> None:
         """Replace any forward references (string names) with the actual type object
         if it is present in the type map. Used by :meth:`.Schema._find_nodes` after
         collecting all known types.
@@ -117,7 +117,6 @@ def resolve_item(parent: t.Any, info: GraphQLResolveInfo, **kwargs: t.Any) -> t.
 
 
 _VCT = t.TypeVar("_VCT")
-_IT = t.TypeVar("_IT", "Argument", "InputObject")
 
 
 class _BaseValidatorNode(Node, t.Generic[_VCT]):
@@ -145,11 +144,11 @@ class _BaseValidatorNode(Node, t.Generic[_VCT]):
     # validate method not defined here because the API differs for data and value.
 
 
-class _DataValidatorNode(_BaseValidatorNode[DataValidatorCallable], t.Generic[_IT]):
+class _DataValidatorNode(_BaseValidatorNode[DataValidatorCallable]):
     """Base class for nodes that validate a collection of values."""
 
     @property
-    def _items_to_validate(self) -> dict[str, _IT]:
+    def _items_to_validate(self) -> dict[str, Argument] | dict[str, InputField]:
         """A map of names to objects with a ``validators`` list.
 
         This is necessary since :class:`Field` uses :attr:`~Field.args` and
@@ -171,7 +170,7 @@ class _DataValidatorNode(_BaseValidatorNode[DataValidatorCallable], t.Generic[_I
                 item.validate(info, data[name], data)
             except ValidationError as e:
                 # Should always be a list here.
-                errors[name] = e.message
+                errors[name] = e.message  # type: ignore[assignment]
 
         # Call this node's validators on the collection of values, after the individual
         # values have been validated.
@@ -225,7 +224,7 @@ def _validate_value(
     # Unwrap non-null to get named type or list. If the unwrapped type is an
     # InputObject, it also has validation.
     if isinstance(type, NonNull):
-        type = type.type
+        type = type.type  # type: ignore[assignment]
 
     # If this is an InputObject instead of a scalar, need to start the data validator
     # process again for it, so it can run InputField validators, etc.
@@ -249,7 +248,7 @@ def _validate_value(
                 nested_type = type
 
                 while isinstance(nested_type, Wrapping):
-                    nested_type = nested_type.type
+                    nested_type = nested_type.type  # type: ignore[assignment]
 
                     if isinstance(nested_type, List):
                         break
@@ -296,7 +295,7 @@ def _validate_value(
 class _ValueValidatorNode(_BaseValidatorNode[ValueValidatorCallable]):
     """Base class for nodes that validate a single value."""
 
-    type: Type
+    type: str | Type
 
     def validate(
         self, info: GraphQLResolveInfo, value: t.Any, data: dict[str, t.Any]
@@ -308,18 +307,19 @@ class _ValueValidatorNode(_BaseValidatorNode[ValueValidatorCallable]):
         :param value: The value being validated.
         :param data: All input items being validated, of which this is one item.
         """
-        _validate_value(self.type, self.validators, info, value, data)
+        _validate_value(
+            self.type, self.validators, info, value, data  # type: ignore[arg-type]
+        )
 
 
-_OT = t.TypeVar("_OT", bound=graphql.GraphQLNamedType)
-
-
-class _BaseObject(NamedType, t.Generic[_OT]):
+class _BaseObject(NamedType):
     """Shared implementation for :class:`Object` and :class:`Union`. The only difference
     between the two is what GraphQL-Core class they create.
     """
 
-    _graphql_class: t.ClassVar[type[_OT]]
+    _graphql_class: t.ClassVar[
+        type[graphql.GraphQLObjectType] | type[graphql.GraphQLInterfaceType]
+    ]
     """The GraphQL class to create."""
 
     def __init__(
@@ -382,24 +382,26 @@ class _BaseObject(NamedType, t.Generic[_OT]):
 
         return decorator
 
-    def _find_nodes(self) -> t.Iterator[str | Type]:
+    def _find_nodes(self) -> t.Iterator[str | Node]:
         yield from self.fields.values()
         yield from self.interfaces
 
-    def _apply_types(self, type_map: dict[str, NamedType]) -> None:
-        _list_to_types(self.interfaces, type_map)
+    def _apply_types(self, type_map: dict[str, NamedType | None]) -> None:
+        _list_to_types(self.interfaces, type_map)  # type: ignore[arg-type]
 
-    def _make_graphql_node(self) -> _OT:
+    def _make_graphql_node(self) -> t.Any:
         return self._graphql_class(
             name=self.name,
             fields=lambda: {k: v._to_graphql() for k, v in self.fields.items()},
-            interfaces=lambda: [v._to_graphql() for v in self.interfaces],
+            interfaces=lambda: [
+                v._to_graphql() for v in self.interfaces  # type: ignore[union-attr]
+            ],
             description=self.description,
             extensions={"magql_node": self},
         )
 
 
-class Object(_BaseObject[graphql.GraphQLObjectType]):
+class Object(_BaseObject):
     """A named collection of fields. Can be used as the type of a field. Cannot be used
     as the type of an argument, use :class:`InputObject` instead.
 
@@ -414,7 +416,7 @@ class Object(_BaseObject[graphql.GraphQLObjectType]):
     _graphql_class = graphql.GraphQLObjectType
 
 
-class Interface(_BaseObject[graphql.GraphQLInterfaceType]):
+class Interface(_BaseObject):
     """A named collection of fields that can are shared between multiple objects. Cannot
     be used as the type of a field.
 
@@ -504,20 +506,20 @@ class Union(NamedType):
     def _find_nodes(self) -> t.Iterator[str | Node]:
         yield from self.types
 
-    def _apply_types(self, type_map: dict[str, NamedType]) -> None:
-        _list_to_types(self.types, type_map)
+    def _apply_types(self, type_map: dict[str, NamedType | None]) -> None:
+        _list_to_types(self.types, type_map)  # type: ignore[arg-type]
 
     def _make_graphql_node(self) -> graphql.GraphQLUnionType:
         return graphql.GraphQLUnionType(
             name=self.name,
-            types=lambda: [o._to_graphql() for o in self.types],
-            resolve_type=self.resolve_type,
+            types=[o._to_graphql() for o in self.types],  # type: ignore[union-attr]
+            resolve_type=self.resolve_type,  # type: ignore[arg-type]
             description=self.description,
             extensions={"magql_node": self},
         )
 
 
-class Field(_DataValidatorNode["Argument"]):
+class Field(_DataValidatorNode):
     """A field on an :class:`Object`.
 
     Each field has a resolver function to get its value from the parent object. Magql
@@ -587,7 +589,9 @@ class Field(_DataValidatorNode["Argument"]):
         self._resolve = f
         return f
 
-    def resolve(self, parent: t.Any, info: GraphQLResolveInfo, **kwargs: t.Any):
+    def resolve(
+        self, parent: t.Any, info: GraphQLResolveInfo, **kwargs: t.Any
+    ) -> t.Any:
         """The full resolver behavior provided by Magql. If a :meth:`pre_resolve`
         function was registered, it is called first. Then :meth:`validate` validates the
         input arguments. Finally, the resolver is called to get a value. Any part of
@@ -618,16 +622,16 @@ class Field(_DataValidatorNode["Argument"]):
     def _items_to_validate(self) -> dict[str, Argument]:
         return self.args
 
-    def _find_nodes(self):
+    def _find_nodes(self) -> t.Iterator[str | Node]:
         yield self.type
         yield from self.args.values()
 
-    def _apply_types(self, type_map: dict[str, NamedType]) -> None:
+    def _apply_types(self, type_map: dict[str, NamedType | None]) -> None:
         self.type = _to_type(self.type, type_map)
 
     def _make_graphql_node(self) -> graphql.GraphQLField:
         return graphql.GraphQLField(
-            type_=self.type._to_graphql(),
+            type_=self.type._to_graphql(),  # type: ignore[union-attr]
             args={name: arg._to_graphql() for name, arg in self.args.items()},
             resolve=self.resolve,
             description=self.description,
@@ -675,15 +679,15 @@ class Argument(_ValueValidatorNode):
         self.deprecation = deprecation
         """Deprecation message to show in the schema."""
 
-    def _find_nodes(self) -> t.Iterable[str | Type]:
+    def _find_nodes(self) -> t.Iterable[str | Node]:
         yield self.type
 
-    def _apply_types(self, type_map: dict[str, NamedType]) -> None:
+    def _apply_types(self, type_map: dict[str, NamedType | None]) -> None:
         self.type = _to_type(self.type, type_map)
 
     def _make_graphql_node(self) -> graphql.GraphQLArgument:
         return graphql.GraphQLArgument(
-            type_=self.type._to_graphql(),
+            type_=self.type._to_graphql(),  # type: ignore[union-attr]
             default_value=self.default,
             description=self.description,
             deprecation_reason=self.deprecation,
@@ -691,7 +695,7 @@ class Argument(_ValueValidatorNode):
         )
 
 
-class InputObject(NamedType, _DataValidatorNode["InputField"]):
+class InputObject(NamedType, _DataValidatorNode):
     """A named collection of input fields. Can be used as the type of an argument.
     Cannot be used as the type of a field, use :class:`Object` instead.
 
@@ -725,10 +729,10 @@ class InputObject(NamedType, _DataValidatorNode["InputField"]):
     def _items_to_validate(self) -> dict[str, InputField]:
         return self.fields
 
-    def _find_nodes(self) -> t.Iterator[str | Type]:
+    def _find_nodes(self) -> t.Iterator[str | Node]:
         yield from self.fields.values()
 
-    def _apply_types(self, type_map: dict[str, NamedType]) -> None:
+    def _apply_types(self, type_map: dict[str, NamedType | None]) -> None:
         pass
 
     def _make_graphql_node(self) -> graphql.GraphQLInputObjectType:
@@ -779,15 +783,15 @@ class InputField(_ValueValidatorNode):
         self.deprecation = deprecation
         """Deprecation message to show in the schema."""
 
-    def _find_nodes(self) -> t.Iterable[str | Type]:
+    def _find_nodes(self) -> t.Iterable[str | Node]:
         yield self.type
 
-    def _apply_types(self, type_map: dict[str, NamedType]) -> None:
+    def _apply_types(self, type_map: dict[str, NamedType | None]) -> None:
         self.type = _to_type(self.type, type_map)
 
     def _make_graphql_node(self) -> graphql.GraphQLInputField:
         return graphql.GraphQLInputField(
-            type_=self.type._to_graphql(),
+            type_=self.type._to_graphql(),  # type: ignore[union-attr]
             default_value=self.default,
             description=self.description,
             deprecation_reason=self.deprecation,
@@ -820,7 +824,7 @@ class Enum(NamedType):
 
         # GraphQL maps enum names to values, map to objects instead.
         elif isinstance(values, enum.EnumMeta):
-            values = values.__members__
+            values = values.__members__.copy()
 
         self.values: dict[str, t.Any] = values
         """Maps string values used by GraphQL to Python values seen by the resolver. A
@@ -830,10 +834,10 @@ class Enum(NamedType):
         self.description = description
         """Help text to show in the schema."""
 
-    def _find_nodes(self) -> t.Iterator[str | Type]:
+    def _find_nodes(self) -> t.Iterator[str | Node]:
         yield from ()
 
-    def _apply_types(self, type_map: dict[str, NamedType]) -> None:
+    def _apply_types(self, type_map: dict[str, NamedType | None]) -> None:
         pass
 
     def _make_graphql_node(self) -> graphql.GraphQLEnumType:
@@ -843,6 +847,10 @@ class Enum(NamedType):
             description=self.description,
             extensions={"magql_node": self},
         )
+
+
+def _identity(value: t.Any) -> t.Any:
+    return value
 
 
 class Scalar(NamedType):
@@ -865,21 +873,15 @@ class Scalar(NamedType):
     def __init__(
         self,
         name: str,
-        serialize: t.Callable[[t.Any], t.Any] | None = None,
-        parse_value: t.Callable[[t.Any], t.Any] | None = None,
+        serialize: t.Callable[[t.Any], t.Any] = _identity,
+        parse_value: t.Callable[[t.Any], t.Any] = _identity,
         description: str | None = None,
         specified_by: str | None = None,
     ) -> None:
         super().__init__(name=name)
 
-        if serialize is None:
-            serialize = self.serialize
-
         self.serialize = serialize
         """Convert a Python value to the output serialization format."""
-
-        if parse_value is None:
-            parse_value = self.parse_value
 
         self.parse_value = parse_value
         """Convert a value in the input serialization format to Python."""
@@ -892,26 +894,10 @@ class Scalar(NamedType):
         :attr:`description` in the schema.
         """
 
-    @staticmethod
-    def serialize(value: t.Any) -> t.Any:
-        """The default serialization returns the value unchanged as output.
-
-        :param value: The Python value to serialize for output.
-        """
-        return value
-
-    @staticmethod
-    def parse_value(value: t.Any) -> t.Any:
-        """The default parser takes the value unchanged from input.
-
-        :param value: The input value in the serialized format.
-        """
-        return value
-
-    def _find_nodes(self) -> t.Iterator[str | Type]:
+    def _find_nodes(self) -> t.Iterator[str | Node]:
         yield from ()
 
-    def _apply_types(self, type_map: dict[str, NamedType]) -> None:
+    def _apply_types(self, type_map: dict[str, NamedType | None]) -> None:
         pass
 
     def _make_graphql_node(self) -> graphql.GraphQLScalarType:
@@ -930,7 +916,7 @@ class Wrapping(Type):
     between the two is what GraphQL-Core class they create.
     """
 
-    _graphql_class: t.ClassVar[type[graphql.GraphQLWrappingType]]
+    _graphql_class: t.ClassVar[type[graphql.GraphQLWrappingType[t.Any]]]
     """The GraphQL class to create."""
 
     def __init__(self, type: str | Type) -> None:
@@ -939,14 +925,14 @@ class Wrapping(Type):
         self.type = type
         """The wrapped type. May be the name of a type defined elsewhere."""
 
-    def _find_nodes(self) -> t.Iterator[str | Type]:
+    def _find_nodes(self) -> t.Iterator[str | Node]:
         yield self.type
 
-    def _apply_types(self, type_map: dict[str, NamedType]) -> None:
+    def _apply_types(self, type_map: dict[str, NamedType | None]) -> None:
         self.type = _to_type(self.type, type_map)
 
-    def _make_graphql_node(self) -> graphql.GraphQLWrappingType:
-        return self._graphql_class(self.type._to_graphql())
+    def _make_graphql_node(self) -> graphql.GraphQLWrappingType[t.Any]:
+        return self._graphql_class(self.type._to_graphql())  # type: ignore[union-attr]
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.type!r}>"
@@ -1012,12 +998,12 @@ def _expand_type_shortcut(
         if isinstance(v, cls):
             out[k] = v
         else:
-            out[k] = cls(v)
+            out[k] = cls(v)  # type: ignore[arg-type]
 
     return out
 
 
-def _to_type(value: str | Type, type_map: dict[str, NamedType]) -> str | Type:
+def _to_type(value: str | Type, type_map: dict[str, NamedType | None]) -> str | Type:
     """Used during :meth:`Node._apply_types` to turn a type name into the defined
     instance.
 
@@ -1033,7 +1019,9 @@ def _to_type(value: str | Type, type_map: dict[str, NamedType]) -> str | Type:
     return value
 
 
-def _list_to_types(values: list[str | Type], type_map: dict[str, NamedType]) -> None:
+def _list_to_types(
+    values: list[str | Type], type_map: dict[str, NamedType | None]
+) -> None:
     """Call :func:`_to_type` on each item in a list, replacing names with their resolved
     type in the list.
 
