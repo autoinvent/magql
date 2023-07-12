@@ -3,28 +3,30 @@ import enum
 import graphql
 import pytest
 
-from magql import core
+import magql
 
 
 def test_object():
-    obj = core.Object("User", fields={"id": core.Field(core.ID)})
+    obj = magql.Object("User", fields={"id": magql.Field(magql.ID)})
     g = obj._to_graphql()
     assert isinstance(g, graphql.GraphQLObjectType)
     assert g.fields["id"].type is graphql.GraphQLID
 
 
 def test_argument():
-    obj = core.Field(core.String, args={"id": core.Argument(core.Int)})
+    obj = magql.Field(magql.String, args={"id": magql.Argument(magql.Int)})
     g = obj._to_graphql()
     assert isinstance(g, graphql.GraphQLField)
     assert g.args["id"].type is graphql.GraphQLInt
 
 
 def test_interface():
-    obj = core.Object(
+    obj = magql.Object(
         "User",
-        interfaces=[core.Interface("Person", fields={"name": core.Field(core.String)})],
-        fields={"admin": core.Field(core.Boolean)},
+        interfaces=[
+            magql.Interface("Person", fields={"name": magql.Field(magql.String)})
+        ],
+        fields={"admin": magql.Field(magql.Boolean)},
     )
     g = obj._to_graphql()
     assert isinstance(g, graphql.GraphQLObjectType)
@@ -35,9 +37,9 @@ def test_interface():
 
 
 def test_nested_interface():
-    obj = core.Object(
+    obj = magql.Object(
         "User",
-        interfaces=[core.Interface("Person", interfaces=[core.Interface("Entity")])],
+        interfaces=[magql.Interface("Person", interfaces=[magql.Interface("Entity")])],
     )
     g = obj._to_graphql()
     assert isinstance(g, graphql.GraphQLObjectType)
@@ -47,7 +49,15 @@ def test_nested_interface():
 
 
 def test_union():
-    obj = core.Union("Person", types=[core.Object("User"), core.Object("Admin")])
+    class User:
+        pass
+
+    class Admin(User):
+        pass
+
+    obj = magql.Union(
+        "Person", types={User: magql.Object("User"), Admin: magql.Object("Admin")}
+    )
     g = obj._to_graphql()
     assert isinstance(g, graphql.GraphQLUnionType)
     assert len(g.types) == 2
@@ -55,9 +65,9 @@ def test_union():
 
 
 def test_input():
-    obj = core.Argument(
-        core.InputObject(
-            "UserCreateData", fields={"name": core.InputField(core.String)}
+    obj = magql.Argument(
+        magql.InputObject(
+            "UserCreateData", fields={"name": magql.InputField(magql.String)}
         )
     )
     g = obj._to_graphql()
@@ -79,7 +89,7 @@ Color = enum.Enum("Color", ["red", "green", "blue"])
     ],
 )
 def test_enum(values, expect):
-    obj = core.Enum("colors", values)
+    obj = magql.Enum("colors", values)
     g = obj._to_graphql()
     assert isinstance(g, graphql.GraphQLEnumType)
     assert isinstance(g.values["red"], graphql.GraphQLEnumValue)
@@ -87,7 +97,7 @@ def test_enum(values, expect):
 
 
 def test_wrapping():
-    obj = core.List(core.NonNull(core.String))
+    obj = magql.List(magql.NonNull(magql.String))
     g = obj._to_graphql()
     assert isinstance(g, graphql.GraphQLList)
     assert isinstance(g.of_type, graphql.GraphQLNonNull)
@@ -97,11 +107,11 @@ def test_wrapping():
 @pytest.mark.parametrize(
     ("obj", "expect"),
     [
-        pytest.param(core.String, graphql.GraphQLString, id="String"),
-        pytest.param(core.Int, graphql.GraphQLInt, id="Int"),
-        pytest.param(core.Float, graphql.GraphQLFloat, id="Float"),
-        pytest.param(core.Boolean, graphql.GraphQLBoolean, id="Boolean"),
-        pytest.param(core.ID, graphql.GraphQLID, id="ID"),
+        pytest.param(magql.String, graphql.GraphQLString, id="String"),
+        pytest.param(magql.Int, graphql.GraphQLInt, id="Int"),
+        pytest.param(magql.Float, graphql.GraphQLFloat, id="Float"),
+        pytest.param(magql.Boolean, graphql.GraphQLBoolean, id="Boolean"),
+        pytest.param(magql.ID, graphql.GraphQLID, id="ID"),
     ],
 )
 def test_standard_scalar(obj, expect):
@@ -112,8 +122,8 @@ def test_standard_scalar(obj, expect):
 @pytest.mark.parametrize(
     "obj",
     [
-        pytest.param(core.JSON, id="JSON"),
-        pytest.param(core.Upload, id="Upload"),
+        pytest.param(magql.JSON, id="JSON"),
+        pytest.param(magql.Upload, id="Upload"),
     ],
 )
 def test_custom_scalar(obj):
@@ -127,9 +137,9 @@ def test_wrapping_properties():
     """Types have list and non_null properties that return wrapped
     types.
     """
-    obj = core.String
-    assert isinstance(obj.list, core.List)
-    assert isinstance(obj.non_null, core.NonNull)
+    obj = magql.String
+    assert isinstance(obj.list, magql.List)
+    assert isinstance(obj.non_null, magql.NonNull)
     assert obj.non_null.type is obj
     go = obj.non_null.list.non_null._to_graphql()
     assert graphql.get_named_type(go).name == "String"
@@ -139,7 +149,7 @@ def test_to_graphql_cached():
     """The same GraphQL node is produced if a magql node is converted
     multiple times.
     """
-    obj = core.Object("User", fields={"id": core.Field(core.ID)})
+    obj = magql.Object("User", fields={"id": magql.Field(magql.ID)})
     g1 = obj._to_graphql()
     g2 = obj._to_graphql()
     assert g1 is g2

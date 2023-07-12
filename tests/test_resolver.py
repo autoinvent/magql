@@ -1,7 +1,7 @@
 import dataclasses
 from types import SimpleNamespace
 
-from magql import core
+import magql
 
 
 @dataclasses.dataclass()
@@ -14,9 +14,9 @@ def test_default_resolve():
     """The default resolver looks at attributes."""
     root = SimpleNamespace()
     root.user = User(1, "abc")
-    s = core.Schema()
-    s.query.fields["user"] = core.Field(
-        core.Object("User", fields={"name": core.Field("String")})
+    s = magql.Schema()
+    s.query.fields["user"] = magql.Field(
+        magql.Object("User", fields={"name": magql.Field("String")})
     )
     result = s.execute("{ user { name } }", root)
     assert result.data == {"user": {"name": "abc"}}
@@ -27,12 +27,12 @@ def test_arg():
     resolver.
     """
     users = {1: User(1, "abc")}
-    s = core.Schema()
+    s = magql.Schema()
 
     @s.query.field(
         "user",
-        core.Object("User", fields={"name": core.Field("String")}),
-        args={"id": core.Argument(core.Int)},
+        magql.Object("User", fields={"name": magql.Field("String")}),
+        args={"id": magql.Argument(magql.Int)},
     )
     def resolve_user(parent, info, id):
         return users.get(id)
@@ -45,10 +45,10 @@ def test_arg():
 def test_resolver_decorator():
     """The decorator will add a resolver to a field after definition."""
     users = {1: User(1, "abc")}
-    s = core.Schema()
-    user_field = core.Field(
-        core.Object("User", fields={"name": core.Field("String")}),
-        args={"id": core.Argument(core.Int)},
+    s = magql.Schema()
+    user_field = magql.Field(
+        magql.Object("User", fields={"name": magql.Field("String")}),
+        args={"id": magql.Argument(magql.Int)},
     )
     s.query.fields["user"] = user_field
 
