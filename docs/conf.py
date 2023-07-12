@@ -1,33 +1,39 @@
-from pallets_sphinx_themes import get_version
+import importlib.metadata
 
 # Project --------------------------------------------------------------
 
 project = "magql"
-copyright = "2019 Moebius Solutions"
-release, version = get_version("magql")
+version = release = importlib.metadata.version("magql").partition(".dev")[0]
 
 # General --------------------------------------------------------------
 
 extensions = [
-    "sphinx.ext.autodoc",
+    "sphinx.ext.extlinks",
     "sphinx.ext.intersphinx",
-    "pallets_sphinx_themes",
-    "sphinxcontrib.log_cabinet",
-    "sphinx_issues",
+    "myst_parser",
+    "autodoc2",
 ]
+extlinks = {
+    "issue": ("https://github.com/autoinvent/magql/issues/%s", "#%s"),
+    "pr": ("https://github.com/autoinvent/magql/pull/%s", "#%s"),
+}
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
+    "graphql": ("https://graphql-core-3.readthedocs.io/en/latest/", None),
+    "sqlalchemy": ("https://docs.sqlalchemy.org", None),
 }
-issues_github_path = "autoinvent/magql"
+myst_enable_extensions = [
+    "fieldlist",
+]
+myst_heading_anchors = 2
+autodoc2_packages = [{"path": "../src/magql", "auto_mode": False}]
 
 # HTML -----------------------------------------------------------------
 
-html_theme = "flask"
-html_sidebars = {
-    "index": ["searchbox.html"],
-    "**": ["localtoc.html", "relations.html", "searchbox.html"],
+html_theme = "furo"
+html_theme_options = {
+    "source_repository": "https://github.com/autoinvent/magql/",
+    "source_branch": "main",
+    "source_directory": "docs/",
 }
-singlehtml_sidebars = {"index": ["localtoc.html"]}
-html_title = f"{project} Documentation ({version})"
-html_show_sourcelink = False
-html_domain_indices = False
+html_show_copyright = False

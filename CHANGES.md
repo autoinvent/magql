@@ -3,7 +3,7 @@ Version 0.8.0
 
 Unreleased
 
--   Complete rewrite.
+-   Complete rewrite. {pr}`74`
 
 
 Version 0.7.0

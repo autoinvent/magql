@@ -296,6 +296,9 @@ class _ValueValidatorNode(_BaseValidatorNode[ValueValidatorCallable]):
     """Base class for nodes that validate a single value."""
 
     type: str | Type
+    """The type of the value passed to this argument. May be the name of a type
+    defined elsewhere.
+    """
 
     def validate(
         self, info: GraphQLResolveInfo, value: t.Any, data: dict[str, t.Any]
@@ -664,9 +667,6 @@ class Argument(_ValueValidatorNode):
         super().__init__(validators=validators)
 
         self.type = type
-        """The type of the value passed to this argument. May be the name of a type
-        defined elsewhere.
-        """
 
         self.default = default
         """The default Python value to use if input is not provided. By default, it will
@@ -768,9 +768,6 @@ class InputField(_ValueValidatorNode):
         super().__init__(validators=validators)
 
         self.type = type
-        """The type of the value passed to this field. May be the name of a type defined
-        elsewhere.
-        """
 
         self.default = default
         """The default Python value to use if input is not provided. By default, it will

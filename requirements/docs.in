@@ -1,4 +1,3 @@
-Sphinx
-Pallets-Sphinx-Themes
-sphinxcontrib-log-cabinet
-sphinx-issues
+furo
+myst-parser
+sphinx-autodoc2
