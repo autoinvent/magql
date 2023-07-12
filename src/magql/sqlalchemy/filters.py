@@ -9,14 +9,14 @@ from dateutil.parser import isoparse
 from .search import prepare_contains
 
 
-def op_eq(c: sa.Column, vs: list[t.Any]) -> t.Any:
+def op_eq(c: sa.Column[t.Any], vs: list[t.Any]) -> t.Any:
     if len(vs) == 1:
         return c == vs[0]
 
     return c.in_(vs)
 
 
-def op_like(c: sa.Column, vs: list[t.Any]) -> t.Any:
+def op_like(c: sa.Column[t.Any], vs: list[t.Any]) -> t.Any:
     return sa.or_(*(c.ilike(prepare_contains(v), escape="/") for v in vs))
 
 
@@ -55,7 +55,9 @@ map names to callables that generate a SQL expression.
 """
 
 
-def get_op(c: sa.Column, name: str) -> t.Callable[[sa.Column, list[t.Any]], t.Any]:
+def get_op(
+    c: sa.Column[t.Any], name: str
+) -> t.Callable[[sa.Column[t.Any], list[t.Any]], t.Any]:
     """Get the operation callable for a given column and operation name. A
     :exc:`KeyError` is raised if the operation is not defined for the type.
 
@@ -72,7 +74,7 @@ def get_op(c: sa.Column, name: str) -> t.Callable[[sa.Column, list[t.Any]], t.An
     raise KeyError(f"No ops for type '{type(c.type)}'.")
 
 
-def prepare_value(c: sa.Column, vs: list[t.Any]) -> list[t.Any]:
+def prepare_value(c: sa.Column[t.Any], vs: list[t.Any]) -> list[t.Any]:
     """Convert data in the filter value from JSON to Python based on the type of the
     column.
 
@@ -98,7 +100,7 @@ def prepare_value(c: sa.Column, vs: list[t.Any]) -> list[t.Any]:
     return vs
 
 
-def apply_filter_item(c: sa.Column, filter_item: dict[str, t.Any]) -> t.Any:
+def apply_filter_item(c: sa.Column[t.Any], filter_item: dict[str, t.Any]) -> t.Any:
     """Apply a single filter item to the given column, returning a SQL expression.
     Called by :meth:`.ListResolver.apply_filter`.
 

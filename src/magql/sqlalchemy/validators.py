@@ -20,7 +20,7 @@ class ItemExistsValidator:
     :param col: The primary key column.
     """
 
-    def __init__(self, model: type[t.Any], key: str, col: sa.Column) -> None:
+    def __init__(self, model: type[t.Any], key: str, col: sa.Column[t.Any]) -> None:
         self.model = model
         self.key = key
         self.col = col
@@ -50,7 +50,7 @@ class ListExistsValidator:
     :param col: The primary key column.
     """
 
-    def __init__(self, model: type[t.Any], key: str, col: sa.Column) -> None:
+    def __init__(self, model: type[t.Any], key: str, col: sa.Column[t.Any]) -> None:
         self.model = model
         self.key = key
         self.col = col
@@ -95,9 +95,9 @@ class UniqueValidator:
     def __init__(
         self,
         model: type[t.Any],
-        columns: dict[str, sa.Column],
+        columns: dict[str, sa.Column[t.Any]],
         pk_name: str,
-        pk_col: sa.Column,
+        pk_col: sa.Column[t.Any],
     ) -> None:
         self.model = model
         self.columns = columns
@@ -123,7 +123,6 @@ class UniqueValidator:
         if self.pk_name in data:
             # An update mutation will have the primary key in the input. Prevent the row
             # from matching itself, only check other rows.
-            session: sa_orm.Session = info.context
             item = session.get(self.model, data[self.pk_name])
             filters.append(self.pk_col != data[self.pk_name])
 

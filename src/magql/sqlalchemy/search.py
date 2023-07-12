@@ -39,12 +39,12 @@ class ColumnSearchProvider:
         ]
 
 
-def find_string_columns(model: type[t.Any]) -> list[sa.Column]:
+def find_string_columns(model: type[t.Any]) -> list[sa.Column[t.Any]]:
     """Find all columns that can be searched using ``LIKE``.
 
     :param model: SQLAlchemy model class.
     """
-    columns = sa.inspect(model).columns
+    columns = sa.inspect(model).columns  # type: ignore[union-attr]
     return [c for c in columns if isinstance(c.type, sa.String)]
 
 

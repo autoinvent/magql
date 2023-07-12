@@ -25,7 +25,7 @@ class ModelResolver:
 
     def __init__(self, model: type[t.Any]) -> None:
         self.model = model
-        self.mapper = t.cast(orm.Mapper, sa.inspect(model))
+        self.mapper = t.cast(orm.Mapper[t.Any], sa.inspect(model))
         self.pk_name, self.pk_col = next(
             x for x in self.mapper.columns.items() if x[1].primary_key
         )
@@ -49,14 +49,17 @@ class ModelResolver:
             to get to this relationship and should be extended.
         """
         out = []
+        assert node.selection_set is not None
 
         for selection in node.selection_set.selections:
+            inner_node = t.cast(graphql.FieldNode, selection)
+
             # Only consider AST nodes for relationships, which are ones with further
             # selections for the object's fields.
-            if selection.selection_set is None:
+            if inner_node.selection_set is None:
                 continue
 
-            field_name = selection.name.value
+            field_name = inner_node.name.value
             mapper = sa.inspect(model)
             rel_prop = mapper.relationships.get(field_name)
 
@@ -69,7 +72,7 @@ class ModelResolver:
 
             if load_path is None:
                 # At the base level, start a new load expression.
-                extended_path = orm.selectinload(rel_attr)
+                extended_path = t.cast(sa.orm.Load, orm.selectinload(rel_attr))
             else:
                 # Recursion, extend the existing load expression.
                 extended_path = load_path.selectinload(rel_attr)
@@ -77,7 +80,7 @@ class ModelResolver:
             # Recurse to find any relationship fields selected in the child object.
             out.extend(
                 self._load_relationships(
-                    selection, rel_prop.entity.class_, extended_path
+                    inner_node, rel_prop.entity.class_, extended_path
                 )
             )
 
@@ -105,12 +108,12 @@ class QueryResolver(ModelResolver):
     """
 
     def build_query(
-        self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs
-    ) -> sql.Select:
+        self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
+    ) -> sql.Select[t.Any]:
         """Build the query to execute."""
         raise NotImplementedError
 
-    def transform_result(self, result: Result) -> t.Any:
+    def transform_result(self, result: Result[t.Any]) -> t.Any:
         """Get the model instance or list of instances from a SQLAlchemy result."""
         raise NotImplementedError
 
@@ -132,8 +135,8 @@ class ItemResolver(QueryResolver):
     """
 
     def build_query(
-        self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs
-    ) -> sql.Select:
+        self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
+    ) -> sql.Select[t.Any]:
         load = self._load_relationships(_get_field_node(info), self.model)
         return (
             sa.select(self.model)
@@ -141,7 +144,7 @@ class ItemResolver(QueryResolver):
             .where(self.pk_col == kwargs[self.pk_name])
         )
 
-    def transform_result(self, result: Result) -> t.Any:
+    def transform_result(self, result: Result[t.Any]) -> t.Any:
         return result.scalar_one_or_none()
 
 
@@ -180,9 +183,9 @@ class ListResolver(QueryResolver):
 
     def apply_filter(
         self,
-        query: sql.Select,
+        query: sql.Select[t.Any],
         filter_arg: list[list[dict[str, t.Any]]] | None,
-    ) -> sql.Select:
+    ) -> sql.Select[t.Any]:
         if not filter_arg:
             return query
 
@@ -217,15 +220,15 @@ class ListResolver(QueryResolver):
         return query.filter(sa.or_(*or_clauses))
 
     def apply_sort(
-        self, query: sql.Select, sort_arg: list[tuple[str, bool]] | None = None
-    ) -> sql.Select:
+        self, query: sql.Select[t.Any], sort_arg: list[tuple[str, bool]] | None = None
+    ) -> sql.Select[t.Any]:
         if not sort_arg:
             return query.order_by(self.pk_col)
 
         out = []
 
         for name, desc in sort_arg:
-            value: sa.Column = getattr(self.model, name)
+            value: sa.Column[t.Any] = getattr(self.model, name)
 
             if not desc:
                 out.append(value.asc())
@@ -236,10 +239,10 @@ class ListResolver(QueryResolver):
 
     def apply_page(
         self,
-        query: sql.Select,
+        query: sql.Select[t.Any],
         page: t.Any | None,
         per_page: int | None,
-    ) -> sql.Select:
+    ) -> sql.Select[t.Any]:
         if page is None:
             return query
 
@@ -250,8 +253,8 @@ class ListResolver(QueryResolver):
         return query.offset((page - 1) * per_page).limit(per_page)
 
     def build_query(
-        self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs
-    ) -> sql.Select:
+        self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
+    ) -> sql.Select[t.Any]:
         field_node = _get_field_node(info, nested="items")
         load = self._load_relationships(field_node, self.model)
         query = sa.select(self.model).options(*load)
@@ -260,11 +263,13 @@ class ListResolver(QueryResolver):
         query = self.apply_page(query, kwargs.get("page"), kwargs.get("per_page"))
         return query
 
-    def get_items(self, session: sa.orm.Session, query: sa.sql.Select) -> list[t.Any]:
+    def get_items(
+        self, session: sa.orm.Session, query: sa.sql.Select[t.Any]
+    ) -> list[t.Any]:
         result = session.execute(query)
-        return result.scalars().all()
+        return result.scalars().all()  # type: ignore[return-value]
 
-    def get_count(self, session: sa.orm.Session, query: sa.sql.Select) -> int:
+    def get_count(self, session: sa.orm.Session, query: sa.sql.Select[t.Any]) -> int:
         """After generating the query with any filters, get the total row count for
         pagination purposes. Remove any eager loads, sorts, and pagination, then execute
         a SQL ``count()`` query.
@@ -280,7 +285,7 @@ class ListResolver(QueryResolver):
             .subquery()
         )
         value = session.execute(sa.select(sa.func.count()).select_from(sub)).scalar()
-        return value
+        return value  # type: ignore[return-value]
 
     def __call__(
         self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
@@ -299,7 +304,7 @@ class ListResult:
     type.
     """
 
-    items: t.Any
+    items: list[t.Any]
     """The list of model instances for this page."""
 
     total: int
@@ -320,9 +325,13 @@ def _get_field_node(
 
     # For a list query, the actual type is nested in the list result type.
     if nested is not None:
+        assert node.selection_set is not None
+
         for selection in node.selection_set.selections:
-            if selection.name.value == nested:
-                return selection
+            inner_node = t.cast(graphql.FieldNode, selection)
+
+            if inner_node.name.value == nested:
+                return inner_node
 
     return node
 
@@ -426,7 +435,7 @@ class DeleteResolver(MutationResolver):
         self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
     ) -> t.Any:
         session: sa.orm.Session = info.context
-        item = self.get_item(session, kwargs)
+        item = self.get_item(info, kwargs)
         session.delete(item)
         session.commit()
         return True

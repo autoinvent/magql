@@ -5,6 +5,7 @@ import typing as t
 
 import sqlalchemy as sa
 import sqlalchemy.orm as sa_orm
+from sqlalchemy.sql.type_api import TypeEngine
 
 from ..core import nodes
 from ..core import scalars
@@ -227,7 +228,7 @@ class ModelManager:
     def __init__(self, model: type[t.Any], search: bool = False) -> None:
         self.model = model
         model_name = model.__name__
-        mapper = sa.inspect(model)
+        mapper = t.cast(sa_orm.Mapper[t.Any], sa.inspect(model))
         # Find the primary key column and its Magql type.
         pk_name, pk_col = next(x for x in mapper.columns.items() if x[1].primary_key)
         pk_type = _convert_column_type(model_name, pk_name, pk_col)
@@ -283,7 +284,7 @@ class ModelManager:
             if rel.direction is sa_orm.MANYTOONE:
                 # To-one is like a column but with an object type instead of a scalar.
                 # Assume a single foreign key column.
-                col = next(iter(rel.local_columns))
+                col = next(iter(rel.local_columns))  # type: ignore[arg-type]
 
                 if col.nullable:
                     object.fields[key] = nodes.Field(target_name)
@@ -346,24 +347,27 @@ class ModelManager:
             resolve=ListResolver(model),
         )
         unique_validators = []
+        local_table = t.cast(sa.Table, mapper.local_table)
 
-        for constraint in mapper.local_table.constraints:
+        for constraint in local_table.constraints:
             if not isinstance(constraint, sa.UniqueConstraint):
                 continue
 
             unique_validators.append(
-                UniqueValidator(model, constraint.columns, pk_name, pk_col)
+                UniqueValidator(
+                    model, constraint.columns, pk_name, pk_col  # type: ignore[arg-type]
+                )
             )
 
         self.create_field = nodes.Field(
             self.object.non_null,
-            args=create_args,
+            args=create_args,  # type: ignore[arg-type]
             resolve=CreateResolver(model),
             validators=[*unique_validators],
         )
         self.update_field = nodes.Field(
             self.object.non_null,
-            args=update_args,
+            args=update_args,  # type: ignore[arg-type]
             resolve=UpdateResolver(model),
             validators=[*unique_validators],
         )
@@ -403,7 +407,10 @@ class ModelManager:
 
 
 def _convert_column_type(
-    model_name: str, key: str, column: sa.Column, nested_type: sa.Column | None = None
+    model_name: str,
+    key: str,
+    column: sa.Column[t.Any],
+    nested_type: TypeEngine[t.Any] | None = None,
 ) -> nodes.Type:
     """Convert a SQLAlchemy column type to a Magql scalar type.
 
@@ -451,7 +458,7 @@ def _convert_column_type(
         out = _convert_column_type(model_name, key, column, ct.item_type).non_null.list
 
         # Dimensions > 1 add extra non-null list wrapping.
-        for _ in range(ct.dimensions - 1):
+        for _ in range((ct.dimensions or 1) - 1):
             out = out.non_null.list
 
         return out

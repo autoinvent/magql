@@ -53,8 +53,8 @@ class CheckDelete(BaseCheckDelete):
         session: sa_orm.Session = info.context
         model = self.managers[kwargs["type"]].model
         item = session.get(model, kwargs["id"])
-        mapper: sa_orm.Mapper = sa_orm.object_mapper(item)
-        rel: sa_orm.RelationshipProperty
+        mapper: sa_orm.Mapper[t.Any] = sa_orm.object_mapper(item)
+        rel: sa_orm.RelationshipProperty[t.Any]
         result = CheckDeleteResult()
 
         for key, rel in mapper.relationships.items():
