@@ -30,36 +30,6 @@ class ModelResolver:
             x for x in self.mapper.columns.items() if x[1].primary_key
         )
 
-    def __call__(
-        self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
-    ) -> t.Any:
-        raise NotImplementedError
-
-
-class QueryResolver(ModelResolver):
-    """Base class for SQLAlchemy model API queries used by :class:`.ModelManager`.
-    Subclasses must implement :meth:`build_query` and :meth:`transform_result`, and can
-    override ``__call__``.
-    """
-
-    def build_query(
-        self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs
-    ) -> sql.Select:
-        """Build the query to execute."""
-        raise NotImplementedError
-
-    def transform_result(self, result: Result) -> t.Any:
-        """Get the model instance or list of instances from a SQLAlchemy result."""
-        raise NotImplementedError
-
-    def __call__(
-        self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
-    ) -> t.Any:
-        """Build and execute the query, then return the result."""
-        query = self.build_query(parent, info, **kwargs)
-        result = info.context.execute(query)
-        return self.transform_result(result)
-
     def _load_relationships(
         self,
         node: graphql.FieldNode,
@@ -121,6 +91,36 @@ class QueryResolver(ModelResolver):
 
         # There were child relationships, and this is the full collection.
         return out
+
+    def __call__(
+        self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
+    ) -> t.Any:
+        raise NotImplementedError
+
+
+class QueryResolver(ModelResolver):
+    """Base class for SQLAlchemy model API queries used by :class:`.ModelManager`.
+    Subclasses must implement :meth:`build_query` and :meth:`transform_result`, and can
+    override ``__call__``.
+    """
+
+    def build_query(
+        self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs
+    ) -> sql.Select:
+        """Build the query to execute."""
+        raise NotImplementedError
+
+    def transform_result(self, result: Result) -> t.Any:
+        """Get the model instance or list of instances from a SQLAlchemy result."""
+        raise NotImplementedError
+
+    def __call__(
+        self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
+    ) -> t.Any:
+        """Build and execute the query, then return the result."""
+        query = self.build_query(parent, info, **kwargs)
+        result = info.context.execute(query)
+        return self.transform_result(result)
 
 
 class ItemResolver(QueryResolver):
@@ -332,9 +332,13 @@ class MutationResolver(ModelResolver):
     Subclasses must implement ``__call__``.
     """
 
-    def get_item(self, session: sa.orm.Session, pk_value: t.Any) -> t.Any:
+    def get_item(self, info: graphql.GraphQLResolveInfo, kwargs: t.Any) -> t.Any:
         """Get the model instance by primary key value."""
-        return session.get(self.model, pk_value)
+        return info.context.execute(
+            sa.select(self.model)
+            .options(*self._load_relationships(_get_field_node(info), self.model))
+            .where(self.pk_col == kwargs[self.pk_name])
+        ).scalar_one()
 
     def apply_related(self, session: sa.orm.Session, kwargs: dict[str, t.Any]) -> None:
         """For all relationship arguments, replace the id values with their model
@@ -401,7 +405,7 @@ class UpdateResolver(MutationResolver):
     ) -> t.Any:
         session: sa.orm.Session = info.context
         self.apply_related(session, kwargs)
-        item = self.get_item(session, kwargs.pop(self.pk_name))
+        item = self.get_item(info, kwargs.pop(self.pk_name))
 
         for key, value in kwargs.items():
             setattr(item, key, value)
@@ -422,7 +426,7 @@ class DeleteResolver(MutationResolver):
         self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
     ) -> t.Any:
         session: sa.orm.Session = info.context
-        item = self.get_item(session, kwargs[self.pk_name])
+        item = self.get_item(session, kwargs)
         session.delete(item)
         session.commit()
         return True
