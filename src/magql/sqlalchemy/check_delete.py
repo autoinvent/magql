@@ -6,9 +6,9 @@ import sqlalchemy as sa
 import sqlalchemy.orm as sa_orm
 from graphql import GraphQLResolveInfo
 
-from ..core.check_delete import BaseCheckDelete
-from ..core.check_delete import CheckDeleteResult
-from ..core.search import SearchResult
+from ..check_delete import BaseCheckDelete
+from ..check_delete import CheckDeleteResult
+from ..search import SearchResult
 from ..validators import ValidationError
 
 if t.TYPE_CHECKING:

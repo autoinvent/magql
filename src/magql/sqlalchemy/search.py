@@ -5,7 +5,7 @@ import typing as t
 import sqlalchemy as sa
 import sqlalchemy.orm as sa_orm
 
-from ..core.search import SearchResult
+from ..search import SearchResult
 
 
 class ColumnSearchProvider:

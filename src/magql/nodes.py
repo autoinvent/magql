@@ -7,9 +7,9 @@ from functools import cached_property
 import graphql
 from graphql import GraphQLResolveInfo
 
-from ..validators import DataValidatorCallable
-from ..validators import ValidationError
-from ..validators import ValueValidatorCallable
+from .validators import DataValidatorCallable
+from .validators import ValidationError
+from .validators import ValueValidatorCallable
 
 
 class Node:

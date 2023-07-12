@@ -1,5 +1,5 @@
-from . import nodes
-from . import scalars
+from magql import nodes
+from magql import scalars
 
 filter_item: nodes.InputObject = nodes.InputObject(
     "FilterItem",

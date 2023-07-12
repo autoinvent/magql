@@ -5,11 +5,11 @@ import typing as t
 
 from graphql import GraphQLResolveInfo
 
+from . import nodes
 from . import scalars
-from ..core import nodes
-from ..core.search import search_result
-from ..core.search import SearchResult
 from .schema import Schema
+from .search import search_result
+from .search import SearchResult
 
 
 @dataclasses.dataclass()
