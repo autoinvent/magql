@@ -1,30 +1,35 @@
+ci:
+    autoupdate_schedule: quarterly
 repos:
-  - repo: https://github.com/asottile/reorder_python_imports
-    rev: v1.9.0
-    hooks:
-      - id: reorder-python-imports
-        args: ["--application-directories", "src"]
   - repo: https://github.com/asottile/pyupgrade
-    rev: v1.26.2
+    rev: v3.9.0
     hooks:
       - id: pyupgrade
-        args: ["--py36-plus"]
-  - repo: https://github.com/ambv/black
-    rev: 19.10b0
+        args: ["--py38-plus"]
+  - repo: https://github.com/asottile/reorder_python_imports
+    rev: v3.10.0
+    hooks:
+      - id: reorder-python-imports
+        args: ["--py38-plus", "--application-directories", "src"]
+  - repo: https://github.com/psf/black
+    rev: 23.3.0
     hooks:
       - id: black
-  - repo: https://gitlab.com/pycqa/flake8
-    rev: 3.7.9
+        args: ["--target-version", "py38"]
+  - repo: https://github.com/PyCQA/flake8
+    rev: 6.0.0
     hooks:
       - id: flake8
-        additional_dependencies: [flake8-bugbear]
+        additional_dependencies:
+          - flake8-bugbear
+          - flake8-implicit-str-concat
   - repo: https://github.com/peterdemin/pip-compile-multi
-    rev: v1.5.8
+    rev: v2.6.3
     hooks:
       - id: pip-compile-multi-verify
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.5.0
+    rev: v4.4.0
     hooks:
-      - id: check-byte-order-marker
+      - id: fix-byte-order-marker
       - id: trailing-whitespace
       - id: end-of-file-fixer

@@ -1,0 +1,49 @@
+[project]
+name = "magql"
+version = "0.8.0.dev"
+description = "The magical GraphQL framework that generates an API for your data."
+readme = "README.md"
+license = {file = "LICENSE.md"}
+authors = [{name = "David Lord", email = "davidism@gmail.com"}]
+requires-python = ">=3.8"
+dependencies = [
+    "graphql-core>=3",
+    "python-dateutil",
+    "sqlalchemy>=2",
+    "flask>=2.3",
+    "flask-sqlalchemy>=3",
+]
+
+[build-system]
+requires = ["flit_core<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.sdist]
+include = [
+    "docs/",
+    "requirements/",
+    "tests/",
+    "CHANGES.md",
+    "tox.ini",
+]
+exclude = ["docs/_build/"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "error",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["magql", "tests"]
+
+[tool.coverage.paths]
+source = ["src", "*/site-packages"]
+
+[tool.mypy]
+python_version = "3.8"
+files = ["src/magql"]
+show_error_codes = true
+pretty = true
+strict = true
