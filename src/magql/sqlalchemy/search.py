@@ -21,7 +21,7 @@ class ColumnSearchProvider:
         self.model = model
         """The SQLAlchemy model being searched."""
 
-        self.columns = find_string_columns(model)
+        self.columns: list[sa.Column[t.Any]] = find_string_columns(model)
         """The columns to search in."""
 
     def __call__(self, context: t.Any, value: str) -> list[SearchResult]:

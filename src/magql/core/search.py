@@ -63,7 +63,7 @@ class Search:
 
         self.providers: list[SearchProvider] = providers
 
-        self.field = nodes.Field(
+        self.field: nodes.Field = nodes.Field(
             search_result.non_null.list.non_null,
             args={"value": nodes.Argument(scalars.String.non_null)},
             resolve=self,
@@ -77,7 +77,7 @@ class Search:
             }
         """
 
-        self.field_name = field_name
+        self.field_name: str = field_name
         """The name to use for this field in the top-level query object."""
 
     def __call__(
@@ -107,7 +107,7 @@ class Search:
             schema.query.fields[self.field_name] = self.field
 
 
-search_result = nodes.Object(
+search_result: nodes.Object = nodes.Object(
     "SearchResult",
     fields={
         "type": scalars.String.non_null,

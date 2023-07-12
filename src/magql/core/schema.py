@@ -30,10 +30,10 @@ class Schema:
         types: list[nodes.NamedType] | None = None,
         description: str | None = None,
     ):
-        self.query = nodes.Object("Query")
+        self.query: nodes.Object = nodes.Object("Query")
         """The object containing the top-level query fields."""
 
-        self.mutation = nodes.Object("Mutation")
+        self.mutation: nodes.Object = nodes.Object("Mutation")
         """The object containing the top-level mutation fields."""
 
         self.type_map: dict[str, nodes.NamedType | None] = {}
@@ -42,7 +42,7 @@ class Schema:
         have only partially been defined so far, some values may be ``None``.
         """
 
-        self.description = description
+        self.description: str | None = description
         """Help text to show in the schema."""
 
         if types is None:

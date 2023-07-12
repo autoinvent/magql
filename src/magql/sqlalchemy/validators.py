@@ -61,7 +61,7 @@ class ListExistsValidator:
         if value is None:
             return
 
-        session: sa.orm.Session = info.context
+        session: sa_orm.Session = info.context
         # Select ids that match the input list of ids.
         query = sa.select(self.col).filter(self.col.in_(value))
         found = set(session.execute(query).scalars())
@@ -114,7 +114,7 @@ class UniqueValidator:
             message = f"{model.__name__} with this {key_str} already exists."
 
         # Show the error message for each argument that must be unique together.
-        self.errors = {k: message for k in keys}
+        self.errors: dict[str, str] = {k: message for k in keys}
 
     def __call__(self, info: GraphQLResolveInfo, data: t.Any) -> None:
         session: sa_orm.Session = info.context

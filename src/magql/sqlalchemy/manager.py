@@ -47,10 +47,10 @@ class ModelGroup:
         :meth:`add_manager` to add to this.
         """
 
-        self.search = Search()
+        self.search: Search = Search()
         """The :class:`.Search` instance model providers will be registered on."""
 
-        self.check_delete = CheckDelete(self.managers)
+        self.check_delete: CheckDelete = CheckDelete(self.managers)
         """The :class:`.CheckDelete` instance models will be registered on."""
 
         if managers is not None:
@@ -59,7 +59,7 @@ class ModelGroup:
 
     @classmethod
     def from_declarative_base(
-        cls, base: sa.orm.DeclarativeMeta, search: set[type[t.Any] | str] | None = None
+        cls, base: sa_orm.DeclarativeMeta, search: set[type[t.Any] | str] | None = None
     ) -> te.Self:
         """Create a group of model managers for all models in the given SQLAlchemy
         declarative base class.

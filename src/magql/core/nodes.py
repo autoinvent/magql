@@ -235,7 +235,7 @@ def _validate_value(
             # Should always be a dict here.
             errors.append(e.message)
 
-    nested_type = None
+    nested_type: Type | None = None
 
     for f in validators:
         # A list in the validator list means apply that sub-list of validators to each

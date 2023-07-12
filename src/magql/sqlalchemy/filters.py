@@ -5,6 +5,7 @@ from datetime import timezone
 
 import sqlalchemy as sa
 from dateutil.parser import isoparse
+from sqlalchemy.sql.type_api import TypeEngine
 
 from .search import prepare_contains
 
@@ -29,7 +30,10 @@ _comp_ops = {
 }
 
 
-type_ops = {
+type_ops: dict[
+    type[TypeEngine[t.Any]],
+    dict[str, t.Callable[[sa.Column[t.Any], list[t.Any]], t.Any]],
+] = {
     sa.String: {
         "eq": op_eq,
         "like": op_like,

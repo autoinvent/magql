@@ -25,7 +25,9 @@ class ModelResolver:
 
     def __init__(self, model: type[t.Any]) -> None:
         self.model = model
-        self.mapper = t.cast(orm.Mapper[t.Any], sa.inspect(model))
+        self.mapper: orm.Mapper[t.Any] = t.cast(orm.Mapper[t.Any], sa.inspect(model))
+        self.pk_name: str
+        self.pk_col: sa.Column[t.Any]
         self.pk_name, self.pk_col = next(
             x for x in self.mapper.columns.items() if x[1].primary_key
         )
@@ -72,7 +74,7 @@ class ModelResolver:
 
             if load_path is None:
                 # At the base level, start a new load expression.
-                extended_path = t.cast(sa.orm.Load, orm.selectinload(rel_attr))
+                extended_path = t.cast(orm.Load, orm.selectinload(rel_attr))
             else:
                 # Recursion, extend the existing load expression.
                 extended_path = load_path.selectinload(rel_attr)
@@ -263,13 +265,11 @@ class ListResolver(QueryResolver):
         query = self.apply_page(query, kwargs.get("page"), kwargs.get("per_page"))
         return query
 
-    def get_items(
-        self, session: sa.orm.Session, query: sa.sql.Select[t.Any]
-    ) -> list[t.Any]:
+    def get_items(self, session: orm.Session, query: sql.Select[t.Any]) -> list[t.Any]:
         result = session.execute(query)
         return result.scalars().all()  # type: ignore[return-value]
 
-    def get_count(self, session: sa.orm.Session, query: sa.sql.Select[t.Any]) -> int:
+    def get_count(self, session: orm.Session, query: sql.Select[t.Any]) -> int:
         """After generating the query with any filters, get the total row count for
         pagination purposes. Remove any eager loads, sorts, and pagination, then execute
         a SQL ``count()`` query.
@@ -278,7 +278,7 @@ class ListResolver(QueryResolver):
         :param query: The fully constructed list query.
         """
         sub = (
-            query.options(sa.orm.lazyload("*"))
+            query.options(orm.lazyload("*"))
             .order_by(None)
             .limit(None)
             .offset(None)
@@ -291,7 +291,7 @@ class ListResolver(QueryResolver):
         self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
     ) -> t.Any:
         query = self.build_query(parent, info, **kwargs)
-        session: sa.orm.Session = info.context
+        session: orm.Session = info.context
         items = self.get_items(session, query)
         total = self.get_count(session, query)
         return ListResult(items=items, total=total)
@@ -349,7 +349,7 @@ class MutationResolver(ModelResolver):
             .where(self.pk_col == kwargs[self.pk_name])
         ).scalar_one()
 
-    def apply_related(self, session: sa.orm.Session, kwargs: dict[str, t.Any]) -> None:
+    def apply_related(self, session: orm.Session, kwargs: dict[str, t.Any]) -> None:
         """For all relationship arguments, replace the id values with their model
         instances.
         """
@@ -365,7 +365,7 @@ class MutationResolver(ModelResolver):
                 x for x in rel.mapper.columns.items() if x[1].primary_key
             )
 
-            if rel.direction == sa.orm.MANYTOONE:
+            if rel.direction == orm.MANYTOONE:
                 kwargs[key] = session.execute(
                     sa.select(target_model).filter(target_pk_col == value)
                 ).scalar_one()
@@ -391,7 +391,7 @@ class CreateResolver(MutationResolver):
     def __call__(
         self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
     ) -> t.Any:
-        session: sa.orm.Session = info.context
+        session: orm.Session = info.context
         self.apply_related(session, kwargs)
         obj = self.model(**kwargs)
         session.add(obj)
@@ -412,7 +412,7 @@ class UpdateResolver(MutationResolver):
     def __call__(
         self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
     ) -> t.Any:
-        session: sa.orm.Session = info.context
+        session: orm.Session = info.context
         self.apply_related(session, kwargs)
         item = self.get_item(info, kwargs.pop(self.pk_name))
 
@@ -434,7 +434,7 @@ class DeleteResolver(MutationResolver):
     def __call__(
         self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
     ) -> t.Any:
-        session: sa.orm.Session = info.context
+        session: orm.Session = info.context
         item = self.get_item(info, kwargs)
         session.delete(item)
         session.commit()

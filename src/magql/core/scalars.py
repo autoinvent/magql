@@ -13,7 +13,7 @@ from .nodes import Scalar
 # and introspection types. Instead, mutate them in place and set up magql scalars to
 # reference them.
 
-String = Scalar("String")
+String: Scalar = Scalar("String")
 """Built-in GraphQL ``String` type."""
 String._graphql_node = graphql.GraphQLString
 
@@ -28,7 +28,7 @@ def parse_int(value: t.Any) -> t.Any:
     return graphql.GraphQLInt.parse_value(value)
 
 
-Int = Scalar("Int")
+Int: Scalar = Scalar("Int")
 """Built-in GraphQL ``Int`` type. Extends GraphQL-Core implementation to accept string
 values. Strings are common when using HTML forms.
 """
@@ -46,7 +46,7 @@ def parse_float(value: t.Any) -> t.Any:
     return graphql.GraphQLFloat.parse_value(value)
 
 
-Float = Scalar("Float")
+Float: Scalar = Scalar("Float")
 """Built-in GraphQL ``Float`` type. Extends GraphQL-Core implementation to accept string
 values. Strings are common when using HTML forms.
 """
@@ -66,7 +66,7 @@ def parse_boolean(value: t.Any) -> t.Any:
     return graphql.GraphQLBoolean.parse_value(value)
 
 
-Boolean = Scalar("Boolean")
+Boolean: Scalar = Scalar("Boolean")
 """Built-in GraphQL ``Boolean`` type. Extends GraphQL-Core implementation to accept
 common case-insensitive string values; 1, on, true; 0, off, false. In particular, HTML
 forms send "on".
@@ -74,13 +74,13 @@ forms send "on".
 Boolean._graphql_node = graphql.GraphQLBoolean
 graphql.GraphQLBoolean.parse_value = parse_boolean  # type: ignore[method-assign]
 
-ID = Scalar("ID")
+ID: Scalar = Scalar("ID")
 """Built-in GraphQL ``ID` type. Accepts strings, ints, and floats, converting them all
 to strings.
 """
 ID._graphql_node = graphql.GraphQLID
 
-graphql_default_scalars = [String, Int, Float, Boolean, ID]
+graphql_default_scalars: list[Scalar] = [String, Int, Float, Boolean, ID]
 
 # magql provided scalars
 
@@ -97,7 +97,7 @@ def parse_datetime(value: str) -> datetime:
     return out
 
 
-DateTime = Scalar(
+DateTime: Scalar = Scalar(
     "DateTime",
     serialize=datetime.isoformat,
     parse_value=parse_datetime,
@@ -109,7 +109,7 @@ without a timezone is assumed to be UTC. Always returns a timezone-aware
 :class:`~datetime.DateTime` value.
 """
 
-JSON = Scalar(
+JSON: Scalar = Scalar(
     "JSON",
     description=(
         "A raw JSON value. The inner shape of the object is not specified by or queried"
@@ -120,7 +120,7 @@ JSON = Scalar(
 through the GraphQL schema. Useful for large blobs of opaque data, such as GeoJSON.
 """
 
-Upload = Scalar(
+Upload: Scalar = Scalar(
     "Upload",
     description=(
         "An uploaded file, provided alongside the GraphQL request. Should only be used"
@@ -133,4 +133,4 @@ input type. See https://github.com/jaydenseric/graphql-multipart-request-spec. T
 is implemented by Magql's Flask integration.
 """
 
-default_scalars = [DateTime, JSON, Upload]
+default_scalars: list[Scalar] = [DateTime, JSON, Upload]

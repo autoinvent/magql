@@ -1,7 +1,7 @@
 from . import nodes
 from . import scalars
 
-filter_item = nodes.InputObject(
+filter_item: nodes.InputObject = nodes.InputObject(
     "FilterItem",
     fields={
         "path": scalars.String.non_null,

@@ -35,7 +35,7 @@ class CheckDeleteResult:
     """
 
 
-check_delete_result = nodes.Object(
+check_delete_result: nodes.Object = nodes.Object(
     "CheckDeleteResult",
     fields={
         "affected": search_result.non_null.list.non_null,
@@ -81,7 +81,7 @@ class BaseCheckDelete:
     """
 
     def __init__(self, field_name: str = "check_delete") -> None:
-        self.field = nodes.Field(
+        self.field: nodes.Field = nodes.Field(
             check_delete_result,
             args={
                 "type": nodes.Argument(
@@ -100,7 +100,7 @@ class BaseCheckDelete:
             }
         """
 
-        self.field_name = field_name
+        self.field_name: str = field_name
         """The name to use for this field in the top-level query object."""
 
     def _validate_type(self, info: GraphQLResolveInfo, value: str, data: t.Any) -> None:
