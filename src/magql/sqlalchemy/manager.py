@@ -25,6 +25,9 @@ from .validators import ItemExistsValidator
 from .validators import ListExistsValidator
 from .validators import UniqueValidator
 
+if t.TYPE_CHECKING:
+    import typing_extensions as te
+
 
 class ModelGroup:
     """Collects multiple model managers and manages higher-level APIs such as search and
@@ -52,6 +55,28 @@ class ModelGroup:
         if managers is not None:
             for manager in managers:
                 self.add_manager(manager)
+
+    @classmethod
+    def from_declarative_base(
+        cls, base: sa.orm.DeclarativeMeta, search: set[type[t.Any] | str] | None = None
+    ) -> te.Self:
+        """Create a group of model managers for all models in the given SQLAlchemy
+        declarative base class.
+
+        :param base: The SQLAlchemy declarative base class.
+        :param search: The set of models, as classes or names, to show in global search.
+        """
+        if search is None:
+            search = set()
+
+        managers = []
+
+        for mapper in base.registry.mappers:
+            model = mapper.class_
+            model_search = model in search or model.__name__ in search
+            managers.append(ModelManager(model, search=model_search))
+
+        return cls(managers)
 
     def add_manager(self, manager: ModelManager) -> None:
         """Add another model manager after the group was created.
