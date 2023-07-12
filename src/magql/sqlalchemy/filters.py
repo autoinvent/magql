@@ -6,30 +6,7 @@ from datetime import timezone
 import sqlalchemy as sa
 from dateutil.parser import isoparse
 
-from ..core import nodes
-from ..core import scalars
 from .search import prepare_contains
-
-filter_item = nodes.InputObject(
-    "FilterItem",
-    fields={
-        "path": scalars.String.non_null,
-        "op": scalars.String.non_null,
-        "not": nodes.InputField(scalars.Boolean.non_null, default=False),
-        "value": scalars.JSON.list.non_null,
-    },
-)
-"""The input type for the ``filter`` argument to :class:`.ListResolver`.
-
-.. code-block:: graphql
-
-    input FilterItem {
-        path: String!
-        op: String!
-        not: Boolean! = false
-        value: [JSON]!
-    }
-"""
 
 
 def op_eq(c: sa.Column, vs: list[t.Any]) -> t.Any:
