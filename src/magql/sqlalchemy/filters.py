@@ -19,6 +19,17 @@ filter_item = nodes.InputObject(
         "value": scalars.JSON.list.non_null,
     },
 )
+"""The input type for the ``filter`` argument to :class:`.ListResolver`.
+
+.. code-block:: graphql
+
+    input FilterItem {
+        path: String!
+        op: String!
+        not: Boolean! = false
+        value: [JSON]!
+    }
+"""
 
 
 def op_eq(c: sa.Column, vs: list[t.Any]) -> t.Any:
@@ -62,9 +73,18 @@ type_ops = {
         "eq": op_eq,
     },
 }
+"""Maps SQLAlchemy column types to available filter operations. The operations
+map names to callables that generate a SQL expression.
+"""
 
 
 def get_op(c: sa.Column, name: str) -> t.Callable[[sa.Column, list[t.Any]], t.Any]:
+    """Get the operation callable for a given column and operation name. A
+    :exc:`KeyError` is raised if the operation is not defined for the type.
+
+    :param c: The SQLAlchemy column.
+    :param name: The name of the operation.
+    """
     for base in type(c.type).__mro__:
         if base in type_ops:
             try:
@@ -76,6 +96,15 @@ def get_op(c: sa.Column, name: str) -> t.Callable[[sa.Column, list[t.Any]], t.An
 
 
 def prepare_value(c: sa.Column, vs: list[t.Any]) -> list[t.Any]:
+    """Convert data in the filter value from JSON to Python based on the type of the
+    column.
+
+    -   For ``DateTime`` columns, converts values using ISO 8601.
+    -   Other data is passed through without change.
+
+    :param c: The SQLAlchemy column.
+    :param vs: The list of JSON values from the filter item.
+    """
     if isinstance(c.type, sa.DateTime):
         out = []
 
@@ -93,6 +122,12 @@ def prepare_value(c: sa.Column, vs: list[t.Any]) -> list[t.Any]:
 
 
 def apply_filter_item(c: sa.Column, filter_item: dict[str, t.Any]) -> t.Any:
+    """Apply a single filter item to the given column, returning a SQL expression.
+    Called by :meth:`.ListResolver.apply_filter`.
+
+    :param c: The SQLAlchemy column.
+    :param filter_item: One filter item to apply.
+    """
     op = get_op(c, filter_item["op"])
     vs = prepare_value(c, filter_item["value"])
     out = op(c, vs)

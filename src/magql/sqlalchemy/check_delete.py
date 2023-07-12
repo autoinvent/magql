@@ -20,16 +20,53 @@ if t.TYPE_CHECKING:
 
 @dataclasses.dataclass()
 class CheckDeleteResult:
+    """The value returned by the :class:`CheckDelete` resolver.
+    :data:`check_delete_result` is the Magql type corresponding to this Python type.
+
+    The items in each list are :class:`.SearchResult`, so that UI behavior can be shared
+    between :class:`CheckDelete` and :class:`.Search`.
+    """
+
     affected: list[SearchResult] = dataclasses.field(default_factory=list)
+    """Items that will have references to the deleted item removed, such as many-to-many
+    or nullable foreign keys.
+    """
+
     deleted: list[SearchResult] = dataclasses.field(default_factory=list)
+    """Items that will be deleted along with the deleted item."""
+
     prevented: list[SearchResult] = dataclasses.field(default_factory=list)
+    """Items that will not be deleted or have references removed prevent the item from
+    being deleted.
+    """
 
 
 class CheckDelete:
+    """Query field and resolver that shows what would be affected by deleting a row,
+    without actually deleting it. Rather than creating a separate query per model, this
+    is a generic API using the model name and id.
+
+    The resolver returns :class:`CheckDeleteResult`, which is a collection of
+    :class:`.SearchResult` items.
+
+    -   Affected - Items that will have references to the deleted item removed, such as
+        many-to-many or nullable foreign keys.
+    -   Deleted - Items that will be deleted along with the deleted item.
+    -   Prevented - Items that will not be deleted or have references removed prevent
+        the item from being deleted.
+
+    This shouldn't need to be created directly, it's managed by :class:`.ModelGroup`.
+
+    :param managers: Maps model names to managers.
+    :param field_name: The name to use for this field in the top-level query object.
+    """
+
     def __init__(
         self, managers: dict[str, ModelManager], field_name: str = "check_delete"
     ) -> None:
         self.managers = managers
+        """Maps model names to managers. These are the models that can be checked."""
+
         self.field = nodes.Field(
             check_delete_result,
             args={
@@ -40,7 +77,17 @@ class CheckDelete:
             },
             resolve=self,
         )
+        """The query field.
+
+        .. code-block:: graphql
+
+            type Query {
+                check_delete(type: String!, id: ID!): CheckDeleteResult!
+            }
+        """
+
         self.field_name = field_name
+        """The name to use for this field in the top-level query object."""
 
     def _validate_type(self, info: GraphQLResolveInfo, value: str, data: t.Any) -> None:
         if value not in self.managers:
@@ -114,3 +161,16 @@ check_delete_result = nodes.Object(
         "prevented": search_result.non_null.list.non_null,
     },
 )
+"""The result type for the :class:`CheckDelete` query. :class:`CheckDeleteResult` is the
+Python type corresponding to this Magql type.
+
+The items in each list are :class:`.search_result`.
+
+.. code-block:: graphql
+
+    type CheckDeleteResult {
+        affected: [SearchResult!]!
+        deleted: [SearchResult!]!
+        prevented: [SearchResult!]!
+    }
+"""

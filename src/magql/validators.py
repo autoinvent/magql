@@ -6,12 +6,28 @@ from graphql import GraphQLResolveInfo
 
 
 class ValidationError(Exception):
+    """A validator raises this in order to stop validation and add one or more error
+    messages to the result.
+
+    Depending on the context, the messages can be different formats. Data validators
+    (:class:`.Field` and :class:`.InputObject`) should always use a dict mapping field
+    names to messages. Value validators (:class:`.Argument` and :class:`.InputField`)
+    should always use a list of messages for a single field. Individual validator
+    callables can also return a single message as a shortcut for a list.
+
+    :param message: One or more error messages to add to the result.
+    """
+
     def __init__(self, message: t.Union[str, list[t.Any], dict[str, t.Any]]) -> None:
         super().__init__(message)
         self.message = message
 
 
 class ValueValidatorCallable(t.Protocol):
+    """The signature that all value validator functions (:class:`.Argument` and
+    :class:`.InputField`) must have.
+    """
+
     def __call__(
         self, info: GraphQLResolveInfo, value: t.Any, data: dict[str, t.Any]
     ) -> t.Any:
@@ -19,6 +35,10 @@ class ValueValidatorCallable(t.Protocol):
 
 
 class DataValidatorCallable(t.Protocol):
+    """The signature that all data validator functions (:class:`.Field` and
+    :class:`.InputObject`) must have.
+    """
+
     def __call__(self, info: GraphQLResolveInfo, data: dict[str, t.Any]) -> None:
         ...
 

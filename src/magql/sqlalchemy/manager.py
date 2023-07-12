@@ -27,19 +27,45 @@ from .validators import UniqueValidator
 
 
 class ModelGroup:
+    """Collects multiple model managers and manages higher-level APIs such as search and
+    check delete.
+
+    Typically there will be one group for all the models. If more than one group is used
+    for some reason, the field names for its :attr:`search` and :attr:`check_delete`
+    instances should be changed.
+
+    :param managers: The model managers that are part of this group.
+    """
+
     def __init__(self, managers: list[ModelManager] | None = None) -> None:
         self.managers: dict[str, ModelManager] = {}
+        """Maps SQLAlchemy model names to their :class:`ModelManager` instance. Use
+        :meth:`add_manager` to add to this.
+        """
+
         self.search = Search()
+        """The :class:`.Search` instance model providers will be registered on."""
+
         self.check_delete = CheckDelete(self.managers)
+        """The :class:`.CheckDelete` instance models will be registered on."""
 
         if managers is not None:
             for manager in managers:
                 self.add_manager(manager)
 
     def add_manager(self, manager: ModelManager) -> None:
+        """Add another model manager after the group was created.
+
+        :param manager: The model manager to add.
+        """
         self.managers[manager.model.__name__] = manager
 
     def register(self, schema: Schema) -> None:
+        """Register this group's managers and APIs on the given :class:`.Schema`
+        instance.
+
+        :param schema: The schema instance to register on.
+        """
         for manager in self.managers.values():
             manager.register(schema)
             manager.register_search(self.search)
@@ -49,10 +75,135 @@ class ModelGroup:
 
 
 class ModelManager:
+    """The API for a single SQLAlchemy model class. Generates Magql types, fields,
+    resolvers, etc. These are exposed as attributes on this manager, and can be further
+    customized after generation.
+
+    :param model: The SQLAlchemy model class.
+    :param search: Whether this model will provide results in global search.
+    """
+
+    model: type[t.Any]
+    """The SQLAlchemy model class."""
+
+    object: nodes.Object
+    """The object type and fields representing the model and its columns. The type name
+    is the model name.
+
+    .. code-block:: graphql
+
+        type Model {
+            id: Int!
+            name: String!
+        }
+    """
+
+    item_field: nodes.Field
+    """Query that selects a row by id from the database. The field name is the snake
+    case model name with ``_item`` appended. Uses :class:`.ItemResolver`.
+
+    .. code-block:: graphql
+
+        type Query {
+            model_item(id: Int!): Model
+        }
+    """
+
+    list_result: nodes.Object
+    """The object type representing the result of the list query. The type name is the
+    model name with ``ListResult`` appended. :class:`.ListResult` is the Python type
+    corresponding to this Magql type.
+
+    .. code-block: graphql
+
+        type ModelListResult {
+            items: [Model!]!
+            total: Int!
+        }
+    """
+
+    sort: nodes.Enum
+    """The enum type representing all the sorts that can be applied to the list query.
+    The type name is the model name with ``Sort`` appended. For each column that
+    is not a foreign key, an ascending and descending value are generated. For example,
+    ``name_asc`` and ``name_desc``. In Python, the values are converted to
+    ``(name: str, desc: bool)`` tuples.
+
+    .. code-block:: graphql
+
+        enum ModelSort {
+            id_asc
+            id_desc
+            name_asc
+            name_desc
+        }
+    """
+
+    list_field: nodes.Field
+    """Query that selects multiple rows from the database. The field name is the snake
+    case model name with ``_list`` appended. Uses :class:`.ListResolver`.
+
+    .. code-block:: graphql
+
+        type Query {
+            model_list(
+                filter: [[FilterItem!]!],
+                sort: [ModelSort!],
+                page: Int,
+                per_page: Int
+            ): ModelListResult!
+        }
+    """
+
+    create_field: nodes.Field
+    """Mutation that inserts a row into the database. The field name is the snake case
+    model name with ``_create`` appended. An argument is generated for each column in
+    the model except the primary key. An argument is required if its column is not
+    nullable and doesn't have a default. Uses :class:`.CreateResolver`.
+
+    .. code-block:: graphql
+
+        type Mutation {
+            model_create(name: String!): Model!
+        }
+    """
+
+    update_field: nodes.Field
+    """Mutation that updates a row in the database. The field name is the snake case
+    model name with ``_update`` appended. An argument is generated for each column in
+    the model. The primary key argument is required, all others are not. Columns are not
+    updated if their argument is not given. Uses :class:`.UpdateResolver`.
+
+    .. code-block:: graphql
+
+        type Mutation {
+            model_update(id: Int!, name: String): Model!
+        }
+    """
+
+    delete_field: nodes.Field
+    """Mutation that deletes a row from the database. The field name is the snake case
+    model name with ``_delete`` appended. Uses :class:`.DeleteResolver`.
+
+    .. code-block:: graphql
+
+        type Mutation {
+            model_delete(id: Int!): Boolean!
+        }
+    """
+
+    search_provider: SearchProvider | None = None
+    """A global search provider function. Enabling search will create a
+    :class:`.ColumnSearchProvider` that checks if any of the model's string columns
+    contains the search term. This can be set to a custom function to change search
+    behavior.
+    """
+
     def __init__(self, model: type[t.Any], search: bool = False) -> None:
         self.model = model
         model_name = model.__name__
         mapper = sa.inspect(model)
+        # Find the primary key column and its Magql type.
         pk_name, pk_col = next(x for x in mapper.columns.items() if x[1].primary_key)
         pk_type = _convert_column_type(model_name, pk_name, pk_col)
         self.object = object = nodes.Object(model_name)
@@ -198,11 +349,14 @@ class ModelManager:
         )
 
         if search:
-            self.search_provider: SearchProvider | None = ColumnSearchProvider(model)
-        else:
-            self.search_provider = None
+            self.search_provider = ColumnSearchProvider(model)
 
     def register(self, schema: Schema) -> None:
+        """Register this manager's query and mutation fields on the given
+        :class:`.Schema` instance.
+
+        :param schema: The schema instance to register on.
+        """
         name = camel_to_snake_case(self.model.__name__)
         schema.query.fields[f"{name}_item"] = self.item_field
         schema.query.fields[f"{name}_list"] = self.list_field
@@ -211,6 +365,14 @@ class ModelManager:
         schema.mutation.fields[f"{name}_delete"] = self.delete_field
 
     def register_search(self, search: Search) -> None:
+        """If a search provider is enabled for this manager, register it on the given
+        :class:`.Search` instance.
+
+        Typically the search instance is managed by the :class:`ModelGroup`, which will
+        register it on a schema.
+
+        :param search: The search instance to register on.
+        """
         if self.search_provider is not None:
             search.provider(self.search_provider)
 
@@ -218,6 +380,15 @@ class ModelManager:
 def _convert_column_type(
     model_name: str, key: str, column: sa.Column, nested_type: sa.Column | None = None
 ) -> nodes.Type:
+    """Convert a SQLAlchemy column type to a Magql scalar type.
+
+    :param model_name: The model's name, used when generating an :class:`.Enum`.
+    :param key: The column's attribute name, used when generating an :class:`Enum`.
+    :param column: The SQLAlchemy column instance.
+    :param nested_type: The inner type of a SQLAlchemy ``ARRAY``, used when recursively
+        generating a :class:`.List`.
+    """
+
     if nested_type is None:
         ct = column.type
     else:

@@ -13,6 +13,16 @@ from . import filters
 
 
 class ModelResolver:
+    """Base class for the SQLAlchemy model API resolvers used by :class:`.ModelManager`.
+    Subclasses must implement ``__call__``.
+
+    A resolver is for a specific model, and does some introspection on the model to
+    know what the mapper and primary key are.
+
+    In order to execute the SQL expression, ``info.context`` must be set to the
+    SQLAlchemy session.
+    """
+
     def __init__(self, model: type[t.Any]) -> None:
         self.model = model
         self.mapper = t.cast(orm.Mapper, sa.inspect(model))
@@ -27,19 +37,25 @@ class ModelResolver:
 
 
 class QueryResolver(ModelResolver):
+    """Base class for SQLAlchemy model API queries used by :class:`.ModelManager`.
+    Subclasses must implement :meth:`build_query` and :meth:`transform_result`, and can
+    override ``__call__``.
+    """
+
     def build_query(
         self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs
     ) -> sql.Select:
-        return sa.select(self.model).options(
-            *self._load_relationships(_get_field_node(info), self.model)
-        )
+        """Build the query to execute."""
+        raise NotImplementedError
 
     def transform_result(self, result: Result) -> t.Any:
-        return result.scalar()
+        """Get the model instance or list of instances from a SQLAlchemy result."""
+        raise NotImplementedError
 
     def __call__(
         self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
     ) -> t.Any:
+        """Build and execute the query, then return the result."""
         query = self.build_query(parent, info, **kwargs)
         result = info.context.execute(query)
         return self.transform_result(result)
@@ -50,9 +66,23 @@ class QueryResolver(ModelResolver):
         model: t.Any,
         load_path: orm.Load | None = None,
     ) -> list[orm.Load]:
+        """Given the AST node representing the GraphQL operation, find all the
+        SQLAlchemy relationships that should be eagerly loaded, recursively, and
+        generate load expressions for them. This makes resolving the graph very
+        efficient by letting SQLAlchemy preload related data rather than issuing
+        individual queries for every attribute access.
+
+        :param node: The AST node representing the GraphQL operation.
+        :param model: The model containing the relationships. Starts as the model for
+            this resolver, then the relationship's target model during recursion.
+        :param load_path: During recursion, the SQLAlchemy load that has been performed
+            to get to this relationship and should be extended.
+        """
         out = []
 
         for selection in node.selection_set.selections:
+            # Only consider AST nodes for relationships, which are ones with further
+            # selections for the object's fields.
             if selection.selection_set is None:
                 continue
 
@@ -61,15 +91,20 @@ class QueryResolver(ModelResolver):
             rel_prop = mapper.relationships.get(field_name)
 
             if rel_prop is None:
+                # This somehow isn't a relationship even though it's an object type.
+                # Could happen if a custom extra field+resolver was added.
                 continue
 
             rel_attr = rel_prop.class_attribute
 
             if load_path is None:
+                # At the base level, start a new load expression.
                 extended_path = orm.selectinload(rel_attr)
             else:
+                # Recursion, extend the existing load expression.
                 extended_path = load_path.selectinload(rel_attr)
 
+            # Recurse to find any relationship fields selected in the child object.
             out.extend(
                 self._load_relationships(
                     selection, rel_prop.entity.class_, extended_path
@@ -78,14 +113,24 @@ class QueryResolver(ModelResolver):
 
         if not out:
             if load_path is not None:
+                # This was a relationship, and there were no child relationships.
                 return [load_path]
 
+            # There were no relationships selected at all.
             return []
 
+        # There were child relationships, and this is the full collection.
         return out
 
 
 class ItemResolver(QueryResolver):
+    """Get a single row from the database by id. Used by
+    :attr:`.ModelManager.item_field`. ``id`` is the only GraphQL argument. Returns a
+    single model instance, or ``None`` if the id wasn't found.
+
+    :param model: The SQLAlchemy model.
+    """
+
     def build_query(
         self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs
     ) -> sql.Select:
@@ -101,6 +146,38 @@ class ItemResolver(QueryResolver):
 
 
 class ListResolver(QueryResolver):
+    """Get a list of rows from the database, with support for filtering, sorting, and
+    pagination. If any relationships, arbitrarily nested, are selected, they are
+    eagerly loaded to Used by :attr:`.ModelManager.list_field`. Returns a
+    :class:`ListResult`, which has the list of model instances selected for this page,
+    as well as the total available rows.
+
+    Pagination is always applied to the query to avoid returning thousands of results at
+    once for large data sets. The default ``page`` is 1. The default ``per_page`` is
+    10, with a max of 100.
+
+    The ``sort`` argument is a list of ``(name: str, desc: bool)`` items from the
+    :attr:`.ModelManager.sort` enum. By default the rows are sorted by their primary key
+    column, otherwise the order wouldn't be guaranteed consistent across pages.
+
+    Filtering applies one or more filter rules to the query. The ``filter`` argument is
+    a list of lists of rules. Each rule is a ``{path, op, not, value}`` dict. The rules
+    in a list will be combined with ``AND``, and the lists will be combined with ``OR``.
+    The ``path`` in a rule is the name of a column attribute on the model like ``name``,
+    or a dotted path to an arbitrarily nested relationship's column like
+    ``user.friend.color.name``. Different ``op`` names are available based on the
+    column's type. The ``value`` can be any JSON data that the op understands. Most ops
+    support a list of values in addition to a single value. See
+    :func:`apply_filter_item` and :data:`.type_ops`.
+
+    If any relationships are selected anywhere in the GraphQL query, SQLAlchemy eager
+    loads are generated them. This makes resolving the graph very efficient by letting
+    SQLAlchemy preload related data rather than issuing individual queries for every
+    attribute access.
+
+    :param model: The SQLAlchemy model.
+    """
+
     def apply_filter(
         self,
         query: sql.Select,
@@ -188,6 +265,13 @@ class ListResolver(QueryResolver):
         return result.scalars().all()
 
     def get_count(self, session: sa.orm.Session, query: sa.sql.Select) -> int:
+        """After generating the query with any filters, get the total row count for
+        pagination purposes. Remove any eager loads, sorts, and pagination, then execute
+        a SQL ``count()`` query.
+
+        :param session: The SQLAlchemy session.
+        :param query: The fully constructed list query.
+        """
         sub = (
             query.options(sa.orm.lazyload("*"))
             .order_by(None)
@@ -210,8 +294,16 @@ class ListResolver(QueryResolver):
 
 @dataclasses.dataclass()
 class ListResult:
+    """The return value for :class:`ListResolver` and :attr:`.ModelManager.list_field`.
+    :attr:`.ModelManager.list_result` is the Magql type corresponding to this Python
+    type.
+    """
+
     items: t.Any
+    """The list of model instances for this page."""
+
     total: int
+    """The total number of rows if pagination was not applied."""
 
 
 def _get_field_node(
@@ -219,6 +311,10 @@ def _get_field_node(
 ) -> graphql.FieldNode:
     """Get the node that describes the fields being selected by the current query. This
     is used to determine if any of the fields are relationships to load.
+
+    :param info: The GrapQL info about the operation, which contains the AST.
+    :param nested: For the list query, the name of the field containing the list of
+        results. Should be ``"items"``.
     """
     node = info.field_nodes[0]
 
@@ -232,10 +328,18 @@ def _get_field_node(
 
 
 class MutationResolver(ModelResolver):
+    """Base class for SQLAlchemy model API mutations used by :class:`.ModelManager`.
+    Subclasses must implement ``__call__``.
+    """
+
     def get_item(self, session: sa.orm.Session, pk_value: t.Any) -> t.Any:
+        """Get the model instance by primary key value."""
         return session.get(self.model, pk_value)
 
     def apply_related(self, session: sa.orm.Session, kwargs: dict[str, t.Any]) -> None:
+        """For all relationship arguments, replace the id values with their model
+        instances.
+        """
         for key, rel in self.mapper.relationships.items():
             value = kwargs.get(key)
 
@@ -263,6 +367,14 @@ class MutationResolver(ModelResolver):
 
 
 class CreateResolver(MutationResolver):
+    """Create a new row in the database. Used by :attr:`.ModelManager.create_field`. The
+    field has arguments for each of the model's column attributes. An argument is not
+    required if its column is nullable or has a default. Unique constraints on will
+    already be validated. Returns the new model instance.
+
+    :param model: The SQLAlchemy model.
+    """
+
     def __call__(
         self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
     ) -> t.Any:
@@ -275,6 +387,15 @@ class CreateResolver(MutationResolver):
 
 
 class UpdateResolver(MutationResolver):
+    """Updates a row in the database by id. Used by :attr:`.ModelManager.update_field`.
+    The field has arguments for each of the model's column attributes. Only the primary
+    key argument is required. Columns are only updated if a value is provided, which is
+    distinct from setting the value to ``None``. Unique constraints will already be
+    validated. Returns the updated model instance.
+
+    :param model: The SQLAlchemy model.
+    """
+
     def __call__(
         self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
     ) -> t.Any:
@@ -290,6 +411,13 @@ class UpdateResolver(MutationResolver):
 
 
 class DeleteResolver(MutationResolver):
+    """Deletes a row in the database by id. Used by :attr:`.ModelManager.update_field`.
+    Use the :class:`.CheckDelete` API first to check if the row can be safely deleted.
+    Returns ``True``.
+
+    :param model: The SQLAlchemy model.
+    """
+
     def __call__(
         self, parent: t.Any, info: graphql.GraphQLResolveInfo, **kwargs: t.Any
     ) -> t.Any:
