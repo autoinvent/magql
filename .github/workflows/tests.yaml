@@ -39,4 +39,4 @@ jobs:
           path: ./.mypy_cache
           key: mypy|${{ hashFiles('pyproject.toml') }}
       - run: pip install tox
-      - run: tox run -e typing
+      - run: tox run -e types
