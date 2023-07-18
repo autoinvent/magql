@@ -12,6 +12,7 @@ def test_length_validator_on_field():
 
     UserField = magql.Field("String", resolve=resolve_user_field)
 
+################################################################################################
 def test_length_validator_on_argument():
     UserArgumentMinMax = magql.Argument("String", validators=[magql.Length(min=2, max=15)])
     UserArgumentMin = magql.Argument("String", validators=[magql.Length(min=2)])
@@ -70,7 +71,6 @@ def test_length_validator_on_argument():
             }}
         """
         result = s.execute(mutation)
-        print(f"\nvalid result for {mutation_name}: \n", result)
         assert result.data == {mutation_name: {"name": "John Doe"}}
         assert not result.errors
 
@@ -89,13 +89,89 @@ def test_length_validator_on_argument():
             }}
         """
         result = s.execute(mutation)
-        print(f"\ninvalid result for {mutation_name}: \n", result)
 
         assert result.errors
         assert result.errors[0].extensions["name"][0] == error_message
 
+################################################################################################
 def test_length_validator_on_inputObject():
-    UserInputObject = magql.InputObject("String")
+    # Define an input object type with a single field that has a length validator
+    UserInputMinMax = magql.InputObject(
+        "UserInputMinMax",
+        fields={
+            "name": magql.InputField("String", validators=[magql.Length(min=2, max=15)]),
+        },
+    )
+    UserInputMin = magql.InputObject(
+        "UserInputMin",
+        fields={
+            "name": magql.InputField("String", validators=[magql.Length(min=2)]),
+        },
+    )
+    UserInputMax = magql.InputObject(
+        "UserInputMax",
+        fields={
+            "name": magql.InputField("String", validators=[magql.Length(max=15)]),
+        },
+    )
 
+    def resolve_name_field(user, info):
+        return user['name']
+    
+    # Create an Object type for the User
+    User = magql.Object(
+        "User",
+        fields={
+            "name": magql.Field("String", resolve=resolve_name_field),
+        },
+    )
+
+    # Set up a dummy query root
+    QueryRoot = magql.Object(
+        "QueryRoot",
+        fields={
+            "dummy": magql.Field("String", resolve=lambda obj, info: "dummy"),
+        },
+    )
+
+    # Mutation using the UserInput for validation
+    s = magql.Schema()
+
+    # Assign the query root type to the schema
+    s.query = QueryRoot
+
+    @s.mutation.field("createUserMinMax", User, args={"input": UserInputMinMax})
+    @s.mutation.field("createUserMin", User, args={"input": UserInputMin})
+    @s.mutation.field("createUserMax", User, args={"input": UserInputMax})
+
+    def resolve_create_user(parent, info, input):
+        # For simplicity, we'll just return the input as the User object
+        return input
+
+    # Test the mutation with valid data
+    mutation = """
+        mutation {
+            createUserMinMax(input: { name: "John Doe" }) {
+                name
+            }
+        }
+    """
+    result = s.execute(mutation)
+    assert result.data == {"createUserMinMax": {"name": "John Doe"}}
+    assert not result.errors
+
+    # Test the mutation with invalid data
+    mutation = """
+        mutation {
+            createUserMinMax(input: { name: "J" }) {
+                name
+            }
+        }
+    """
+    result = s.execute(mutation)
+    assert result.errors
+    assert result.errors[0].extensions["input"][0]['name'][0] == "Must be between 2 and 15 characters, but was 1."
+
+################################################################################################
 def test_length_validator_on_inputField():
     UserInputField = magql.InputField("String")
