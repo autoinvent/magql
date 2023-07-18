@@ -21,6 +21,9 @@ from .scalars import String
 from .scalars import Upload
 from .schema import Schema
 from .validators import ValidationError
+from .validators import Length
+from .validators import Confirm
+from .validators import NumberRange
 
 __all__ = [
     "Argument",
@@ -46,4 +49,7 @@ __all__ = [
     "Upload",
     "Schema",
     "ValidationError",
+    "Length",
+    "Confirm",
+    "NumberRange",
 ]
