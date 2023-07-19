@@ -24,29 +24,22 @@ def test_length_validator_on_argument():
 
     def resolve_name_field(user, info):
         return user['name']
-    
-    # Create an Object type for the User
-    User = magql.Object(
-        "User",
-        fields={
-            "name": magql.Field("String", resolve=resolve_name_field),
-        },
-    )
 
-    # Set up a dummy query root
     QueryRoot = magql.Object(
         "QueryRoot",
         fields={
             "dummy": magql.Field("String", resolve=lambda obj, info: "dummy"),
         },
     )
-
-    # Mutation using the UserArgument for validation
     s = magql.Schema()
-
-    # Assign the query root type to the schema
     s.query = QueryRoot
 
+    User = magql.Object(
+        "User",
+        fields={
+            "name": magql.Field("String", resolve=resolve_name_field),
+        },
+    )
     @s.mutation.field(
         "createUserMinMax",
         User,
@@ -107,46 +100,36 @@ def test_length_validator_on_inputObject():
 
 ################################################################################################
 def test_length_validator_on_inputField():
-    # Define an input field with a length validator
     UserInputFieldMinMax = magql.InputField("String", validators=[magql.Length(min=2, max=15)])
     UserInputFieldMin = magql.InputField("String", validators=[magql.Length(min=2)])
     UserInputFieldMax = magql.InputField("String", validators=[magql.Length(max=15)])
 
-    # Define an input object type with the above input field
     UserInputMinMax = magql.InputObject("UserInputMinMax", fields={"name": UserInputFieldMinMax})
     UserInputMin = magql.InputObject("UserInputMin", fields={"name": UserInputFieldMin})
     UserInputMax = magql.InputObject("UserInputMax", fields={"name": UserInputFieldMax})
 
     def resolve_name_field(user, info):
         return user['name']
-    
-    # Create an Object type for the User
-    User = magql.Object(
-        "User",
-        fields={
-            "name": magql.Field("String", resolve=resolve_name_field),
-        },
-    )
 
-    # Set up a dummy query root
     QueryRoot = magql.Object(
         "QueryRoot",
         fields={
             "dummy": magql.Field("String", resolve=lambda obj, info: "dummy"),
         },
     )
-
-    # Mutation using the UserInputField for validation
     s = magql.Schema()
-
-    # Assign the query root type to the schema
     s.query = QueryRoot
 
+    User = magql.Object(
+        "User",
+        fields={
+            "name": magql.Field("String", resolve=resolve_name_field),
+        },
+    )
     @s.mutation.field("createUserMinMax", User, args={"input": UserInputMinMax})
     @s.mutation.field("createUserMin", User, args={"input": UserInputMin})
     @s.mutation.field("createUserMax", User, args={"input": UserInputMax})
     def resolve_create_user(parent, info, input):
-        # For simplicity, we'll just return the input as the User object
         return input
 
     # Test the mutation with valid data
