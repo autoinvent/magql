@@ -208,3 +208,9 @@ class Schema:
             variable_values=variables,
             operation_name=operation,
         )
+
+    def to_document(self) -> str:
+        """Format the schema as a document in the GraphQL schema language. Shortcut for
+        calling :meth:`to_magql` then calling :func:`graphql.graphql_sync`.
+        """
+        return graphql.print_schema(self.to_graphql())
