@@ -4,11 +4,31 @@ from graphql import GraphQLResolveInfo
 
 import magql
 
+"""
+This test file validates the behavior of the
+length validator when applied on different levels of the schema.
+It covers the following scenarios:
+*    - Validation of [Field | Argument | InputObject | InputField]
+*       - with valid data.
+*    - Validation of [Field | Argument | InputObject | InputField]
+*       - with invalid data, including too short and too long values.
+*    - Validation of [Field | Argument | InputObject | InputField]
+*       - with an exact length requirement.
+*    - Validation of [Field & Argument & InputObject & InputField]
+*       - with valid and invalid data.
+"""
 
-# Validator at Field Level
-################################################################################################
-# docstring explanation here
+
 def test_length_validator_on_field():
+    """
+    Tests the Length validator specifically for an Field in a GraphQL schema.
+    Creates Fields, each with a unique Length validator
+    Uses wrapper functions to apply the validators.
+    The Fields are validated using the `.validate` method
+    from _DataValidatorNode with data of various lengths.
+    The tests ensure that the Length validator correctly identifies:
+    valid, too short, too long names, and names of exact length within the Fields.
+    """
     valid_name = "John Doe"
     valid_name_exact = "Johny"
     invalid_name_short = "J"
@@ -122,10 +142,15 @@ def test_length_validator_on_field():
         raise AssertionError(f"Unexpected ValidationError: {e.message}") from e
 
 
-# Validator at Argument Level
-################################################################################################
-# docstring explanation here
 def test_length_validator_on_argument():
+    """
+    Tests the Length validator specifically for an Argument in a GraphQL schema.
+    Creates Arguments, each with a unique Length validator.
+    Uses GraphQL mutations to validate the Arguments with data of various lengths.
+    The tests verify the correct behaviour of the Length validator in the context of
+    GraphQL input fields, by checking if it correctly identifies:
+    valid, too short, too long names, and names of exact length.
+    """
     UserArgumentMinMax = magql.Argument(
         "String", validators=[magql.Length(min=2, max=15)]
     )
@@ -237,10 +262,16 @@ def test_length_validator_on_argument():
     assert result.errors[0].extensions["name"][0] == error_message
 
 
-# Validator at InputObject Level
-################################################################################################
-# docstring explanation here
 def test_length_validator_on_inputObject():
+    """
+    Tests the Length validator specifically for an InputObject in a GraphQL schema.
+    Creates InputObjects, each with a unique Length validator
+    Uses wrapper functions to apply the validators.
+    The InputObjects are validated using the `.validate` method
+    from _DataValidatorNode with data of various lengths.
+    The tests ensure that the Length validator correctly identifies:
+    valid, too short, too long names, and names of exact length within the InputObjects.
+    """
     valid_input = {"name": "John Doe"}
     valid_input_exact = {"name": "Johny"}
     invalid_input_short = {"name": "J"}
@@ -356,10 +387,15 @@ def test_length_validator_on_inputObject():
         raise AssertionError(f"Unexpected ValidationError: {e.message}") from e
 
 
-# Validator at InputField Level
-################################################################################################
-# docstring explanation here
 def test_length_validator_on_inputField():
+    """
+    Tests the Length validator specifically for an InputField in a GraphQL schema.
+    Creates InputFields, each with a unique Length validator.
+    Uses GraphQL mutations to validate the InputFields with data of various lengths.
+    The tests verify the correct behaviour of the Length validator in the context of
+    GraphQL input fields, by checking if it correctly identifies:
+    valid, too short, too long names, and names of exact length.
+    """
     UserInputFieldMinMax = magql.InputField(
         "String", validators=[magql.Length(min=2, max=15)]
     )
@@ -463,11 +499,11 @@ def test_length_validator_on_inputField():
     assert result.errors[0].extensions["input"][0]["name"][0] == error_message
 
 
-# Validator at All Levels
-################################################################################################
-# docstring explanation here
 # TODO: FINISH IMPLEMENTATION
 def test_nested_validators():
+    """
+    docstring here
+    """
     info = Mock(spec=GraphQLResolveInfo)
 
     def FieldValidatorWrapper(info, data):
