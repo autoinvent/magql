@@ -1,29 +1,37 @@
 import magql
 
+
 ################################################################################################
 def test_length_validator_on_field():
-    #TODO: need to implement
+    # TODO: need to implement
     length_validator = magql.Length(min=2, max=15)
 
     def resolve_user_field(parent, info):
         value = parent.get("name")
         try:
-            length_validator(info, value, parent)  # Validate the value using the length_validator
+            length_validator(
+                info, value, parent
+            )  # Validate the value using the length_validator
         except magql.ValidationError as e:
             raise Exception(f"Field validation error: {e.message}")
 
         return value
 
-    UserField = magql.Field("String", resolve=resolve_user_field, validators=[length_validator])
+    UserField = magql.Field(
+        "String", resolve=resolve_user_field, validators=[length_validator]
+    )
+
 
 ################################################################################################
 def test_length_validator_on_argument():
-    UserArgumentMinMax = magql.Argument("String", validators=[magql.Length(min=2, max=15)])
+    UserArgumentMinMax = magql.Argument(
+        "String", validators=[magql.Length(min=2, max=15)]
+    )
     UserArgumentMin = magql.Argument("String", validators=[magql.Length(min=2)])
     UserArgumentMax = magql.Argument("String", validators=[magql.Length(max=15)])
 
     def resolve_name_field(user, info):
-        return user['name']
+        return user["name"]
 
     QueryRoot = magql.Object(
         "QueryRoot",
@@ -40,6 +48,7 @@ def test_length_validator_on_argument():
             "name": magql.Field("String", resolve=resolve_name_field),
         },
     )
+
     @s.mutation.field(
         "createUserMinMax",
         User,
@@ -57,7 +66,7 @@ def test_length_validator_on_argument():
     )
     def resolve_create_user(parent, info, name):
         return {"name": name}
-    
+
     # Test the mutation with valid data
     for mutation_name in ["createUserMinMax", "createUserMin", "createUserMax"]:
         mutation = f"""
@@ -93,23 +102,30 @@ def test_length_validator_on_argument():
 
 ################################################################################################
 def test_length_validator_on_inputObject():
-    #TODO: Need to implement
-    UserInputObjectMinMax = magql.InputObject("String", validators=[magql.Length(min=2, max=15)])
+    # TODO: Need to implement
+    UserInputObjectMinMax = magql.InputObject(
+        "String", validators=[magql.Length(min=2, max=15)]
+    )
     UserInputObjectMin = magql.InputObject("String", validators=[magql.Length(min=2)])
     UserInputObjectMax = magql.InputObject("String", validators=[magql.Length(max=15)])
 
+
 ################################################################################################
 def test_length_validator_on_inputField():
-    UserInputFieldMinMax = magql.InputField("String", validators=[magql.Length(min=2, max=15)])
+    UserInputFieldMinMax = magql.InputField(
+        "String", validators=[magql.Length(min=2, max=15)]
+    )
     UserInputFieldMin = magql.InputField("String", validators=[magql.Length(min=2)])
     UserInputFieldMax = magql.InputField("String", validators=[magql.Length(max=15)])
 
-    UserInputMinMax = magql.InputObject("UserInputMinMax", fields={"name": UserInputFieldMinMax})
+    UserInputMinMax = magql.InputObject(
+        "UserInputMinMax", fields={"name": UserInputFieldMinMax}
+    )
     UserInputMin = magql.InputObject("UserInputMin", fields={"name": UserInputFieldMin})
     UserInputMax = magql.InputObject("UserInputMax", fields={"name": UserInputFieldMax})
 
     def resolve_name_field(user, info):
-        return user['name']
+        return user["name"]
 
     QueryRoot = magql.Object(
         "QueryRoot",
@@ -126,6 +142,7 @@ def test_length_validator_on_inputField():
             "name": magql.Field("String", resolve=resolve_name_field),
         },
     )
+
     @s.mutation.field("createUserMinMax", User, args={"input": UserInputMinMax})
     @s.mutation.field("createUserMin", User, args={"input": UserInputMin})
     @s.mutation.field("createUserMax", User, args={"input": UserInputMax})
@@ -161,4 +178,4 @@ def test_length_validator_on_inputField():
         """
         result = s.execute(mutation)
         assert result.errors
-        assert result.errors[0].extensions["input"][0]['name'][0] == error_message
+        assert result.errors[0].extensions["input"][0]["name"][0] == error_message
