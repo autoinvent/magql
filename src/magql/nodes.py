@@ -1002,18 +1002,36 @@ def _expand_type_shortcut(
 
 def _to_type(value: str | Type, type_map: dict[str, NamedType | None]) -> str | Type:
     """Used during :meth:`Node._apply_types` to turn a type name into the defined
-    instance.
+    instance. Will also use list ``[]`` and non-null ``!`` syntax to apply wrappers.
 
     :param value: An instance to return, or a name to resolve if possible.
     :param type_map: Maps names to type instances.
     """
-    if isinstance(value, str):
-        real = type_map.get(value)
+    if not isinstance(value, str):
+        return value
 
-        if real is not None:
-            return real
+    wrappers: list[type[Wrapping]] = []
 
-    return value
+    while True:
+        if value[-1] == "!":
+            value = value[:-1]
+            wrappers.append(NonNull)
+        elif value[0] == "[":
+            value = value[1:-1]
+            wrappers.append(List)
+        else:
+            break
+
+    out: str | Type | None = type_map.get(value)
+
+    if out is None:
+        out = value
+
+    while wrappers:
+        w = wrappers.pop()
+        out = w(out)
+
+    return out
 
 
 def _list_to_types(

@@ -92,6 +92,15 @@ class Schema:
             seen.add(node)
 
             if isinstance(node, str):
+                # Remove non-null ! and list [] marks, handled by _apply_types below.
+                while True:
+                    if node[-1] == "!":
+                        node = node[:-1]
+                    elif node[0] == "[":
+                        node = node[1:-1]
+                    else:
+                        break
+
                 if node not in type_map:
                     # Record a type name with no definition.
                     type_map[node] = None
