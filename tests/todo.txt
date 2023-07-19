@@ -4,7 +4,7 @@
     [a] Validate Length on magql.Field
         (i) Validate with min & max
         (ii) Validate with min only
-        (iii) Validate with max only 
+        (iii) Validate with max only
     [b] Validate Length on magql.Argument
         (i) Validate with min & max
         (ii) Validate with min only
@@ -23,7 +23,7 @@
     [a] Validate NumberRange on magql.Field (???)
         (i) Validate with min & max
         (ii) Validate with min only
-        (iii) Validate with max only 
+        (iii) Validate with max only
     [b] Validate NumberRange on magql.Argument
         (i) Validate with min & max
         (ii) Validate with min only
@@ -42,7 +42,7 @@
     [a] Validate Confirm on magql.Field
         (i) Validate with min & max
         (ii) Validate with min only
-        (iii) Validate with max only 
+        (iii) Validate with max only
     [b] Validate Confirm on magql.Argument
         (i) Validate with min & max
         (ii) Validate with min only
@@ -59,6 +59,3 @@
 
 4. Validate Length, NumberRange, and Confirm together (nested)
     - mixture of Field, Argument, InputObject, InputField w/ all the classes?
-
-
-        
