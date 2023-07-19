@@ -86,10 +86,7 @@ def test_length_validator_on_field():
     # Test the fields with valid data
     data = {"name": valid_name}
     for UserField in [UserFieldMin, UserFieldMax, UserFieldMinMax]:
-        try:
-            UserField.validate(info, data)
-        except magql.ValidationError as e:
-            raise AssertionError(f"Unexpected ValidationError: {e.message}") from e
+        UserField.validate(info, data)
 
     # Test the field with invalid data (too short)
     data = {"name": invalid_name_short}
@@ -102,10 +99,6 @@ def test_length_validator_on_field():
         except magql.ValidationError as e:
             assert "name" in e.message
             assert e.message["name"][0] == error_message
-        else:
-            raise AssertionError(
-                "Expected ValidationError, but no exception was raised."
-            )
 
     # Test the field with invalid data (too long)
     data = {"name": invalid_name_long}
@@ -118,10 +111,6 @@ def test_length_validator_on_field():
         except magql.ValidationError as e:
             assert "name" in e.message
             assert e.message["name"][0] == error_message
-        else:
-            raise AssertionError(
-                "Expected ValidationError, but no exception was raised."
-            )
 
     # Test the field with invalid data (not exact)
     data = {"name": invalid_name_exact}
@@ -131,15 +120,10 @@ def test_length_validator_on_field():
     except magql.ValidationError as e:
         assert "name" in e.message
         assert e.message["name"][0] == error_message
-    else:
-        raise AssertionError("Expected ValidationError, but no exception was raised.")
 
     # Test the field with valid data (exact)
     data = {"name": valid_name_exact}
-    try:
-        UserFieldExact.validate(info, data)
-    except magql.ValidationError as e:
-        raise AssertionError(f"Unexpected ValidationError: {e.message}") from e
+    UserFieldExact.validate(info, data)
 
 
 def test_length_validator_on_argument():
@@ -336,36 +320,33 @@ def test_length_validator_on_inputObject():
 
     # Test the input objects with valid data
     data = valid_input
-    for user_input_object in [
+    for UserInputObject in [
         UserInputObjectMinMax,
         UserInputObjectMin,
         UserInputObjectMax,
     ]:
-        try:
-            user_input_object.validate(info, data)
-        except magql.ValidationError as e:
-            raise AssertionError(f"Unexpected ValidationError: {e.message}") from e
+        UserInputObject.validate(info, data)
 
     # Test the input objects with invalid data (too short)
     data = invalid_input_short
-    for user_input_object, error_message in [
+    for UserInputObject, error_message in [
         (UserInputObjectMinMax, "Must be between 2 and 15 characters, but was 1."),
         (UserInputObjectMin, "Must be at least 2 characters, but was 1."),
     ]:
         try:
-            user_input_object.validate(info, data)
+            UserInputObject.validate(info, data)
         except magql.ValidationError as e:
             assert "name" in e.message
             assert e.message["name"][0] == error_message
 
     # Test the input objects with invalid data (too long)
     data = invalid_input_long
-    for user_input_object, error_message in [
+    for UserInputObject, error_message in [
         (UserInputObjectMinMax, "Must be between 2 and 15 characters, but was 16."),
         (UserInputObjectMax, "Must be at most 15 characters, but was 16."),
     ]:
         try:
-            user_input_object.validate(info, data)
+            UserInputObject.validate(info, data)
         except magql.ValidationError as e:
             assert "name" in e.message
             assert e.message["name"][0] == error_message
@@ -381,10 +362,7 @@ def test_length_validator_on_inputObject():
 
     # Test the input objects with valid data (exact)
     data = valid_input_exact
-    try:
-        UserInputObjectExact.validate(info, data)
-    except magql.ValidationError as e:
-        raise AssertionError(f"Unexpected ValidationError: {e.message}") from e
+    UserInputObjectExact.validate(info, data)
 
 
 def test_length_validator_on_inputField():
