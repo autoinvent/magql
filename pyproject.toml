@@ -9,9 +9,6 @@ requires-python = ">=3.8"
 dependencies = [
     "graphql-core>=3",
     "python-dateutil",
-    "sqlalchemy>=2",
-    "flask>=2.3",
-    "flask-sqlalchemy>=3",
 ]
 
 [build-system]
