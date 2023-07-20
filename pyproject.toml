@@ -1,6 +1,6 @@
 [project]
 name = "magql"
-version = "0.8.0.dev"
+version = "1.0.0.dev"
 description = "The magical GraphQL framework that generates an API for your data."
 readme = "README.md"
 license = {file = "LICENSE.md"}
