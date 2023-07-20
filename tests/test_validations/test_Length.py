@@ -19,7 +19,7 @@ It covers the following scenarios:
 """
 
 
-def test_length_validator_on_field():
+def test_Length_validator_on_Field():
     """
     Tests the Length validator specifically for an Field in a GraphQL schema.
     Creates Fields, each with a unique Length validator
@@ -126,7 +126,7 @@ def test_length_validator_on_field():
     UserFieldExact.validate(info, data)
 
 
-def test_length_validator_on_argument():
+def test_Length_validator_on_Irgument():
     """
     Tests the Length validator specifically for an Argument in a GraphQL schema.
     Creates Arguments, each with a unique Length validator.
@@ -150,10 +150,9 @@ def test_length_validator_on_argument():
 
     QueryRoot = magql.Object(
         "QueryRoot",
-        fields={
-            "dummy": magql.Field("String", resolve=lambda obj, info: "dummy"),
-        },
+        fields={"dummy": magql.Field("String", resolve=lambda obj, info: "dummy")},
     )
+
     s = magql.Schema()
     s.query = QueryRoot
 
@@ -245,7 +244,7 @@ def test_length_validator_on_argument():
     assert error_messages["nameExact"][0] == "Must be exactly 5 characters, but was 4."
 
 
-def test_length_validator_on_inputObject():
+def test_Length_validator_on_InputObject():
     """
     Tests the Length validator specifically for an InputObject in a GraphQL schema.
     Creates InputObjects, each with a unique Length validator
@@ -364,7 +363,7 @@ def test_length_validator_on_inputObject():
     UserInputObjectExact.validate(info, data)
 
 
-def test_length_validator_on_inputField():
+def test_Length_validator_on_InputField():
     """
     Tests the Length validator specifically for an InputField in a GraphQL schema.
     Creates InputFields, each with a unique Length validator.
@@ -373,6 +372,12 @@ def test_length_validator_on_inputField():
     GraphQL input fields, by checking if it correctly identifies:
     valid, too short, too long names, and names of exact length.
     """
+    valid_name = "John Doe"
+    valid_name_exact = "Johny"
+    invalid_name_short = "J"
+    invalid_name_long = "John" * 4
+    invalid_name_exact = "John"
+
     UserInputFieldMinMax = magql.InputField(
         "String", validators=[magql.Length(min=2, max=15)]
     )
@@ -396,10 +401,9 @@ def test_length_validator_on_inputField():
 
     QueryRoot = magql.Object(
         "QueryRoot",
-        fields={
-            "dummy": magql.Field("String", resolve=lambda obj, info: "dummy"),
-        },
+        fields={"dummy": magql.Field("String", resolve=lambda obj, info: "dummy")},
     )
+
     s = magql.Schema()
     s.query = QueryRoot
 
@@ -421,8 +425,6 @@ def test_length_validator_on_inputField():
         return input
 
     # Test the mutation with valid data
-    valid_name = "John Doe"
-    valid_name_exact = "Johny"
     mutation_valid = f"""
         mutation {{
             createUserMin(input: {{ name: "{valid_name}" }}) {{ nameMin }}
@@ -441,9 +443,6 @@ def test_length_validator_on_inputField():
     }
 
     # Test the mutation with invalid data
-    invalid_name_short = "J"
-    invalid_name_long = "John" * 4
-    invalid_name_exact = "John"
     mutation_invalid = f"""
         mutation {{
             createUserMin(input: {{ name: "{invalid_name_short}" }}) {{ nameMin }}
@@ -473,7 +472,7 @@ def test_length_validator_on_inputField():
     )
 
 
-def test_nested_validator():
+def test_Length_validator_nested():
     """
     Tests on both an Argument and an InputField in a GraphQL schema.
     Creates an Argument and an InputField, each with a unique Length validator.
