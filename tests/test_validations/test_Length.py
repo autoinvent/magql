@@ -473,71 +473,94 @@ def test_length_validator_on_inputField():
     )
 
 
-# TODO: FINISH IMPLEMENTATION
-# def test_nested_validators():
-#     schema = magql.Schema()
-# schema.query = magql.Object(
-#     "RootQuery",
-#     fields={
-#         "dummy": magql.Field(
-#             "String", resolve=lambda obj, info: "dummy")
-#         }
-#     )
+def test_nested_validator():
+    """
+    Tests on both an Argument and an InputField in a GraphQL schema.
+    Creates an Argument and an InputField, each with a unique Length validator.
+    Mutation to validate both the Argument & InputField with various lengths.
+    Verifies the correct behaviour of the validator by checking if it identifies:
+    valid, too short, too long names, and names of exact length.
+    """
 
-# user_input = magql.InputObject(
-#     name="UserInput",
-#     fields=dict(
-#         username=magql.InputField(
-#             type=magql.String,
-#             validators=[magql.Length(3, 8)]
-#             ),
-#         password=magql.InputField(
-#             type=magql.String,
-#             validators=[magql.Length(5, 10)]
-#             ),
-#     ),
-#     validators=[magql.Length(4, 10)],
-# )
+    UserArgument = magql.Argument("String", validators=[magql.Length(min=2, max=15)])
 
-#     user_object = magql.Object(
-#         name="User",
-#         fields=dict(
-#             username=magql.Field(type=magql.String),
-#             password=magql.Field(type=magql.String),
-#         )
-#     )
+    UserInputField = magql.InputField("String", validators=[magql.Length(max=10)])
 
-#     schema.mutation = magql.Object(
-#         name="Mutation",
-#         fields=dict(
-#             createUser=magql.Field(
-#                 type=user_object,
-#                 args=dict(
-#                     user=magql.Argument(
-#                         type=user_input,
-#                         validators=[magql.Length(6, 12)],
-#                     )
-#                 ),
-#                 resolve=lambda user: user,
-#                 validators=[magql.Length(8, 16)],
-#             ),
-#         ),
-#     )
+    UserInput = magql.InputObject("UserInput", fields={"name": UserInputField})
 
-#     mutation = """
-#         mutation {
-#             createUser(user: {username: "short", password: "longpassword"}) {
-#                 username
-#                 password
-#             }
-#         }
-#     """
+    def resolve_name_field(parent, info):
+        field_name = info.field_name
+        return parent[field_name]
 
-#     result = schema.execute(mutation)
+    QueryRoot = magql.Object(
+        "QueryRoot",
+        fields={
+            "dummy": magql.Field("String", resolve=lambda obj, info: "dummy"),
+        },
+    )
 
-#     # Check that the result contains error messages for each level
-#     assert "Must be between 8 and 16 characters, but was 7." in result.errors
-#     assert "Must be between 6 and 12 characters, but was 5." in result.errors
-#     assert "Must be between 4 and 10 characters, but was 3." in result.errors
-#     assert "Must be between 3 and 8 characters, but was 5." in result.errors
-#     assert "Must be between 5 and 10 characters, but was 12." in result.errors
+    s = magql.Schema()
+    s.query = QueryRoot
+
+    User = magql.Object(
+        "User",
+        fields={
+            "nameArgument": magql.Field("String", resolve=resolve_name_field),
+            "nameInputField": magql.Field("String", resolve=resolve_name_field),
+        },
+    )
+
+    @s.mutation.field(
+        "createUser", User, args={"nameArgument": UserArgument, "input": UserInput}
+    )
+    def resolve_create_user(parent, info, nameArgument, input):
+        return {"nameArgument": nameArgument, "nameInputField": input["name"]}
+
+    # Test the mutation with valid data
+    valid_name_argument = "John Doe"
+    valid_name_input_field = "Johny"
+    mutation_valid = f"""
+        mutation {{
+            createUser(
+                nameArgument: "{valid_name_argument}",
+                input: {{ name: "{valid_name_input_field}" }}
+            ) {{
+                nameArgument
+                nameInputField
+            }}
+        }}
+    """
+    result_valid = s.execute(mutation_valid)
+    assert not result_valid.errors
+    assert result_valid.data == {
+        "createUser": {
+            "nameArgument": valid_name_argument,
+            "nameInputField": valid_name_input_field,
+        }
+    }
+
+    # Test the mutation with invalid data
+    invalid_name_argument = "J"
+    invalid_name_input_field = "JohnyyJohnyy"
+    mutation_invalid = f"""
+        mutation {{
+            createUser(
+                nameArgument: "{invalid_name_argument}",
+                input: {{ name: "{invalid_name_input_field}" }}
+            ) {{
+                nameArgument
+                nameInputField
+            }}
+        }}
+    """
+    result_invalid = s.execute(mutation_invalid)
+    error_messages = result_invalid.errors[0].extensions
+    assert len(error_messages) == 2
+    assert (
+        result_invalid.errors[0].extensions["nameArgument"][0]
+        == "Must be between 2 and 15 characters, but was 1."
+    )
+    assert (
+        result_invalid.errors[0].extensions["input"][0]["name"][0]
+        == "Must be at most 10 characters, but was 12."
+    )
