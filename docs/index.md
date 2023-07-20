@@ -1,4 +1,4 @@
-magql
+Magql
 =====
 
 Magql is a [GraphQL][] framework for Python. It's pronounced "magical", and it is!

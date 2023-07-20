@@ -2,7 +2,7 @@ import importlib.metadata
 
 # Project --------------------------------------------------------------
 
-project = "magql"
+project = "Magql"
 version = release = importlib.metadata.version("magql").partition(".dev")[0]
 
 # General --------------------------------------------------------------
