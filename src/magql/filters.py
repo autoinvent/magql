@@ -12,7 +12,7 @@ filter_item: nodes.InputObject = nodes.InputObject(
 )
 """The input type for the ``filter`` argument to data source list resolvers.
 
-.. code-block:: graphql
+.. code-block:: text
 
     input FilterItem {
         path: String!

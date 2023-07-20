@@ -85,7 +85,7 @@ class NamedType(Type):
 
     def __init__(self, name: str, **kwargs: t.Any) -> None:
         super().__init__(**kwargs)
-        self.name = name
+        self.name: str = name
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.name}>"
@@ -347,7 +347,7 @@ class _BaseObject(NamedType):
         be the name of a type defined elsewhere.
         """
 
-        self.description = description
+        self.description: str | None = description
         """Help text to show in the schema."""
 
     def field(
@@ -466,7 +466,7 @@ class Union(NamedType):
         Use :meth:`add_type` instead of modifying this directly.
         """
 
-        self.description = description
+        self.description: str | None = description
         """Help text to show in the schema."""
 
         if types is not None:
@@ -555,7 +555,7 @@ class Field(_DataValidatorNode):
     ) -> None:
         super().__init__(validators=validators)
 
-        self.type = type
+        self.type: str | Type = type
         """The type of the value returned by this field's resolver. May be the name of a
         type defined elsewhere.
         """
@@ -566,12 +566,12 @@ class Field(_DataValidatorNode):
         """
 
         self._pre_resolve: ResolverCallable | None = None
-        self._resolve = resolve
+        self._resolve: ResolverCallable = resolve
 
-        self.description = description
+        self.description: str | None = description
         """Help text to show in the schema."""
 
-        self.deprecation = deprecation
+        self.deprecation: str | None = deprecation
         """Deprecation message to show in the schema."""
 
     def pre_resolver(self, f: ResolverCallable) -> ResolverCallable:
@@ -668,15 +668,15 @@ class Argument(_ValueValidatorNode):
 
         self.type = type
 
-        self.default = default
+        self.default: t.Any = default
         """The default Python value to use if input is not provided. By default, it will
         not be passed to the resolver, which is not the same as a default of ``None``.
         """
 
-        self.description = description
+        self.description: str | None = description
         """Help text to show in the schema."""
 
-        self.deprecation = deprecation
+        self.deprecation: str | None = deprecation
         """Deprecation message to show in the schema."""
 
     def _find_nodes(self) -> t.Iterable[str | Node]:
@@ -722,7 +722,7 @@ class InputObject(NamedType, _DataValidatorNode):
         converted to full input field instances.
         """
 
-        self.description = description
+        self.description: str | None = description
         """Help text to show in the schema."""
 
     @property
@@ -769,15 +769,15 @@ class InputField(_ValueValidatorNode):
 
         self.type = type
 
-        self.default = default
+        self.default: t.Any = default
         """The default Python value to use if input is not provided. By default, it will
         not be present in the dict, which is not the same as a default of ``None``.
         """
 
-        self.description = description
+        self.description: str | None = description
         """Help text to show in the schema."""
 
-        self.deprecation = deprecation
+        self.deprecation: str | None = deprecation
         """Deprecation message to show in the schema."""
 
     def _find_nodes(self) -> t.Iterable[str | Node]:
@@ -828,7 +828,7 @@ class Enum(NamedType):
         list or :class:`~enum.Enum` passed in has been converted to a dict.
         """
 
-        self.description = description
+        self.description: str | None = description
         """Help text to show in the schema."""
 
     def _find_nodes(self) -> t.Iterator[str | Node]:
@@ -877,16 +877,16 @@ class Scalar(NamedType):
     ) -> None:
         super().__init__(name=name)
 
-        self.serialize = serialize
+        self.serialize: t.Callable[[t.Any], t.Any] = serialize
         """Convert a Python value to the output serialization format."""
 
-        self.parse_value = parse_value
+        self.parse_value: t.Callable[[t.Any], t.Any] = parse_value
         """Convert a value in the input serialization format to Python."""
 
-        self.description = description
+        self.description: str | None = description
         """Help text to show in the schema."""
 
-        self.specified_by = specified_by
+        self.specified_by: str | None = specified_by
         """A reference to the specification defining this type. Shown alongside
         :attr:`description` in the schema.
         """
@@ -919,7 +919,7 @@ class Wrapping(Type):
     def __init__(self, type: str | Type) -> None:
         super().__init__()
 
-        self.type = type
+        self.type: str | Type = type
         """The wrapped type. May be the name of a type defined elsewhere."""
 
     def _find_nodes(self) -> t.Iterator[str | Node]:

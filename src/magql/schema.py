@@ -132,6 +132,9 @@ class Schema:
 
         Changes to the Magql schema after this is called will not be reflected in the
         GraphQL schema.
+
+        Each GraphQL node will have a ``node.extensions["magql"]`` key with a reference
+        back to the Magql node that generated it.
         """
         if self._graphql_schema is not None:
             return self._graphql_schema
@@ -173,7 +176,8 @@ class Schema:
         operation: str | None = None,
     ) -> graphql.ExecutionResult:
         """Execute a GraphQL operation (query or mutation). Shortcut for calling
-        :meth:`to_magql` then calling ``graphql.graphql_sync`` on the GraphQL schema.
+        :meth:`to_magql` then calling :func:`graphql.graphql_sync` on the
+        GraphQL schema.
 
         The schema from :meth:`to_magql` is cached, so calling this multiple times will
         not result in multiple compilations.

@@ -70,7 +70,7 @@ class Search:
         )
         """The query field.
 
-        .. code-block:: graphql
+        .. code-block:: text
 
             type Query {
                 search(value: String!): [SearchResult!]!
@@ -119,7 +119,7 @@ search_result: nodes.Object = nodes.Object(
 """The result type for the :class:`.Search` query. :class:`SearchResult` is the Python
 type corresponding to this Magql type.
 
-.. code-block:: graphql
+.. code-block:: text
 
     type SearchResult {
         type: String!

@@ -116,7 +116,7 @@ class ModelManager:
     """The object type and fields representing the model and its columns. The type name
     is the model name.
 
-    .. code-block:: graphql
+    .. code-block:: text
 
         type Model {
             id: Int!
@@ -128,7 +128,7 @@ class ModelManager:
     """Query that selects a row by id from the database. The field name is the snake
     case model name with ``_item`` appended. Uses :class:`.ItemResolver`.
 
-    .. code-block:: graphql
+    .. code-block:: text
 
         type Query {
             model_item(id: Int!): Model
@@ -155,7 +155,7 @@ class ModelManager:
     ``name_asc`` and ``name_desc``. In Python, the values are converted to
     ``(name: str, desc: bool)`` tuples.
 
-    .. code-block:: graphql
+    .. code-block:: text
 
         enum ModelSort {
             id_asc
@@ -169,7 +169,7 @@ class ModelManager:
     """Query that selects multiple rows from the database. The field name is the snake
     case model name with ``_list`` appended. Uses :class:`.ListResolver`.
 
-    .. code-block:: graphql
+    .. code-block:: text
 
         type Query {
             model_list(
@@ -187,7 +187,7 @@ class ModelManager:
     the model except the primary key. An argument is required if its column is not
     nullable and doesn't have a default. Uses :class:`.CreateResolver`.
 
-    .. code-block:: graphql
+    .. code-block:: text
 
         type Mutation {
             model_create(name: String!): Model!
@@ -200,7 +200,7 @@ class ModelManager:
     the model. The primary key argument is required, all others are not. Columns are not
     updated if their argument is not given. Uses :class:`.UpdateResolver`.
 
-    .. code-block:: graphql
+    .. code-block:: text
 
         type Mutation {
             model_update(id: Int!, name: String): Model!
@@ -211,7 +211,7 @@ class ModelManager:
     """Mutation that deletes a row from the database. The field name is the snake case
     model name with ``_delete`` appended. Uses :class:`.DeleteResolver`.
 
-    .. code-block:: graphql
+    .. code-block:: text
 
         type Mutation {
             model_delete(id: Int!): Boolean!
