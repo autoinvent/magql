@@ -144,8 +144,9 @@ def test_length_validator_on_argument():
         "String", validators=[magql.Length(min=5, max=5)]
     )
 
-    def resolve_name_field(user, info):
-        return user["name"]
+    def resolve_name_field(parent, info):
+        field_name = info.field_name
+        return parent[field_name]
 
     QueryRoot = magql.Object(
         "QueryRoot",
@@ -159,91 +160,89 @@ def test_length_validator_on_argument():
     User = magql.Object(
         "User",
         fields={
-            "name": magql.Field("String", resolve=resolve_name_field),
+            "nameMin": magql.Field("String", resolve=resolve_name_field),
+            "nameMax": magql.Field("String", resolve=resolve_name_field),
+            "nameMinMax": magql.Field("String", resolve=resolve_name_field),
+            "nameExact": magql.Field("String", resolve=resolve_name_field),
         },
     )
 
     @s.mutation.field(
-        "createUserMinMax",
+        "createUser",
         User,
-        args={"name": UserArgumentMinMax},
+        args={
+            "nameMin": UserArgumentMin,
+            "nameMax": UserArgumentMax,
+            "nameMinMax": UserArgumentMinMax,
+            "nameExact": UserArgumentExact,
+        },
     )
-    @s.mutation.field(
-        "createUserMin",
-        User,
-        args={"name": UserArgumentMin},
-    )
-    @s.mutation.field(
-        "createUserMax",
-        User,
-        args={"name": UserArgumentMax},
-    )
-    @s.mutation.field(
-        "createUserExact",
-        User,
-        args={"name": UserArgumentExact},
-    )
-    def resolve_create_user(parent, info, name):
-        return {"name": name}
+    def resolve_create_user(parent, info, nameMin, nameMax, nameMinMax, nameExact):
+        return {
+            "nameMin": nameMin,
+            "nameMax": nameMax,
+            "nameMinMax": nameMinMax,
+            "nameExact": nameExact,
+        }
 
     # Test the mutation with valid data
     valid_name = "John Doe"
-    for mutation_name in ["createUserMinMax", "createUserMin", "createUserMax"]:
-        mutation = f"""
-            mutation {{
-                {mutation_name}(name: "{valid_name}") {{
-                    name
-                }}
+    valid_name_exact = "Johny"
+    mutation_valid = f"""
+        mutation {{
+            createUser(
+                nameMin: "{valid_name}",
+                nameMax: "{valid_name}",
+                nameMinMax: "{valid_name}",
+                nameExact: "{valid_name_exact}"
+            ) {{
+                nameMin
+                nameMax
+                nameMinMax
+                nameExact
             }}
-        """
-        result = s.execute(mutation)
-        assert result.data == {mutation_name: {"name": "John Doe"}}
-        assert not result.errors
+        }}
+    """
+    result_valid = s.execute(mutation_valid)
+    assert not result_valid.errors
+    assert result_valid.data == {
+        "createUser": {
+            "nameMin": valid_name,
+            "nameMax": valid_name,
+            "nameMinMax": valid_name,
+            "nameExact": valid_name_exact,
+        }
+    }
 
     # Test the mutation with invalid data
-    for mutation_name, error_message in [
-        ("createUserMinMax", "Must be between 2 and 15 characters, but was 1."),
-        ("createUserMin", "Must be at least 2 characters, but was 1."),
-        ("createUserMax", "Must be at most 15 characters, but was 16."),
-    ]:
-        invalid_name = "J" if "Min" in mutation_name else "John Doe" * 2
-        mutation = f"""
-            mutation {{
-                {mutation_name}(name: "{invalid_name}") {{
-                    name
-                }}
-            }}
-        """
-        result = s.execute(mutation)
-        assert result.errors
-        assert result.errors[0].extensions["name"][0] == error_message
-
-    # Test the mutation with valid data (exact length)
-    valid_exact_name = "Johny"
-    mutation = f"""
+    invalid_name_short = "J"
+    invalid_name_long = "John" * 4
+    invalid_name_exact = "John"
+    mutation_invalid = f"""
         mutation {{
-            createUserExact(name: "{valid_exact_name}") {{
-                name
+            createUser(
+                nameMin: "{invalid_name_short}",
+                nameMax: "{invalid_name_long}",
+                nameMinMax: "{invalid_name_long}",
+                nameExact: "{invalid_name_exact}"
+            ) {{
+                nameMin
+                nameMax
+                nameMinMax
+                nameExact
             }}
         }}
     """
-    result = s.execute(mutation)
-    assert result.data == {"createUserExact": {"name": "Johny"}}
-    assert not result.errors
-
-    # Test the mutation with invalid data (exact length)
-    invalid_exact_name = "John"
-    error_message = "Must be exactly 5 characters, but was 4."
-    mutation = f"""
-        mutation {{
-            createUserExact(name: "{invalid_exact_name}") {{
-                name
-            }}
-        }}
-    """
-    result = s.execute(mutation)
-    assert result.errors
-    assert result.errors[0].extensions["name"][0] == error_message
+    result_invalid = s.execute(mutation_invalid)
+    error_messages = result_invalid.errors[0].extensions
+    assert len(error_messages) == 4
+    assert error_messages["nameMin"][0] == "Must be at least 2 characters, but was 1."
+    assert error_messages["nameMax"][0] == "Must be at most 15 characters, but was 16."
+    assert (
+        error_messages["nameMinMax"][0]
+        == "Must be between 2 and 15 characters, but was 16."
+    )
+    assert error_messages["nameExact"][0] == "Must be exactly 5 characters, but was 4."
 
 
 def test_length_validator_on_inputObject():
@@ -407,153 +406,138 @@ def test_length_validator_on_inputField():
     User = magql.Object(
         "User",
         fields={
-            "name": magql.Field("String", resolve=resolve_name_field),
+            "nameMin": magql.Field("String", resolve=resolve_name_field),
+            "nameMax": magql.Field("String", resolve=resolve_name_field),
+            "nameMinMax": magql.Field("String", resolve=resolve_name_field),
+            "nameExact": magql.Field("String", resolve=resolve_name_field),
         },
     )
 
-    @s.mutation.field("createUserMinMax", User, args={"input": UserInputMinMax})
     @s.mutation.field("createUserMin", User, args={"input": UserInputMin})
     @s.mutation.field("createUserMax", User, args={"input": UserInputMax})
+    @s.mutation.field("createUserMinMax", User, args={"input": UserInputMinMax})
     @s.mutation.field("createUserExact", User, args={"input": UserInputExact})
     def resolve_create_user(parent, info, input):
         return input
 
     # Test the mutation with valid data
-    for mutation_name in ["createUserMinMax", "createUserMin", "createUserMax"]:
-        mutation = f"""
-            mutation {{
-                {mutation_name}(input: {{ name: "John Doe" }}) {{
-                    name
-                }}
-            }}
-        """
-        result = s.execute(mutation)
-        assert result.data == {mutation_name: {"name": "John Doe"}}
-        assert not result.errors
+    valid_name = "John Doe"
+    valid_name_exact = "Johny"
+    mutation_valid = f"""
+        mutation {{
+            createUserMin(input: {{ name: "{valid_name}" }}) {{ nameMin }}
+            createUserMax(input: {{ name: "{valid_name}" }}) {{ nameMax }}
+            createUserMinMax(input: {{ name: "{valid_name}" }}) {{ nameMinMax }}
+            createUserExact(input: {{ name: "{valid_name_exact}" }}) {{ nameExact }}
+        }}
+    """
+    result_valid = s.execute(mutation_valid)
+    assert not result_valid.errors
+    assert result_valid.data == {
+        "createUserMin": {"nameMin": valid_name},
+        "createUserMax": {"nameMax": valid_name},
+        "createUserMinMax": {"nameMinMax": valid_name},
+        "createUserExact": {"nameExact": valid_name_exact},
+    }
 
     # Test the mutation with invalid data
-    for mutation_name, error_message in [
-        ("createUserMinMax", "Must be between 2 and 15 characters, but was 1."),
-        ("createUserMin", "Must be at least 2 characters, but was 1."),
-        ("createUserMax", "Must be at most 15 characters, but was 16."),
-    ]:
-        invalid_name = "J" if "Min" in mutation_name else "John Doe" * 2
-        mutation = f"""
-            mutation {{
-                {mutation_name}(input: {{ name: "{invalid_name}" }}) {{
-                    name
-                }}
-            }}
-        """
-        result = s.execute(mutation)
-        assert result.errors
-        assert result.errors[0].extensions["input"][0]["name"][0] == error_message
-
-    # Test the mutation with valid data (exact length)
-    valid_name_exact = "Johny"
-    mutation = f"""
-        mutation {{
-            createUserExact(input: {{ name: "{valid_name_exact}" }}) {{
-                name
-            }}
-        }}
-    """
-    result = s.execute(mutation)
-    assert result.data == {"createUserExact": {"name": "Johny"}}
-    assert not result.errors
-
-    # Test the mutation with invalid data (exact length)
+    invalid_name_short = "J"
+    invalid_name_long = "John" * 4
     invalid_name_exact = "John"
-    error_message = "Must be exactly 5 characters, but was 4."
-    mutation = f"""
+    mutation_invalid = f"""
         mutation {{
-            createUserExact(input: {{ name: "{invalid_name_exact}" }}) {{
-                name
-            }}
+            createUserMin(input: {{ name: "{invalid_name_short}" }}) {{ nameMin }}
+            createUserMax(input: {{ name: "{invalid_name_long}" }}) {{ nameMax }}
+            createUserMinMax(input: {{ name: "{invalid_name_long}" }}) {{ nameMinMax }}
+            createUserExact(input: {{ name: "{invalid_name_exact}" }}) {{ nameExact }}
         }}
     """
-    result = s.execute(mutation)
-    assert result.errors
-    assert result.errors[0].extensions["input"][0]["name"][0] == error_message
+    result_invalid = s.execute(mutation_invalid)
+    error_messages = result_invalid.errors
+    assert len(error_messages) == 4
+    assert (
+        result_invalid.errors[0].extensions["input"][0]["name"][0]
+        == "Must be at least 2 characters, but was 1."
+    )
+    assert (
+        result_invalid.errors[1].extensions["input"][0]["name"][0]
+        == "Must be at most 15 characters, but was 16."
+    )
+    assert (
+        result_invalid.errors[2].extensions["input"][0]["name"][0]
+        == "Must be between 2 and 15 characters, but was 16."
+    )
+    assert (
+        result_invalid.errors[3].extensions["input"][0]["name"][0]
+        == "Must be exactly 5 characters, but was 4."
+    )
 
 
 # TODO: FINISH IMPLEMENTATION
-def test_nested_validators():
-    """
-    docstring here
-    """
-    info = Mock(spec=GraphQLResolveInfo)
+# def test_nested_validators():
+#     schema = magql.Schema()
+# schema.query = magql.Object(
+#     "RootQuery",
+#     fields={
+#         "dummy": magql.Field(
+#             "String", resolve=lambda obj, info: "dummy")
+#         }
+#     )
 
-    def FieldValidatorWrapper(info, data):
-        length_validator = magql.Length(min=2, max=10)
-        try:
-            length_validator(info, data["name"], data)
-        except magql.ValidationError as e:
-            raise magql.ValidationError({"name": e.message}) from e
+# user_input = magql.InputObject(
+#     name="UserInput",
+#     fields=dict(
+#         username=magql.InputField(
+#             type=magql.String,
+#             validators=[magql.Length(3, 8)]
+#             ),
+#         password=magql.InputField(
+#             type=magql.String,
+#             validators=[magql.Length(5, 10)]
+#             ),
+#     ),
+#     validators=[magql.Length(4, 10)],
+# )
 
-    def InputObjectValidatorWrapper(info, data):
-        length_validator = magql.Length(max=5)
-        try:
-            length_validator(info, data["name"], data)
-        except magql.ValidationError as e:
-            raise magql.ValidationError({"name": e.message}) from e
+#     user_object = magql.Object(
+#         name="User",
+#         fields=dict(
+#             username=magql.Field(type=magql.String),
+#             password=magql.Field(type=magql.String),
+#         )
+#     )
 
-    # Validator at Field Level
-    ##############################################################
-    UserField = magql.Field("String", validators=[FieldValidatorWrapper])
+#     schema.mutation = magql.Object(
+#         name="Mutation",
+#         fields=dict(
+#             createUser=magql.Field(
+#                 type=user_object,
+#                 args=dict(
+#                     user=magql.Argument(
+#                         type=user_input,
+#                         validators=[magql.Length(6, 12)],
+#                     )
+#                 ),
+#                 resolve=lambda user: user,
+#                 validators=[magql.Length(8, 16)],
+#             ),
+#         ),
+#     )
 
-    # Validator at Argument Level
-    ##############################################################
-    argument_validator = magql.Length(min=5)
-    UserArgument = magql.Argument("String", validators=[argument_validator])
+#     mutation = """
+#         mutation {
+#             createUser(user: {username: "short", password: "longpassword"}) {
+#                 username
+#                 password
+#             }
+#         }
+#     """
 
-    # Validator at InputObject Level
-    ##############################################################
-    UserInputObject = magql.InputObject(
-        "UserInput", validators=[InputObjectValidatorWrapper]
-    )
+#     result = schema.execute(mutation)
 
-    # Validator at InputField Level
-    ##############################################################
-    input_field_validator = magql.Length(min=5, max=5)
-    UserInputField = magql.InputField("String", validators=[input_field_validator])
-
-    # Test behavior violating validators and verify error messages
-
-    # Behavior violating Field Validator
-    try:
-        UserField.validate(info, {"name": "J"})
-    except magql.ValidationError as e:
-        assert len(e.message) == 1  # Error message count
-        assert e.message["name"][0] == "Must be between 2 and 10 characters, but was 1."
-
-    # Behavior violating Argument Validator
-    try:
-        UserArgument.validate(info, "Jay", {"name": "Jay"})
-    except magql.ValidationError as e:
-        assert len(e.message) == 1  # Error message count
-        assert e.message[0] == "Must be at least 5 characters, but was 3."
-
-    # Behavior violating InputObject Validator
-    try:
-        UserInputObject.validate(info, {"name": "JohnDoeJohnDoe"})
-    except magql.ValidationError as e:
-        assert len(e.message) == 1  # Error message count
-        assert e.message["name"][0] == "Must be at most 5 characters, but was 14."
-
-    # Behavior violating InputField Validator
-    try:
-        UserInputField.validate(info, "JohnDoe", {"name": "JohnDoe"})
-    except magql.ValidationError as e:
-        assert len(e.message) == 1  # Error message count
-        assert e.message[0] == "Must be exactly 5 characters, but was 7."
-
-
-# UserField_Validator = magql.Length(min=2, max=10)
-# UserField = magql.Field("String", validators=[UserField_Validator])
-# UserArgument_Validator = magql.Length(min=3, max=11)
-# UserArgument = magql.Argument("String", validators=[UserArgument_Validator])
-# UserInputObject_Validator = magql.Length(min=4, max=12)
-# UserInputObject = magql.InputObject("String", validators=[UserInputObject_Validator])
-# UserInputField_Validator = magql.Length(min=5, max=5)
-# UserInputField = magql.InputField("String", validators=[UserInputField_Validator])
+#     # Check that the result contains error messages for each level
+#     assert "Must be between 8 and 16 characters, but was 7." in result.errors
+#     assert "Must be between 6 and 12 characters, but was 5." in result.errors
+#     assert "Must be between 4 and 10 characters, but was 3." in result.errors
+#     assert "Must be between 3 and 8 characters, but was 5." in result.errors
+#     assert "Must be between 5 and 10 characters, but was 12." in result.errors
