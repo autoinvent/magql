@@ -14,7 +14,7 @@ from .nodes import Scalar
 # reference them.
 
 String: Scalar = Scalar("String")
-"""Built-in GraphQL ``String` type."""
+"""Built-in GraphQL ``String`` type."""
 String._graphql_node = graphql.GraphQLString
 
 
@@ -75,7 +75,7 @@ Boolean._graphql_node = graphql.GraphQLBoolean
 graphql.GraphQLBoolean.parse_value = parse_boolean  # type: ignore[method-assign]
 
 ID: Scalar = Scalar("ID")
-"""Built-in GraphQL ``ID` type. Accepts strings, ints, and floats, converting them all
+"""Built-in GraphQL ``ID`` type. Accepts strings, ints, and floats, converting them all
 to strings.
 """
 ID._graphql_node = graphql.GraphQLID

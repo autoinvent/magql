@@ -48,7 +48,7 @@ Python type corresponding to this Magql type.
 
 The items in each list are :class:`.search_result`.
 
-.. code-block:: graphql
+.. code-block:: text
 
     type CheckDeleteResult {
         affected: [SearchResult!]!
@@ -93,7 +93,7 @@ class BaseCheckDelete:
         )
         """The query field.
 
-        .. code-block:: graphql
+        .. code-block:: text
 
             type Query {
                 check_delete(type: String!, id: ID!): CheckDeleteResult!

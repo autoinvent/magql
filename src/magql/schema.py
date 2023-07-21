@@ -92,6 +92,15 @@ class Schema:
             seen.add(node)
 
             if isinstance(node, str):
+                # Remove non-null ! and list [] marks, handled by _apply_types below.
+                while True:
+                    if node[-1] == "!":
+                        node = node[:-1]
+                    elif node[0] == "[":
+                        node = node[1:-1]
+                    else:
+                        break
+
                 if node not in type_map:
                     # Record a type name with no definition.
                     type_map[node] = None
@@ -123,6 +132,9 @@ class Schema:
 
         Changes to the Magql schema after this is called will not be reflected in the
         GraphQL schema.
+
+        Each GraphQL node will have a ``node.extensions["magql"]`` key with a reference
+        back to the Magql node that generated it.
         """
         if self._graphql_schema is not None:
             return self._graphql_schema
@@ -164,7 +176,8 @@ class Schema:
         operation: str | None = None,
     ) -> graphql.ExecutionResult:
         """Execute a GraphQL operation (query or mutation). Shortcut for calling
-        :meth:`to_magql` then calling ``graphql.graphql_sync`` on the GraphQL schema.
+        :meth:`to_magql` then calling :func:`graphql.graphql_sync` on the
+        GraphQL schema.
 
         The schema from :meth:`to_magql` is cached, so calling this multiple times will
         not result in multiple compilations.
@@ -199,3 +212,9 @@ class Schema:
             variable_values=variables,
             operation_name=operation,
         )
+
+    def to_document(self) -> str:
+        """Format the schema as a document in the GraphQL schema language. Shortcut for
+        calling :meth:`to_magql` then calling :func:`graphql.graphql_sync`.
+        """
+        return graphql.print_schema(self.to_graphql())
