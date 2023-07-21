@@ -127,6 +127,12 @@ def test_Length_validator_on_Argument():
     GraphQL input fields, by checking if it correctly identifies:
     valid, too short, too long names, and names of exact length.
     """
+    valid_name = "John Doe"
+    valid_name_exact = "Johny"
+    invalid_name_short = "J"
+    invalid_name_long = "John" * 4
+    invalid_name_exact = "John"
+
     UserArgumentMinMax = magql.Argument(
         "String", validators=[magql.Length(min=2, max=15)]
     )
@@ -177,8 +183,6 @@ def test_Length_validator_on_Argument():
         }
 
     # Test the mutation with valid data
-    valid_name = "John Doe"
-    valid_name_exact = "Johny"
     mutation_valid = f"""
         mutation {{
             createUser(
@@ -206,9 +210,6 @@ def test_Length_validator_on_Argument():
     }
 
     # Test the mutation with invalid data
-    invalid_name_short = "J"
-    invalid_name_long = "John" * 4
-    invalid_name_exact = "John"
     mutation_invalid = f"""
         mutation {{
             createUser(
