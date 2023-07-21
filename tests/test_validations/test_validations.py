@@ -21,7 +21,9 @@ def validate_size(info, value, data):
 
 def test_validator_on_argument():
     """
-    docstring here
+    The function tests the validity of custom validation along with
+    the resuable validation (Length) on the Argument level of the schema.
+    It also handles nested validations for the "hobbies" argument.
     """
 
     def resolver(parent, info, **input):
