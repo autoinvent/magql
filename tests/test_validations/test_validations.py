@@ -21,9 +21,15 @@ def validate_size(info, value, data):
 
 def test_validator_on_argument():
     """
-    The function tests the validity of custom validation along with
-    the resuable validation (Length) on the Argument level of the schema.
-    It also handles nested validations for the "hobbies" argument.
+    Testing:
+
+    *    Validation at the argument level with both built-in and custom validators
+    *    Validation of nested fields (validation of "hobbies" list items)
+    *    Errors when required arguments are not provided
+    *    Errors when non-null fields receive null
+    *    Errors when the value type does not match the expected type
+    *    Errors when the username is an empty string
+    *    Errors when the hobbies list is empty
     """
 
     def resolver(parent, info, **input):
@@ -33,14 +39,17 @@ def test_validator_on_argument():
 
     UserType = magql.Object(
         "User",
-        fields={"username": magql.Field("String"), "hobbies": magql.Field("[String!]")},
+        fields={
+            "username": magql.Field("String!"),
+            "hobbies": magql.Field("[String!]"),
+        },
     )
 
     field = magql.Field(
         UserType,
         args={
             "username": magql.Argument(
-                "String", validators=[validate_lowercase, LengthValidator]
+                "String!", validators=[validate_lowercase, LengthValidator]
             ),
             "hobbies": magql.Argument(
                 "[String!]", validators=[validate_size, [validate_lowercase]]
@@ -129,3 +138,125 @@ def test_validator_on_argument():
         result.errors[0].extensions["hobbies"][0] == "Must provide at least two values."
     )
     assert result.errors[0].extensions["hobbies"][1] == ["Must be lowercase."]
+
+    # Test with missing arguments
+    # (query with a missing hobbies and a query with a missing username)
+    missing_username_query = f"""
+        {{
+            user(hobbies: {json.dumps(valid_hobbies)})
+            {{
+                username
+                hobbies
+            }}
+    }}
+    """
+    result = schema.execute(missing_username_query)
+    assert result.errors
+    assert result.errors[0].message == (
+        "Field 'user' argument 'username' of type 'String!' "
+        "is required, but it was not provided."
+    )
+
+    missing_hobbies_query = f"""
+        {{
+            user(username: "{valid_username}")
+            {{
+                username
+                hobbies
+            }}
+    }}
+    """
+    result = schema.execute(missing_hobbies_query)
+    assert not result.errors
+    assert result.data["user"]["username"] == valid_username
+    assert result.data["user"]["hobbies"] is None
+
+    # Test with null arguments
+    # (query with a null username and a query with a null hobbies)
+    null_username_query = f"""
+        {{
+            user(
+                username: null,
+                hobbies: {json.dumps(valid_hobbies)}
+            )
+            {{
+                username
+                hobbies
+            }}
+    }}
+    """
+    result = schema.execute(null_username_query)
+    assert result.errors
+    assert result.errors[0].message == "Expected value of type 'String!', found null."
+
+    null_hobbies_query = f"""
+        {{
+            user(
+                username: "{valid_username}",
+                hobbies: null
+            )
+            {{
+                username
+                hobbies
+            }}
+    }}
+    """
+    result = schema.execute(null_hobbies_query)
+    assert result.errors
+    assert result.errors[0].message == "object of type 'NoneType' has no len()"
+
+    # Test with invalid types
+    # (query with wrong type username and a query with wrong type hobbies)
+    invalid_type_username_query = f"""
+        {{
+            user(
+                username: 123,
+                hobbies: {json.dumps(valid_hobbies)}
+            )
+            {{
+                username
+                hobbies
+            }}
+    }}
+    """
+    result = schema.execute(invalid_type_username_query)
+    assert result.errors
+    assert result.errors[0].message == "String cannot represent a non string value: 123"
+
+    invalid_type_hobbies_query = f"""
+        {{
+            user(
+                username: "{valid_username}",
+                hobbies: 3
+            )
+            {{
+                username
+                hobbies
+            }}
+    }}
+    """
+    result = schema.execute(invalid_type_hobbies_query)
+    assert result.errors
+    assert result.errors[0].message == "String cannot represent a non string value: 3"
+
+    # Test with empty username
+    # (query with empty username "")
+    empty_username_query = f"""
+        {{
+            user(
+                username: "",
+                hobbies: {json.dumps(valid_hobbies)}
+            )
+            {{
+                username
+                hobbies
+            }}
+    }}
+    """
+    result = schema.execute(empty_username_query)
+    assert result.errors
+    assert result.errors[0].extensions["username"][0] == "Must be lowercase."
+    assert (
+        result.errors[0].extensions["username"][1]
+        == "Must be between 2 and 10 characters, but was 0."
+    )
