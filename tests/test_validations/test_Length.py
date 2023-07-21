@@ -1,7 +1,3 @@
-from unittest.mock import Mock
-
-from graphql import GraphQLResolveInfo
-
 import magql
 
 """
@@ -21,112 +17,108 @@ It covers the following scenarios:
 
 def test_Length_validator_on_Field():
     """
-    Tests the Length validator specifically for an Field in a GraphQL schema.
-    Creates Fields, each with a unique Length validator
-    Uses wrapper functions to apply the validators.
-    The Fields are validated using the `.validate` method
-    from _DataValidatorNode with data of various lengths.
-    The tests ensure that the Length validator correctly identifies:
-    valid, too short, too long names, and names of exact length within the Fields.
+    Tests the Length validator specifically for a Field in a GraphQL schema.
+    Creates Fields with varying name lengths, and verifies
+    that the Length validator correctly identifies valid and invalid names.
     """
-    valid_name = "John Doe"
-    valid_name_exact = "Johny"
-    invalid_name_short = "J"
-    invalid_name_long = "John Doe" * 2
-    invalid_name_exact = "John"
+    valid_name = "someField"
+    valid_exact_name = "exact"
+    invalid_long_name = "thisnameiswaytoolong"
+    invalid_short_name = "a"
+    invalid_exact_name = "notExact"
 
-    def resolve_field(obj, info):
-        return obj["name"]
+    def field_name_validator_min(info, data):
+        valid_length = magql.Length(min=2)
+        field_name = info.field_name
+        valid_length(info, field_name, data)
 
-    def length_validator_min_wrapper(info, data):
-        length_validator = magql.Length(min=2)
-        try:
-            length_validator(info, data["name"], data)
-        except magql.ValidationError as e:
-            raise magql.ValidationError({"name": e.message}) from e
+    def field_name_validator_max(info, data):
+        valid_length = magql.Length(max=15)
+        field_name = info.field_name
+        valid_length(info, field_name, data)
 
-    def length_validator_max_wrapper(info, data):
-        length_validator = magql.Length(max=15)
-        try:
-            length_validator(info, data["name"], data)
-        except magql.ValidationError as e:
-            raise magql.ValidationError({"name": e.message}) from e
+    def field_name_validator_minMax(info, data):
+        valid_length = magql.Length(min=2, max=15)
+        field_name = info.field_name
+        valid_length(info, field_name, data)
 
-    def length_validator_min_max_wrapper(info, data):
-        length_validator = magql.Length(min=2, max=15)
-        try:
-            length_validator(info, data["name"], data)
-        except magql.ValidationError as e:
-            raise magql.ValidationError({"name": e.message}) from e
+    def field_name_validator_exact(info, data):
+        valid_length = magql.Length(min=5, max=5)
+        field_name = info.field_name
+        valid_length(info, field_name, data)
 
-    def length_validator_exact_wrapper(info, data):
-        length_validator = magql.Length(min=5, max=5)
-        try:
-            length_validator(info, data["name"], data)
-        except magql.ValidationError as e:
-            raise magql.ValidationError({"name": e.message}) from e
-
-    UserFieldMin = magql.Field(
-        "String", validators=[length_validator_min_wrapper], resolve=resolve_field
+    QueryRoot = magql.Object(
+        "QueryRoot",
+        fields={
+            valid_name: magql.Field(
+                "String",
+                resolve=lambda obj, info: "valid_name",
+                validators=[field_name_validator_minMax],
+            ),
+            valid_exact_name: magql.Field(
+                "String",
+                resolve=lambda obj, info: "valid_exact_name",
+                validators=[field_name_validator_exact],
+            ),
+            invalid_long_name: magql.Field(
+                "String",
+                resolve=lambda obj, info: "invalid_long_name",
+                validators=[field_name_validator_max],
+            ),
+            invalid_short_name: magql.Field(
+                "String",
+                resolve=lambda obj, info: "invalid_short_name",
+                validators=[field_name_validator_min],
+            ),
+            invalid_exact_name: magql.Field(
+                "String",
+                resolve=lambda obj, info: "invalid_exact_name",
+                validators=[field_name_validator_exact],
+            ),
+        },
     )
 
-    UserFieldMax = magql.Field(
-        "String", validators=[length_validator_max_wrapper], resolve=resolve_field
+    s = magql.Schema()
+    s.query = QueryRoot
+
+    # Test the query with valid field names
+    query_valid = f"""
+        query {{
+            {valid_name}
+            {valid_exact_name}
+        }}
+    """
+    result_valid = s.execute(query_valid)
+    assert not result_valid.errors
+    assert result_valid.data[valid_name] == "valid_name"
+    assert result_valid.data[valid_exact_name] == "valid_exact_name"
+
+    # Test the query with invalid field names
+    query_invalid = f"""
+        query {{
+            {invalid_short_name}
+            {invalid_long_name}
+            {invalid_exact_name}
+        }}
+    """
+    result_invalid = s.execute(query_invalid)
+    error_messages = result_invalid.errors
+    assert len(error_messages) == 3
+    assert (
+        error_messages[0].extensions[""][0]
+        == "Must be at least 2 characters, but was 1."
+    )
+    assert (
+        error_messages[1].extensions[""][0]
+        == f"Must be at most 15 characters, but was {len(invalid_long_name)}."
+    )
+    assert (
+        error_messages[2].extensions[""][0]
+        == f"Must be exactly 5 characters, but was {len(invalid_exact_name)}."
     )
 
-    UserFieldMinMax = magql.Field(
-        "String", validators=[length_validator_min_max_wrapper], resolve=resolve_field
-    )
 
-    UserFieldExact = magql.Field(
-        "String", validators=[length_validator_exact_wrapper], resolve=resolve_field
-    )
-
-    info = Mock(spec=GraphQLResolveInfo)
-    # Test the fields with valid data
-    data = {"name": valid_name}
-    for UserField in [UserFieldMin, UserFieldMax, UserFieldMinMax]:
-        UserField.validate(info, data)
-
-    # Test the field with invalid data (too short)
-    data = {"name": invalid_name_short}
-    for UserField, error_message in [
-        (UserFieldMin, "Must be at least 2 characters, but was 1."),
-        (UserFieldMinMax, "Must be between 2 and 15 characters, but was 1."),
-    ]:
-        try:
-            UserField.validate(info, data)
-        except magql.ValidationError as e:
-            assert "name" in e.message
-            assert e.message["name"][0] == error_message
-
-    # Test the field with invalid data (too long)
-    data = {"name": invalid_name_long}
-    for UserField, error_message in [
-        (UserFieldMax, "Must be at most 15 characters, but was 16."),
-        (UserFieldMinMax, "Must be between 2 and 15 characters, but was 16."),
-    ]:
-        try:
-            UserField.validate(info, data)
-        except magql.ValidationError as e:
-            assert "name" in e.message
-            assert e.message["name"][0] == error_message
-
-    # Test the field with invalid data (not exact)
-    data = {"name": invalid_name_exact}
-    error_message = "Must be exactly 5 characters, but was 4."
-    try:
-        UserFieldExact.validate(info, data)
-    except magql.ValidationError as e:
-        assert "name" in e.message
-        assert e.message["name"][0] == error_message
-
-    # Test the field with valid data (exact)
-    data = {"name": valid_name_exact}
-    UserFieldExact.validate(info, data)
-
-
-def test_Length_validator_on_Irgument():
+def test_Length_validator_on_Argument():
     """
     Tests the Length validator specifically for an Argument in a GraphQL schema.
     Creates Arguments, each with a unique Length validator.
@@ -246,121 +238,130 @@ def test_Length_validator_on_Irgument():
 
 def test_Length_validator_on_InputObject():
     """
-    Tests the Length validator specifically for an InputObject in a GraphQL schema.
-    Creates InputObjects, each with a unique Length validator
-    Uses wrapper functions to apply the validators.
-    The InputObjects are validated using the `.validate` method
-    from _DataValidatorNode with data of various lengths.
-    The tests ensure that the Length validator correctly identifies:
-    valid, too short, too long names, and names of exact length within the InputObjects.
+    Tests the Length validator specifically
+    for the name of an InputObject in a GraphQL schema.
+    Creates InputObjects with varying name lengths, and verifies
+    that the Length validator correctly identifies valid and invalid names.
     """
-    valid_input = {"name": "John Doe"}
-    valid_input_exact = {"name": "Johny"}
-    invalid_input_short = {"name": "J"}
-    invalid_input_long = {"name": "John Doe" * 2}
-    invalid_input_exact = {"name": "John"}
+    valid_input = "valid"
+    valid_exact_input = "valid_exact"
+    invalid_long_input = "invalid_long"
+    invalid_short_input = "invalid_short"
+    invalid_exact_input = "invalid_exact"
 
-    UserInputField = magql.InputField("String")
+    # the values are not important in this case
+    dummy_field = magql.InputField("String", default="DummyValue")
 
-    def length_validator_min_max_wrapper(info, data):
-        length_validator = magql.Length(min=2, max=15)
-        try:
-            length_validator(info, data["name"], data)
-        except magql.ValidationError as e:
-            raise magql.ValidationError({"name": e.message}) from e
+    def input_object_name_validator_min(info, data):
+        valid_length = magql.Length(min=15)
+        valid_length(info, info.field_name, data)
 
-    def length_validator_min_wrapper(info, data):
-        length_validator = magql.Length(min=2)
-        try:
-            length_validator(info, data["name"], data)
-        except magql.ValidationError as e:
-            raise magql.ValidationError({"name": e.message}) from e
+    def input_object_name_validator_max(info, data):
+        valid_length = magql.Length(max=11)
+        valid_length(info, info.field_name, data)
 
-    def length_validator_max_wrapper(info, data):
-        length_validator = magql.Length(max=15)
-        try:
-            length_validator(info, data["name"], data)
-        except magql.ValidationError as e:
-            raise magql.ValidationError({"name": e.message}) from e
+    def input_object_name_validator_minMax(info, data):
+        valid_length = magql.Length(min=2, max=15)
+        valid_length(info, info.field_name, data)
 
-    def length_validator_exact_wrapper(info, data):
-        length_validator = magql.Length(min=5, max=5)
-        try:
-            length_validator(info, data["name"], data)
-        except magql.ValidationError as e:
-            raise magql.ValidationError({"name": e.message}) from e
+    def input_object_name_validator_exact(info, data):
+        valid_length = magql.Length(min=11, max=11)
+        valid_length(info, info.field_name, data)
 
-    UserInputObjectMinMax = magql.InputObject(
-        "UserInputMinMax",
-        fields={"name": UserInputField},
-        validators=[length_validator_min_max_wrapper],
+    InputObjectTypeValid = magql.InputObject(
+        "valid_name",
+        fields={"field": dummy_field},
+        validators=[input_object_name_validator_minMax],
+    )
+    InputObjectTypeValidExact = magql.InputObject(
+        "valid_exact_name",
+        fields={"field": dummy_field},
+        validators=[input_object_name_validator_exact],
+    )
+    InputObjectTypeInvalidLong = magql.InputObject(
+        "invalid_long_name",
+        fields={"field": dummy_field},
+        validators=[input_object_name_validator_max],
+    )
+    InputObjectTypeInvalidShort = magql.InputObject(
+        "invalid_short_name",
+        fields={"field": dummy_field},
+        validators=[input_object_name_validator_min],
+    )
+    InputObjectTypeInvalidExact = magql.InputObject(
+        "invalid_exact_name",
+        fields={"field": dummy_field},
+        validators=[input_object_name_validator_exact],
     )
 
-    UserInputObjectMin = magql.InputObject(
-        "UserInputMin",
-        fields={"name": UserInputField},
-        validators=[length_validator_min_wrapper],
+    QueryRoot = magql.Object(
+        "QueryRoot",
+        fields={
+            "valid": magql.Field(
+                "String",
+                resolve=lambda obj, info, input: valid_input,
+                args={"input": InputObjectTypeValid},
+            ),
+            "valid_exact": magql.Field(
+                "String",
+                resolve=lambda obj, info, input: valid_exact_input,
+                args={"input": InputObjectTypeValidExact},
+            ),
+            "invalid_long": magql.Field(
+                "String",
+                resolve=lambda obj, info, input: "invalid_long",
+                args={"input": InputObjectTypeInvalidLong},
+            ),
+            "invalid_short": magql.Field(
+                "String",
+                resolve=lambda obj, info, input: "invalid_short",
+                args={"input": InputObjectTypeInvalidShort},
+            ),
+            "invalid_exact": magql.Field(
+                "String",
+                resolve=lambda obj, info, input: "invalid_exact",
+                args={"input": InputObjectTypeInvalidExact},
+            ),
+        },
     )
 
-    UserInputObjectMax = magql.InputObject(
-        "UserInputMax",
-        fields={"name": UserInputField},
-        validators=[length_validator_max_wrapper],
+    s = magql.Schema()
+    s.query = QueryRoot
+
+    # Test the query with valid InputObject names
+    query_valid = f"""
+        query {{
+            {valid_input}(input: {{field: "valid_name"}})
+            {valid_exact_input}(input: {{field: "valid_exact_name"}})
+        }}
+    """
+    result_valid = s.execute(query_valid)
+    assert not result_valid.errors
+    assert "valid" and "valid_exact" in result_valid.data
+
+    # Test the query with invalid InputObject names
+    query_invalid = f"""
+        query {{
+            {invalid_long_input}(input: {{field: "invalid_long"}})
+            {invalid_short_input}(input: {{field: "invalid_short"}})
+            {invalid_exact_input}(input: {{field: "invalid_exact"}})
+        }}
+    """
+    result_invalid = s.execute(query_invalid)
+    error_messages = result_invalid.errors
+    assert len(error_messages) == 3
+    assert (
+        error_messages[0].extensions["input"][0][""][0]
+        == "Must be at most 11 characters, but was 12."
     )
-
-    UserInputObjectExact = magql.InputObject(
-        "UserInputExact",
-        fields={"name": UserInputField},
-        validators=[length_validator_exact_wrapper],
+    assert (
+        error_messages[1].extensions["input"][0][""][0]
+        == "Must be at least 15 characters, but was 13."
     )
-
-    info = Mock(spec=GraphQLResolveInfo)
-
-    # Test the input objects with valid data
-    data = valid_input
-    for UserInputObject in [
-        UserInputObjectMinMax,
-        UserInputObjectMin,
-        UserInputObjectMax,
-    ]:
-        UserInputObject.validate(info, data)
-
-    # Test the input objects with invalid data (too short)
-    data = invalid_input_short
-    for UserInputObject, error_message in [
-        (UserInputObjectMinMax, "Must be between 2 and 15 characters, but was 1."),
-        (UserInputObjectMin, "Must be at least 2 characters, but was 1."),
-    ]:
-        try:
-            UserInputObject.validate(info, data)
-        except magql.ValidationError as e:
-            assert "name" in e.message
-            assert e.message["name"][0] == error_message
-
-    # Test the input objects with invalid data (too long)
-    data = invalid_input_long
-    for UserInputObject, error_message in [
-        (UserInputObjectMinMax, "Must be between 2 and 15 characters, but was 16."),
-        (UserInputObjectMax, "Must be at most 15 characters, but was 16."),
-    ]:
-        try:
-            UserInputObject.validate(info, data)
-        except magql.ValidationError as e:
-            assert "name" in e.message
-            assert e.message["name"][0] == error_message
-
-    # Test the input objects with invalid data (not exact)
-    data = invalid_input_exact
-    error_message = "Must be exactly 5 characters, but was 4."
-    try:
-        UserInputObjectExact.validate(info, data)
-    except magql.ValidationError as e:
-        assert "name" in e.message
-        assert e.message["name"][0] == error_message
-
-    # Test the input objects with valid data (exact)
-    data = valid_input_exact
-    UserInputObjectExact.validate(info, data)
+    assert (
+        error_messages[2].extensions["input"][0][""][0]
+        == "Must be exactly 11 characters, but was 13."
+    )
 
 
 def test_Length_validator_on_InputField():
