@@ -21,15 +21,23 @@ def validate_size(info, value, data):
 
 def test_validator_on_argument():
     """
-    Testing:
+    The function tests the following constraints:
+    *    The 'username' field must be lowercase and no more than 10 characters.
+    *    The 'hobbies' field must contain at least two values,
+    *       and each value must be lowercase.
 
-    *    Validation at the argument level with both built-in and custom validators
-    *    Validation of nested fields (validation of "hobbies" list items)
-    *    Errors when required arguments are not provided
-    *    Errors when non-null fields receive null
-    *    Errors when the value type does not match the expected type
-    *    Errors when the username is an empty string
-    *    Errors when the hobbies list is empty
+    The function includes tests for:
+    *    Valid inputs
+    *    Invalid inputs, including an uppercase username
+    *       and an empty 'hobbies' list
+    *    An excessively long and uppercase username,
+    *       and a 'hobbies' list with too few items and an uppercase hobby
+    *    Missing arguments, specifically a
+    *       missing 'username' and a missing 'hobbies' list
+    *    Null arguments, specifically a null 'username' and a null 'hobbies' list
+    *    Invalid types, specifically a 'username'
+    *       that is not a string and a 'hobbies' list that is not a list
+    *    Empty 'username' field
     """
 
     def resolver(parent, info, **input):
