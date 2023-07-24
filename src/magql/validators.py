@@ -92,7 +92,7 @@ class Length:
         else:
             message = f"between {self.min} and {self.max}"
 
-        raise ValidationError(f"Must be {message} characters, but was {lv}.")
+        raise ValidationError(f"Length must be {message}, but was {lv}.")
 
 
 class NumberRange:
