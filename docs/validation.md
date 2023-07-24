@@ -41,7 +41,7 @@ list to the `validators` parameter.
 import magql
 
 def validate_lowercase(info, value, data):
-    if not value.lower():
+    if not value.islower():
         raise magql.ValidationError("Must be lowercase.")
 
 field = magql.Field("String", args={
@@ -59,7 +59,7 @@ field = magql.Field("String", args={"username": "String"})
 
 @field.args["username"].validator
 def validate_username(info, value, data):
-    if not value.lower():
+    if not value.islower():
         raise magql.ValidationError("Must be lowercase.")
 ```
 
