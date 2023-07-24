@@ -49,3 +49,6 @@ strict = true
 pythonVersion = "3.10"
 include = ["src/magql", "tests"]
 typeCheckingMode = "basic"
+
+[tool.black]
+target-version = ["py310", "py311"]
