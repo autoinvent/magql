@@ -1,6 +1,6 @@
 [project]
 name = "magql"
-version = "1.0.0.dev"
+version = "1.0.0"
 description = "The magical GraphQL framework that generates an API for your data."
 readme = "README.md"
 license = {file = "LICENSE.md"}
@@ -10,6 +10,11 @@ dependencies = [
     "graphql-core>=3",
     "python-dateutil",
 ]
+
+[project.urls]
+Documentation = "https://magql.autoinvent.dev"
+Changes = "https://magql.autoinvent.dev/changes.html"
+Source = "https://github.com/autoinvent/magql"
 
 [build-system]
 requires = ["flit_core<4"]
