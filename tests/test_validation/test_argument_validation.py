@@ -36,7 +36,10 @@ schema = magql.Schema(
         ),
         "hobbies": magql.Argument(
             "[String!]",
-            validators=[magql.validators.Length(min=2), [validate_lowercase]],
+            validators=[
+                magql.validators.Length(min=2),
+                [validate_lowercase],  # type: ignore[list-item]
+            ],
         ),
     },
 )
@@ -68,9 +71,10 @@ def test_invalid() -> None:
     multiple errors.
     """
     result = schema.execute(valid_op, variables={"u": "A", "h": []})
-    assert len(result.errors) == 1
+    assert result.errors is not None and len(result.errors) == 1
     error = result.errors[0]
     assert error.message == "magql argument validation"
+    assert error.extensions is not None
     assert error.extensions["username"][0] == "Must be lowercase."
     assert error.extensions["username"][1].startswith("Length must be between")
     assert error.extensions["hobbies"][0].startswith("Length must be at least")
@@ -79,9 +83,10 @@ def test_invalid() -> None:
 def test_list_validate_item() -> None:
     """Validators can apply to list value or individual items."""
     result = schema.execute(valid_op, variables={"u": "aa", "h": ["A"]})
-    assert len(result.errors) == 1
+    assert result.errors is not None and len(result.errors) == 1
     error = result.errors[0]
     assert error.message == "magql argument validation"
+    assert error.extensions is not None
     assert error.extensions["hobbies"][0].startswith("Length must be at least")
     assert error.extensions["hobbies"][1] == ["Must be lowercase."]
 
@@ -89,8 +94,9 @@ def test_list_validate_item() -> None:
 def test_list_mixed_valid() -> None:
     """Valid list values have None placeholder in errors."""
     result = schema.execute(valid_op, variables={"u": "aa", "h": ["a", "B"]})
-    assert len(result.errors) == 1
+    assert result.errors is not None and len(result.errors) == 1
     assert result.errors[0].message == "magql argument validation"
+    assert result.errors[0].extensions is not None
     assert result.errors[0].extensions["hobbies"][0] == [None, "Must be lowercase."]
 
 
@@ -100,7 +106,7 @@ def test_invalid_missing_arg() -> None:
     """
     # username is required, hobbies isn't
     result = schema.execute("{ user { username } }", variables={"h": ["a", "b"]})
-    assert len(result.errors) == 1
+    assert result.errors is not None and len(result.errors) == 1
     assert "'username' of type 'String!' is required" in result.errors[0].message
 
 
@@ -110,7 +116,7 @@ def test_invalid_null_value() -> None:
     """
     # username is non-null, hobbies is null
     result = schema.execute("{ user(username: null, hobbies: null) { username } }")
-    assert len(result.errors) == 1
+    assert result.errors is not None and len(result.errors) == 1
     assert "'String!', found null" in result.errors[0].message
 
 
@@ -119,12 +125,12 @@ def test_invalid_type_value() -> None:
     won't trigger input validation.
     """
     result = schema.execute("{ user(username: 1) { username } }")
-    assert len(result.errors) == 1
+    assert result.errors is not None and len(result.errors) == 1
     assert "non string value: 1" in result.errors[0].message
 
 
 def test_unhandled_error() -> None:
     """A Python error raised during validation is reported as a general error."""
     result = schema.execute("""{ user(username: "aa", hobbies: null) { username } }""")
-    assert len(result.errors) == 1
+    assert result.errors is not None and len(result.errors) == 1
     assert "'NoneType' has no len()" in result.errors[0].message

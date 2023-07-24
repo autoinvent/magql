@@ -259,7 +259,7 @@ def _validate_value(
             # Call each sub-list validator for each item, recursively.
             for item in value:
                 try:
-                    _validate_value(nested_type, f, info, item, data)
+                    _validate_value(nested_type, f, info, item, data)  # pyright: ignore
                 except ValidationError as e:
                     # A list of messages, extend the list.
                     if isinstance(e.message, list):
@@ -823,7 +823,7 @@ class Enum(NamedType):
         elif isinstance(values, enum.EnumMeta):
             values = values.__members__.copy()
 
-        self.values: dict[str, t.Any] = values
+        self.values: dict[str, t.Any] = values  # pyright: ignore
         """Maps string values used by GraphQL to Python values seen by the resolver. A
         list or :class:`~enum.Enum` passed in has been converted to a dict.
         """
