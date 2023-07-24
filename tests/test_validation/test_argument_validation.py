@@ -69,19 +69,21 @@ def test_invalid() -> None:
     """
     result = schema.execute(valid_op, variables={"u": "A", "h": []})
     assert len(result.errors) == 1
-    assert result.errors[0].message == "magql argument validation"
-    assert result.errors[0].extensions["username"][0] == "Must be lowercase."
-    assert result.errors[0].extensions["username"][1].startswith("Must be between")
-    assert result.errors[0].extensions["hobbies"][0].startswith("Must be at least")
+    error = result.errors[0]
+    assert error.message == "magql argument validation"
+    assert error.extensions["username"][0] == "Must be lowercase."
+    assert error.extensions["username"][1].startswith("Length must be between")
+    assert error.extensions["hobbies"][0].startswith("Length must be at least")
 
 
 def test_list_validate_item() -> None:
     """Validators can apply to list value or individual items."""
     result = schema.execute(valid_op, variables={"u": "aa", "h": ["A"]})
     assert len(result.errors) == 1
-    assert result.errors[0].message == "magql argument validation"
-    assert result.errors[0].extensions["hobbies"][0].startswith("Must be at least 2")
-    assert result.errors[0].extensions["hobbies"][1] == ["Must be lowercase."]
+    error = result.errors[0]
+    assert error.message == "magql argument validation"
+    assert error.extensions["hobbies"][0].startswith("Length must be at least")
+    assert error.extensions["hobbies"][1] == ["Must be lowercase."]
 
 
 def test_list_mixed_valid() -> None:
