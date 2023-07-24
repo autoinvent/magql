@@ -1,7 +1,7 @@
 Version 1.0.0
 -------------
 
-Unreleased
+Released 2023-07-24
 
 -   Complete rewrite. {pr}`74`
 
