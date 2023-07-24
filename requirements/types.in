@@ -1,3 +1,4 @@
 mypy
-types-python-dateutil
 pyright
+types-python-dateutil
+pytest

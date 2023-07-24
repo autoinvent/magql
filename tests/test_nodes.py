@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import enum
+import typing as t
 
 import graphql
 import pytest
@@ -6,21 +9,21 @@ import pytest
 import magql
 
 
-def test_object():
+def test_object() -> None:
     obj = magql.Object("User", fields={"id": magql.Field(magql.ID)})
     g = obj._to_graphql()
     assert isinstance(g, graphql.GraphQLObjectType)
     assert g.fields["id"].type is graphql.GraphQLID
 
 
-def test_argument():
+def test_argument() -> None:
     obj = magql.Field(magql.String, args={"id": magql.Argument(magql.Int)})
     g = obj._to_graphql()
     assert isinstance(g, graphql.GraphQLField)
     assert g.args["id"].type is graphql.GraphQLInt
 
 
-def test_interface():
+def test_interface() -> None:
     obj = magql.Object(
         "User",
         interfaces=[
@@ -36,7 +39,7 @@ def test_interface():
     assert isinstance(g.interfaces[0].fields["name"], graphql.GraphQLField)
 
 
-def test_nested_interface():
+def test_nested_interface() -> None:
     obj = magql.Object(
         "User",
         interfaces=[magql.Interface("Person", interfaces=[magql.Interface("Entity")])],
@@ -48,7 +51,7 @@ def test_nested_interface():
     assert isinstance(g.interfaces[0].interfaces[0], graphql.GraphQLInterfaceType)
 
 
-def test_union():
+def test_union() -> None:
     class User:
         pass
 
@@ -64,7 +67,7 @@ def test_union():
     assert {t.name for t in g.types} == {"User", "Admin"}
 
 
-def test_input():
+def test_input() -> None:
     obj = magql.Argument(
         magql.InputObject(
             "UserCreateData", fields={"name": magql.InputField(magql.String)}
@@ -88,7 +91,10 @@ Color = enum.Enum("Color", ["red", "green", "blue"])
         pytest.param(Color, Color.red, id="enum"),
     ],
 )
-def test_enum(values, expect):
+def test_enum(
+    values: list[str] | dict[str, t.Any] | type[enum.Enum],
+    expect: str | int | enum.Enum,
+) -> None:
     obj = magql.Enum("colors", values)
     g = obj._to_graphql()
     assert isinstance(g, graphql.GraphQLEnumType)
@@ -96,7 +102,7 @@ def test_enum(values, expect):
     assert g.values["red"].value == expect
 
 
-def test_wrapping():
+def test_wrapping() -> None:
     obj = magql.List(magql.NonNull(magql.String))
     g = obj._to_graphql()
     assert isinstance(g, graphql.GraphQLList)
@@ -114,7 +120,7 @@ def test_wrapping():
         pytest.param(magql.ID, graphql.GraphQLID, id="ID"),
     ],
 )
-def test_standard_scalar(obj, expect):
+def test_standard_scalar(obj: magql.Scalar, expect: graphql.GraphQLScalarType) -> None:
     g = obj._to_graphql()
     assert g is expect
 
@@ -126,14 +132,14 @@ def test_standard_scalar(obj, expect):
         pytest.param(magql.Upload, id="Upload"),
     ],
 )
-def test_custom_scalar(obj):
+def test_custom_scalar(obj: magql.Scalar) -> None:
     g = obj._to_graphql()
     assert isinstance(g, graphql.GraphQLScalarType)
     assert g.name == obj.name
     assert obj._to_graphql() is g
 
 
-def test_wrapping_properties():
+def test_wrapping_properties() -> None:
     """Types have list and non_null properties that return wrapped
     types.
     """
@@ -145,7 +151,7 @@ def test_wrapping_properties():
     assert graphql.get_named_type(go).name == "String"
 
 
-def test_to_graphql_cached():
+def test_to_graphql_cached() -> None:
     """The same GraphQL node is produced if a magql node is converted
     multiple times.
     """
