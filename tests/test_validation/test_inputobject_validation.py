@@ -15,7 +15,9 @@ class User:
     hobbies: list[str] | None
 
 
-def validate_profession_given_if_hobbies(info, data):
+def validate_profession_given_if_hobbies(
+    info: graphql.GraphQLResolveInfo, data: dict[str, t.Any]
+):
     hobbies = data.get("hobbies")
     profession = data.get("profession")
     if hobbies is not None and len(hobbies) < 3 and profession is not None:
@@ -26,7 +28,9 @@ def validate_profession_given_if_hobbies(info, data):
         raise magql.ValidationError({"profession": [error_message]})
 
 
-def validate_profession_starts_with_username(info, data):
+def validate_profession_starts_with_username(
+    info: graphql.GraphQLResolveInfo, data: dict[str, t.Any]
+):
     username = data.get("username")
     profession = data.get("profession")
     if profession is not None and not profession.startswith(f"{username}_"):
@@ -156,7 +160,7 @@ def test_invalid_profession_name() -> None:
     assert error_input["profession"][0].startswith("Profession must start with")
 
 
-def test_invalid_multiple_errors():
+def test_invalid_multiple_errors() -> None:
     """Invalid input when profession violates two validations"""
     variables = {"i": {"username": "K", "profession": "Doctor", "hobbies": ["Reading"]}}
     result = schema.execute(valid_op, variables=variables)
