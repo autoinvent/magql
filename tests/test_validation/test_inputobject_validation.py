@@ -17,7 +17,7 @@ class User:
 
 def validate_profession_given_if_hobbies(
     info: graphql.GraphQLResolveInfo, data: dict[str, t.Any]
-):
+) -> None:
     hobbies = data.get("hobbies")
     profession = data.get("profession")
     if hobbies is not None and len(hobbies) < 3 and profession is not None:
@@ -30,7 +30,7 @@ def validate_profession_given_if_hobbies(
 
 def validate_profession_starts_with_username(
     info: graphql.GraphQLResolveInfo, data: dict[str, t.Any]
-):
+) -> None:
     username = data.get("username")
     profession = data.get("profession")
     if profession is not None and not profession.startswith(f"{username}_"):
