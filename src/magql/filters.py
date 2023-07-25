@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from magql import nodes
 from magql import scalars
 
