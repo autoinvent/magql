@@ -88,55 +88,45 @@ query($i: NestedUserInput!) {
 
 def test_valid() -> None:
     """Valid input does not have errors."""
-    result = schema.execute(
-        valid_op, variables={"i": {"username": "valid", "hobbies": ["read", "swim"]}}
-    )
+    variables = {"i": {"username": "valid", "hobbies": ["read", "swim"]}}
+    result = schema.execute(valid_op, variables=variables)
+
     assert result.errors is None
     assert result.data == {"user": {"username": "valid", "hobbies": ["read", "swim"]}}
 
 
 def test_invalid() -> None:
     """Multiple fields can be invalid, and each field can have have multiple errors."""
-    result = schema.execute(valid_op, variables={"i": {"username": "A", "hobbies": []}})
+    variables = {"i": {"username": "A", "hobbies": []}}
+    result = schema.execute(valid_op, variables=variables)
+
     assert len(result.errors) == 1
     assert result.errors[0].message == "magql argument validation"
-    assert (
-        result.errors[0].extensions["input"][0]["username"][0] == "Must be lowercase."
-    )
-    assert (
-        result.errors[0]
-        .extensions["input"][0]["username"][1]
-        .startswith("Must be between")
-    )
-    assert (
-        result.errors[0]
-        .extensions["input"][0]["hobbies"][0]
-        .startswith("Must be at least")
-    )
+
+    errors = result.errors[0].extensions["input"][0]
+    assert errors["username"][0] == "Must be lowercase."
+    assert errors["username"][1].startswith("Must be between")
+    assert errors["hobbies"][0].startswith("Must be at least")
 
 
 def test_list_validate_item() -> None:
     """Validators can apply to list value or individual items."""
-    result = schema.execute(
-        valid_op, variables={"i": {"username": "aa", "hobbies": ["A"]}}
-    )
+    variables = {"i": {"username": "aa", "hobbies": ["A"]}}
+    result = schema.execute(valid_op, variables=variables)
+
     assert len(result.errors) == 1
     assert result.errors[0].message == "magql argument validation"
-    assert (
-        result.errors[0]
-        .extensions["input"][0]["hobbies"][0]
-        .startswith("Must be at least 2")
-    )
-    assert result.errors[0].extensions["input"][0]["hobbies"][1] == [
-        "Must be lowercase."
-    ]
+
+    errors = result.errors[0].extensions["input"][0]
+    assert errors["hobbies"][0].startswith("Must be at least 2")
+    assert errors["hobbies"][1] == ["Must be lowercase."]
 
 
 def test_list_mixed_valid() -> None:
     """Valid list values have None placeholder in errors."""
-    result = schema.execute(
-        valid_op, variables={"i": {"username": "aa", "hobbies": ["a", "B"]}}
-    )
+    variables = {"i": {"username": "aa", "hobbies": ["a", "B"]}}
+    result = schema.execute(valid_op, variables=variables)
+
     assert len(result.errors) == 1
     assert result.errors[0].message == "magql argument validation"
     assert result.errors[0].extensions["input"][0]["hobbies"][0] == [
@@ -147,23 +137,13 @@ def test_list_mixed_valid() -> None:
 
 def test_nested_invalid() -> None:
     """Nested input objects are correctly validated."""
-    result = schema.execute(
-        nested_valid_op,
-        variables={"i": {"user": {"username": "A", "hobbies": ["a", "b", "C"]}}},
-    )
+    variables = {"i": {"user": {"username": "A", "hobbies": ["a", "b", "C"]}}}
+    result = schema.execute(nested_valid_op, variables=variables)
+
     assert len(result.errors) == 1
     assert result.errors[0].message == "magql argument validation"
-    assert (
-        result.errors[0].extensions["input"][0]["user"][0]["username"][0]
-        == "Must be lowercase."
-    )
-    assert (
-        result.errors[0]
-        .extensions["input"][0]["user"][0]["username"][1]
-        .startswith("Must be between")
-    )
-    assert result.errors[0].extensions["input"][0]["user"][0]["hobbies"][0] == [
-        None,
-        None,
-        "Must be lowercase.",
-    ]
+
+    errors = result.errors[0].extensions["input"][0]["user"][0]
+    assert errors["username"][0] == "Must be lowercase."
+    assert errors["username"][1].startswith("Must be between")
+    assert errors["hobbies"][0] == [None, None, "Must be lowercase."]
