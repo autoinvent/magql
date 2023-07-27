@@ -193,8 +193,25 @@ def test_valid_user() -> None:
         ("experience", "ex", 4, "Must be between 5 and 5."),
     ],
 )
-def test_invalid_fields(field, variable, value, error_msg):
-    """Invalid input when field values are not valid."""
+def test_invalid_fields(
+    field: str, variable: str, value: t.Union[str, float, int], error_msg: str
+) -> None:
+    """
+    * Test various invalid input cases for each field in the User GraphQL type.
+
+    For each parameter set, the function executes a GraphQL query using the
+    provided invalid value for the specified field. It then verifies that the
+    error message returned by the GraphQL execution matches the expected error
+    message.
+
+    The purpose of this function is to ensure that the validation rules for
+    each field in the User GraphQL type are correctly enforced.
+
+    :param field: The name of the field in the User GraphQL type to test.
+    :param variable: The corresponding variable name in the GraphQL query.
+    :param value: The invalid input value to use for testing.
+    :param error_msg: The expected error message when the invalid input is used.
+    """
     variables = {
         "u": "validuser",
         "p": "validpass",
@@ -206,7 +223,6 @@ def test_invalid_fields(field, variable, value, error_msg):
         "a": 25,
         "ex": 5,
     }
-    # Set the value for the field being tested
     variables[variable] = value
     result = schema.execute(valid_op, variables=variables)
     assert result.errors and len(result.errors) == 1
