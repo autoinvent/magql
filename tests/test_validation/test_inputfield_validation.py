@@ -124,6 +124,17 @@ def test_list_validate_item() -> None:
     assert error_input["hobbies"][0].startswith("Length must be at least")
 
 
+def test_nested_valid() -> None:
+    """Nested valid input does not have errors."""
+    variables = {"i": {"user": {"username": "valid", "hobbies": ["read", "swim"]}}}
+    result = schema.execute(nested_valid_op, variables=variables)
+
+    assert result.errors is None
+    assert result.data == {
+        "nestedUser": {"username": "valid", "hobbies": ["read", "swim"]}
+    }
+
+
 def test_nested_invalid() -> None:
     """Nested input objects are correctly validated."""
     variables = {"i": {"user": {"username": "A", "hobbies": ["a", "b", "C"]}}}
