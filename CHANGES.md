@@ -1,7 +1,7 @@
 Version 1.0.1
 -------------
 
-Unreleased
+Released 2023-07-26
 
 -   Built-in scalar method overrides do not cause recursion. {issue}`88`
 
