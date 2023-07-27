@@ -3,6 +3,8 @@ Version 1.0.1
 
 Unreleased
 
+-   Built-in scalar method overrides do not cause recursion. {issue}`88`
+
 
 Version 1.0.0
 -------------
