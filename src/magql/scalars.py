@@ -25,7 +25,7 @@ def parse_int(value: t.Any) -> t.Any:
         except ValueError:
             pass
 
-    return graphql.GraphQLInt.parse_value(value)
+    return _original_parse_int(value)
 
 
 Int: Scalar = Scalar("Int")
@@ -33,6 +33,7 @@ Int: Scalar = Scalar("Int")
 values. Strings are common when using HTML forms.
 """
 Int._graphql_node = graphql.GraphQLInt
+_original_parse_int = graphql.GraphQLInt.parse_value
 graphql.GraphQLInt.parse_value = parse_int  # type: ignore[method-assign]
 
 
@@ -43,7 +44,7 @@ def parse_float(value: t.Any) -> t.Any:
         except ValueError:
             pass
 
-    return graphql.GraphQLFloat.parse_value(value)
+    return _original_parse_float(value)
 
 
 Float: Scalar = Scalar("Float")
@@ -51,6 +52,7 @@ Float: Scalar = Scalar("Float")
 values. Strings are common when using HTML forms.
 """
 Float._graphql_node = graphql.GraphQLFloat
+_original_parse_float = graphql.GraphQLFloat.parse_value
 graphql.GraphQLFloat.parse_value = parse_float  # type: ignore[method-assign]
 
 
@@ -63,7 +65,7 @@ def parse_boolean(value: t.Any) -> t.Any:
         elif v in {"0", "off", "false"}:
             value = False
 
-    return graphql.GraphQLBoolean.parse_value(value)
+    return _original_parse_boolean(value)
 
 
 Boolean: Scalar = Scalar("Boolean")
@@ -72,6 +74,7 @@ common case-insensitive string values; 1, on, true; 0, off, false. In particular
 forms send "on".
 """
 Boolean._graphql_node = graphql.GraphQLBoolean
+_original_parse_boolean = graphql.GraphQLBoolean.parse_value
 graphql.GraphQLBoolean.parse_value = parse_boolean  # type: ignore[method-assign]
 
 ID: Scalar = Scalar("ID")
