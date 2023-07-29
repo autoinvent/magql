@@ -138,7 +138,7 @@ query(
 
 
 @pytest.fixture
-def valid_user_data():
+def valid_user_data() -> dict[str, t.Union[str, float, int]]:
     return {
         "u": "validuser",
         "p": "validpass",
@@ -152,7 +152,7 @@ def valid_user_data():
     }
 
 
-def test_valid_user(valid_user_data) -> None:
+def test_valid_user(valid_user_data: dict[str, t.Union[str, float, int]]) -> None:
     """Valid input does not have errors."""
     result = schema.execute(valid_op, variables=valid_user_data)
     assert result.errors is None
@@ -207,7 +207,7 @@ def test_valid_user(valid_user_data) -> None:
     ],
 )
 def test_invalid_fields(
-    valid_user_data,
+    valid_user_data: dict[str, t.Union[str, float, int]],
     field: str,
     variable: str,
     value: t.Union[str, float, int],
