@@ -137,34 +137,36 @@ query(
 """
 
 
-def test_valid_user() -> None:
+@pytest.fixture
+def valid_user_data():
+    return {
+        "u": "validuser",
+        "p": "validpass",
+        "pc": "validpass",
+        "e": "validemail@example.com",
+        "g": "A",
+        "h": 1.75,
+        "w": 70,
+        "a": 25,
+        "ex": 5,
+    }
+
+
+def test_valid_user(valid_user_data) -> None:
     """Valid input does not have errors."""
-    result = schema.execute(
-        valid_op,
-        variables={
-            "u": "validuser",
-            "p": "validpass",
-            "pc": "validpass",
-            "e": "validemail@example.com",
-            "g": "A",
-            "h": "1.75",
-            "w": "70",
-            "a": "25",
-            "ex": "5",
-        },
-    )
+    result = schema.execute(valid_op, variables=valid_user_data)
     assert result.errors is None
     assert result.data == {
         "user": {
-            "username": "validuser",
-            "password": "validpass",
-            "password_confirm": "validpass",
-            "email": "validemail@example.com",
-            "grade": "A",
-            "height": 1.75,
-            "weight": 70,
-            "age": 25,
-            "experience": 5,
+            "username": valid_user_data["u"],
+            "password": valid_user_data["p"],
+            "password_confirm": valid_user_data["pc"],
+            "email": valid_user_data["e"],
+            "grade": valid_user_data["g"],
+            "height": valid_user_data["h"],
+            "weight": valid_user_data["w"],
+            "age": valid_user_data["a"],
+            "experience": valid_user_data["ex"],
         }
     }
 
@@ -192,9 +194,24 @@ def test_valid_user() -> None:
         ("age", "a", -1, "Must be at least 0."),
         ("experience", "ex", 4, "Must be between 5 and 5."),
     ],
+    ids=[
+        "invalid_username_length",
+        "invalid_password_length",
+        "invalid_password_confirm",
+        "invalid_email_length",
+        "invalid_grade_length",
+        "invalid_height_range",
+        "invalid_weight_range",
+        "invalid_age_range",
+        "invalid_experience_range",
+    ],
 )
 def test_invalid_fields(
-    field: str, variable: str, value: t.Union[str, float, int], error_msg: str
+    valid_user_data,
+    field: str,
+    variable: str,
+    value: t.Union[str, float, int],
+    error_msg: str,
 ) -> None:
     """
     * Test various invalid input cases for each field in the User GraphQL type.
@@ -212,220 +229,9 @@ def test_invalid_fields(
     :param value: The invalid input value to use for testing.
     :param error_msg: The expected error message when the invalid input is used.
     """
-    variables = {
-        "u": "validuser",
-        "p": "validpass",
-        "pc": "validpass",
-        "e": "validemail@example.com",
-        "g": "A",
-        "h": 1.75,
-        "w": 70,
-        "a": 25,
-        "ex": 5,
-    }
-    variables[variable] = value
-    result = schema.execute(valid_op, variables=variables)
+    valid_user_data[variable] = value
+    result = schema.execute(valid_op, variables=valid_user_data)
     assert result.errors and len(result.errors) == 1
     assert result.errors[0].message == "magql argument validation"
     assert result.errors[0].extensions
     assert result.errors[0].extensions[field][0] == error_msg
-
-
-# def test_invalid_username_length() -> None:
-#     """Invalid input when username length is not between 2 and 10."""
-#     result = schema.execute(
-#         valid_op,
-#         variables={
-#             "u": "a",
-#             "p": "validpass",
-#             "pc": "validpass",
-#             "e": "validemail@example.com",
-#             "g": "A",
-#             "h": "1.75",
-#             "w": "70",
-#             "a": "25",
-#             "ex": "5",
-#         },
-#     )
-#     assert result.errors and len(result.errors) == 1
-#     assert result.errors[0].message == "magql argument validation"
-#     assert result.errors[0].extensions
-#     username_error = result.errors[0].extensions["username"][0]
-#     assert username_error == "Length must be between 2 and 10, but was 1."
-
-# def test_invalid_password_length() -> None:
-#     """Invalid input when password length is less than 8."""
-#     result = schema.execute(
-#         valid_op,
-#         variables={
-#             "u": "validuser",
-#             "p": "pass",
-#             "pc": "pass",
-#             "e": "validemail@example.com",
-#             "g": "A",
-#             "h": "1.75",
-#             "w": "70",
-#             "a": "25",
-#             "ex": "5",
-#         },
-#     )
-#     assert result.errors and len(result.errors) == 1
-#     assert result.errors[0].message == "magql argument validation"
-#     assert result.errors[0].extensions
-#     password_error = result.errors[0].extensions["password"][0]
-#     assert password_error == "Length must be at least 8, but was 4."
-
-# def test_invalid_password_confirmation() -> None:
-#     """Invalid input when password confirmation does not match the password."""
-#     result = schema.execute(
-#         valid_op,
-#         variables={
-#             "u": "validuser",
-#             "p": "validpass",
-#             "pc": "invalidpass",
-#             "e": "validemail@example.com",
-#             "g": "A",
-#             "h": "1.75",
-#             "w": "70",
-#             "a": "25",
-#             "ex": "5",
-#         },
-#     )
-#     assert result.errors and len(result.errors) == 1
-#     assert result.errors[0].message == "magql argument validation"
-#     assert result.errors[0].extensions
-#     confirm_error = result.errors[0].extensions["password_confirm"][0]
-#     assert confirm_error == "Must equal the value given in 'password'."
-
-# def test_invalid_email_length() -> None:
-#     """Invalid input when email length is more than 50."""
-#     result = schema.execute(
-#         valid_op,
-#         variables={
-#             "u": "validuser",
-#             "p": "validpass",
-#             "pc": "validpass",
-#             "e": "a" * 51 + "@example.com",
-#             "g": "A",
-#             "h": "1.75",
-#             "w": "70",
-#             "a": "25",
-#             "ex": "5",
-#         },
-#     )
-#     assert result.errors and len(result.errors) == 1
-#     assert result.errors[0].message == "magql argument validation"
-#     assert result.errors[0].extensions
-#     email_error = result.errors[0].extensions["email"][0]
-#     assert email_error == "Length must be at most 50, but was 63."
-
-# def test_invalid_grade_length() -> None:
-#     """Invalid input when grade length is not 1."""
-#     result = schema.execute(
-#         valid_op,
-#         variables={
-#             "u": "validuser",
-#             "p": "validpass",
-#             "pc": "validpass",
-#             "e": "validemail@example.com",
-#             "g": "AB",
-#             "h": "1.75",
-#             "w": "70",
-#             "a": "25",
-#             "ex": "5",
-#         },
-#     )
-#     assert result.errors and len(result.errors) == 1
-#     assert result.errors[0].message == "magql argument validation"
-#     assert result.errors[0].extensions
-#     grade_error = result.errors[0].extensions["grade"][0]
-#     assert grade_error == "Length must be exactly 1, but was 2."
-
-# def test_invalid_height_range() -> None:
-#     """Invalid input when height is not between 0.0 and 2.5."""
-#     result = schema.execute(
-#         valid_op,
-#         variables={
-#             "u": "validuser",
-#             "p": "validpass",
-#             "pc": "validpass",
-#             "e": "validemail@example.com",
-#             "g": "A",
-#             "h": "3.0",
-#             "w": "70",
-#             "a": "25",
-#             "ex": "5",
-#         },
-#     )
-#     assert result.errors and len(result.errors) == 1
-#     assert result.errors[0].message == "magql argument validation"
-#     assert result.errors[0].extensions
-#     height_error = result.errors[0].extensions["height"][0]
-#     assert height_error == "Must be between 0.0 and 2.5."
-
-
-# def test_invalid_weight_max() -> None:
-#     """Invalid input when weight is above 200."""
-#     result = schema.execute(
-#         valid_op,
-#         variables={
-#             "u": "validuser",
-#             "p": "validpass",
-#             "pc": "validpass",
-#             "e": "validemail@example.com",
-#             "g": "A",
-#             "h": "1.75",
-#             "w": "201",
-#             "a": "25",
-#             "ex": "5",
-#         },
-#     )
-#     assert result.errors and len(result.errors) == 1
-#     assert result.errors[0].message == "magql argument validation"
-#     assert result.errors[0].extensions
-#     weight_error = result.errors[0].extensions["weight"][0]
-#     assert weight_error == "Must be at most 200."
-
-# def test_invalid_age_min() -> None:
-#     """Invalid input when age is below 0."""
-#     result = schema.execute(
-#         valid_op,
-#         variables={
-#             "u": "validuser",
-#             "p": "validpass",
-#             "pc": "validpass",
-#             "e": "validemail@example.com",
-#             "g": "A",
-#             "h": "1.75",
-#             "w": "70",
-#             "a": "-1",
-#             "ex": "5",
-#         },
-#     )
-#     assert result.errors and len(result.errors) == 1
-#     assert result.errors[0].message == "magql argument validation"
-#     assert result.errors[0].extensions
-#     age_error = result.errors[0].extensions["age"][0]
-#     assert age_error == "Must be at least 0."
-
-# def test_invalid_experience_value() -> None:
-#     """Invalid input when experience is not equal to 5."""
-#     result = schema.execute(
-#         valid_op,
-#         variables={
-#             "u": "validuser",
-#             "p": "validpass",
-#             "pc": "validpass",
-#             "e": "validemail@example.com",
-#             "g": "A",
-#             "h": "1.75",
-#             "w": "70",
-#             "a": "25",
-#             "ex": "4",
-#         },
-#     )
-#     assert result.errors and len(result.errors) == 1
-#     assert result.errors[0].message == "magql argument validation"
-#     assert result.errors[0].extensions
-#     experience_error = result.errors[0].extensions["experience"][0]
-#     assert experience_error == "Must be between 5 and 5."
