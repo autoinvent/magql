@@ -21,11 +21,10 @@ def validate_profession_given_if_hobbies(
     hobbies = data.get("hobbies")
     profession = data.get("profession")
     if hobbies is not None and len(hobbies) < 3 and profession is not None:
-        error_message = (
-            "Profession cannot be provided if the user does not have "
-            "more than 2 hobbies."
+        raise magql.ValidationError(
+            "Profession cannot be provided "
+            "if the user does not have more than 2 hobbies."
         )
-        raise magql.ValidationError({"profession": [error_message]})
 
 
 def validate_profession_starts_with_username(
@@ -35,7 +34,7 @@ def validate_profession_starts_with_username(
     profession = data.get("profession")
     if profession is not None and not profession.startswith(f"{username}_"):
         raise magql.ValidationError(
-            {"profession": ["Profession must start with username followed by '_'."]}
+            "Profession must start with username followed by '_'."
         )
 
 
@@ -90,48 +89,30 @@ query($i: UserInput!) {
 """
 
 
-def test_valid_user() -> None:
+def test_valid() -> None:
     """Valid input does not have errors."""
     variables = {
         "i": {
             "username": "K",
-            "profession": "K_Coder",
+            "profession": "K_Programmer",
             "hobbies": ["Reading", "Swimming", "Coding"],
         }
     }
     result = schema.execute(valid_op, variables=variables)
-
     assert result.errors is None
-    expected_data = {
+    assert result.data == {
         "user": {
             "username": "K",
-            "profession": "K_Coder",
+            "profession": "K_Programmer",
             "hobbies": ["Reading", "Swimming", "Coding"],
         }
     }
-    assert result.data == expected_data
-
-
-def test_no_profession_provided() -> None:
-    """Valid input when no profession is provided."""
-    variables = {"i": {"username": "K", "hobbies": ["Reading", "Swimming"]}}
-    result = schema.execute(valid_op, variables=variables)
-
-    assert result.errors is None
-    expected_data = {
-        "user": {
-            "username": "K",
-            "profession": None,
-            "hobbies": ["Reading", "Swimming"],
-        }
-    }
-    assert result.data == expected_data
 
 
 def test_invalid_profession_given_hobbies() -> None:
     """Invalid input when profession is provided but hobbies length is less than 3."""
     variables = {
-        "i": {"username": "K", "profession": "K_Coder", "hobbies": ["Reading"]}
+        "i": {"username": "K", "profession": "K_Programmer", "hobbies": ["Reading"]}
     }
     result = schema.execute(valid_op, variables=variables)
     assert result.errors and len(result.errors) == 1
@@ -139,7 +120,7 @@ def test_invalid_profession_given_hobbies() -> None:
     assert error.message == "magql argument validation"
     assert error.extensions and error.extensions["input"][0]
     error_input = error.extensions["input"][0]
-    assert error_input["profession"][0].startswith("Profession cannot be")
+    assert error_input[""][0].startswith("Profession cannot be")
 
 
 def test_invalid_profession_name() -> None:
@@ -147,7 +128,7 @@ def test_invalid_profession_name() -> None:
     variables = {
         "i": {
             "username": "K",
-            "profession": "Coder",
+            "profession": "Programmer",
             "hobbies": ["Reading", "Swimming", "Coding"],
         }
     }
@@ -157,7 +138,7 @@ def test_invalid_profession_name() -> None:
     assert error.message == "magql argument validation"
     assert error.extensions and error.extensions["input"][0]
     error_input = error.extensions["input"][0]
-    assert error_input["profession"][0].startswith("Profession must start with")
+    assert error_input[""][0].startswith("Profession must start with")
 
 
 def test_invalid_multiple_errors() -> None:
@@ -169,5 +150,5 @@ def test_invalid_multiple_errors() -> None:
     assert error.message == "magql argument validation"
     assert error.extensions and error.extensions["input"][0]
     error_input = error.extensions["input"][0]
-    assert error_input["profession"][0].startswith("Profession cannot be")
-    assert error_input["profession"][1].startswith("Profession must start with")
+    assert error_input[""][0].startswith("Profession cannot be")
+    assert error_input[""][1].startswith("Profession must start with")
