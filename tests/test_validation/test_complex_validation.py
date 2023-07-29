@@ -381,7 +381,7 @@ def test_valid_user() -> None:
     }
 
 
-def test_invalid_individual_input():
+def test_invalid_individual_input() -> None:
     """
     * Test invalid individual inputs for a user:
     - The username doesn't contain a vowel & not enough characters
@@ -421,7 +421,7 @@ def test_invalid_individual_input():
     assert job_err[0] == "Job must be lowercase."
 
 
-def test_invalid_list_inputs():
+def test_invalid_list_inputs() -> None:
     """
     * Test mixed invalid list inputs for a user:
     - The number of hobbies exceeds the maximum limit.
@@ -480,7 +480,7 @@ def test_invalid_list_inputs():
     assert languages_err[1] == ["Languages must be lowercase."]
 
 
-def test_invalid_inputObject_inputs():
+def test_invalid_inputObject_inputs() -> None:
     """
     * Test invalid input objects for a user:
     - The city name is not capitalized.
