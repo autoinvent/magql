@@ -1,0 +1,19 @@
+[project]
+name = "magql-example-tasks"
+version = "1.0.0"
+description = "A task list GraphQL API with Magql."
+dependencies = [
+    "magql",
+    "flask",
+    "flask-magql",
+    "magql-sqlalchemy",
+    "flask-sqlalchemy",
+    "python-dotenv",
+]
+
+[build-system]
+requires = ["flit_core<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.module]
+name = "tasks"
