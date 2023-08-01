@@ -1,3 +1,9 @@
+Version 1.1.0
+-------------
+
+Unreleased
+
+
 Version 1.0.1
 -------------
 

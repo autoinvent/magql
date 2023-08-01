@@ -1,0 +1,17 @@
+[project]
+name = "magql-example-calculator"
+version = "1.0.0"
+description = "A calculator as a GraphQL API with Magql."
+dependencies = [
+    "magql",
+    "flask",
+    "flask-magql",
+    "python-dotenv",
+]
+
+[build-system]
+requires = ["flit_core<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.module]
+name = "calculator"
