@@ -20,7 +20,7 @@ docutils==0.20.1
     #   myst-parser
     #   sphinx
 furo==2023.5.20
-    # via -r requirements/docs.in
+    # via -r docs.in
 idna==3.4
     # via requests
 imagesize==1.4.1
@@ -40,7 +40,7 @@ mdit-py-plugins==0.4.0
 mdurl==0.1.2
     # via markdown-it-py
 myst-parser==2.0.0
-    # via -r requirements/docs.in
+    # via -r docs.in
 packaging==23.1
     # via sphinx
 pygments==2.15.1
@@ -74,5 +74,5 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
-urllib3==2.0.4
+urllib3==2.0.6
     # via requests
