@@ -80,10 +80,16 @@ class MagqlObjectType:
         self.description = description
 
     def field(
-        self, field_name: str, return_type: t.Any, args: t.Optional[t.Any] = None
+        self,
+        field_name: str,
+        return_type: t.Any,
+        args: t.Optional[t.Any] = None,
+        description: t.Optional[str] = None,
     ) -> t.Callable:
         def decorator(resolve: t.Callable) -> t.Callable:
-            self.fields[field_name] = MagqlField(return_type, args, resolve)
+            self.fields[field_name] = MagqlField(
+                return_type, args, resolve, description
+            )
             return resolve
 
         return decorator
@@ -141,7 +147,9 @@ class MagqlField:
             field_type = type_map[t.cast(str, self.type_name)]
         else:
             field_type = t.cast(t.Any, self.type_name).convert(type_map)
-        return GraphQLField(field_type, gql_args, self.resolve)
+        return GraphQLField(
+            field_type, gql_args, self.resolve, description=self.description
+        )
 
 
 def js_camelize(word: str) -> str:
@@ -151,9 +159,15 @@ def js_camelize(word: str) -> str:
 
 
 class MagqlArgument:  # noqa: E501
-    def __init__(self, type_: t.Any, default_value: t.Optional[t.Any] = None):
+    def __init__(
+        self,
+        type_: t.Any,
+        default_value: t.Optional[t.Any] = None,
+        description: t.Optional[str] = None,
+    ):
         self.type_ = type_
         self.default_value = default_value
+        self.description = description
 
     def convert(
         self,
@@ -184,6 +198,7 @@ class MagqlArgument:  # noqa: E501
                 converted_type,
             ),
             self.default_value,
+            self.description,  # not showing up in the schema.graphql file
         )
 
 
@@ -232,7 +247,8 @@ class MagqlInputField:
                     GraphQLWrappingType,
                 ],
                 field_type,
-            )
+            ),
+            description=self.description,
         )
 
 
