@@ -21,6 +21,7 @@ from graphql import GraphQLString
 from graphql import GraphQLType
 from graphql import GraphQLUnionType
 from graphql import GraphQLWrappingType
+from graphql import Undefined
 from graphql.type.scalars import coerce_float
 from graphql.type.scalars import coerce_int
 from inflection import camelize
@@ -162,7 +163,7 @@ class MagqlArgument:  # noqa: E501
     def __init__(
         self,
         type_: t.Any,
-        default_value: t.Optional[t.Any] = None,
+        default_value: t.Optional[t.Any] = Undefined,
         description: t.Optional[str] = None,
     ):
         self.type_ = type_
@@ -198,7 +199,7 @@ class MagqlArgument:  # noqa: E501
                 converted_type,
             ),
             self.default_value,
-            self.description,  # not showing up in the schema.graphql file
+            self.description,
         )
 
 
