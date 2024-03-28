@@ -97,11 +97,7 @@ class Convert:
                 )
 
             field.type_name = Convert.convert_type(field.type_name, magql_type_map)
-            if not isinstance(field, MagqlInputField):
-                for arg_name, arg in field.args.items():
-                    field.args[arg_name] = Convert.convert_type(
-                        arg.type_, magql_type_map
-                    )
+
         return None
 
     def generate_type_map(self, managers: t.List[MagqlManager]) -> None:
