@@ -1,3 +1,12 @@
+v0.7.1
+------
+
+Released 2024-03-28
+
+- Fix support for ``description`` on all Magql nodes.
+- Fix ``convert_type`` on arguments.
+
+
 v0.7.0
 ------
 
