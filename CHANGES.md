@@ -20,6 +20,15 @@ Released 2023-07-24
 -   Complete rewrite. {pr}`74`
 
 
+Version 0.7.1
+-------------
+
+Released 2024-03-28
+
+- Fix support for `description` on all Magql nodes.
+- Fix `convert_type` on arguments.
+
+
 Version 0.7.0
 -------------
 
