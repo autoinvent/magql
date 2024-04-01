@@ -96,8 +96,7 @@ class ResolverCallable(t.Protocol):
 
     def __call__(
         self, parent: t.Any, info: GraphQLResolveInfo, **kwargs: t.Any
-    ) -> t.Any:
-        ...
+    ) -> t.Any: ...
 
 
 def resolve_attr(parent: t.Any, info: GraphQLResolveInfo, **kwargs: t.Any) -> t.Any:

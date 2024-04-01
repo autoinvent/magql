@@ -30,8 +30,7 @@ class ValueValidatorCallable(t.Protocol):
 
     def __call__(
         self, info: GraphQLResolveInfo, value: t.Any, data: dict[str, t.Any]
-    ) -> t.Any:
-        ...
+    ) -> t.Any: ...
 
 
 class DataValidatorCallable(t.Protocol):
@@ -39,8 +38,7 @@ class DataValidatorCallable(t.Protocol):
     :class:`.InputObject`) must have.
     """
 
-    def __call__(self, info: GraphQLResolveInfo, data: dict[str, t.Any]) -> None:
-        ...
+    def __call__(self, info: GraphQLResolveInfo, data: dict[str, t.Any]) -> None: ...
 
 
 class Confirm:
