@@ -18,7 +18,7 @@ class ValidationError(Exception):
     :param message: One or more error messages to add to the result.
     """
 
-    def __init__(self, message: t.Union[str, list[t.Any], dict[str, t.Any]]) -> None:
+    def __init__(self, message: str | list[t.Any] | dict[str, t.Any]) -> None:
         super().__init__(message)
         self.message = message
 
@@ -30,8 +30,7 @@ class ValueValidatorCallable(t.Protocol):
 
     def __call__(
         self, info: GraphQLResolveInfo, value: t.Any, data: dict[str, t.Any]
-    ) -> t.Any:
-        ...
+    ) -> t.Any: ...
 
 
 class DataValidatorCallable(t.Protocol):
@@ -39,8 +38,7 @@ class DataValidatorCallable(t.Protocol):
     :class:`.InputObject`) must have.
     """
 
-    def __call__(self, info: GraphQLResolveInfo, data: dict[str, t.Any]) -> None:
-        ...
+    def __call__(self, info: GraphQLResolveInfo, data: dict[str, t.Any]) -> None: ...
 
 
 class Confirm:
@@ -67,9 +65,7 @@ class Length:
     :param max: The length must be <= this value.
     """
 
-    def __init__(
-        self, min: t.Optional[int] = None, max: t.Optional[int] = None
-    ) -> None:
+    def __init__(self, min: int | None = None, max: int | None = None) -> None:
         self.min = min
         self.max = max
 
@@ -103,9 +99,7 @@ class NumberRange:
     :param max: The input must be <= this value.
     """
 
-    def __init__(
-        self, min: t.Optional[t.Any] = None, max: t.Optional[t.Any] = None
-    ) -> None:
+    def __init__(self, min: t.Any | None = None, max: t.Any | None = None) -> None:
         self.min = min
         self.max = max
 

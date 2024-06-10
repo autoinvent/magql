@@ -96,8 +96,7 @@ class ResolverCallable(t.Protocol):
 
     def __call__(
         self, parent: t.Any, info: GraphQLResolveInfo, **kwargs: t.Any
-    ) -> t.Any:
-        ...
+    ) -> t.Any: ...
 
 
 def resolve_attr(parent: t.Any, info: GraphQLResolveInfo, **kwargs: t.Any) -> t.Any:
@@ -311,7 +310,11 @@ class _ValueValidatorNode(_BaseValidatorNode[ValueValidatorCallable]):
         :param data: All input items being validated, of which this is one item.
         """
         _validate_value(
-            self.type, self.validators, info, value, data  # type: ignore[arg-type]
+            self.type,  # type: ignore[arg-type]
+            self.validators,
+            info,
+            value,
+            data,
         )
 
 
@@ -397,7 +400,8 @@ class _BaseObject(NamedType):
             name=self.name,
             fields=lambda: {k: v._to_graphql() for k, v in self.fields.items()},
             interfaces=lambda: [
-                v._to_graphql() for v in self.interfaces  # type: ignore[union-attr]
+                v._to_graphql()  # type: ignore[union-attr]
+                for v in self.interfaces
             ],
             description=self.description,
             extensions={"magql_node": self},
@@ -811,7 +815,7 @@ class Enum(NamedType):
     def __init__(
         self,
         name: str,
-        values: t.Union[list[str], dict[str, t.Any], type[enum.Enum]],
+        values: list[str] | dict[str, t.Any] | type[enum.Enum],
         description: str | None = None,
     ) -> None:
         super().__init__(name=name)

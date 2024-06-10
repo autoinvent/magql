@@ -76,10 +76,10 @@ class Schema:
         here anyway.
         """
         type_map = self.type_map
-        q: t.Deque[nodes.Node | str | None] = deque(type_map.values())
+        q: deque[nodes.Node | str | None] = deque(type_map.values())
         q.append(self.query)
         q.append(self.mutation)
-        seen: t.Set[nodes.Node | str] = set()
+        seen: set[nodes.Node | str] = set()
 
         # Breadth-first traversal of the graph to collect all nodes, starting at the
         # top-level query and mutation objects.

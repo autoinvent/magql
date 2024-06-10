@@ -1,2 +1,5 @@
-```{include} ../LICENSE.md
+# MIT License
+
+```{literalinclude} ../LICENSE.txt
+:language: text
 ```

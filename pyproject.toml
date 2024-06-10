@@ -3,8 +3,8 @@ name = "magql"
 version = "1.1.0.dev"
 description = "The magical GraphQL framework that generates an API for your data."
 readme = "README.md"
-license = {file = "LICENSE.md"}
-authors = [{name = "David Lord", email = "davidism@gmail.com"}]
+license = { file = "LICENSE.txt" }
+authors = [{ name = "David Lord" }]
 requires-python = ">=3.10"
 dependencies = [
     "graphql-core>=3",
@@ -13,27 +13,19 @@ dependencies = [
 
 [project.urls]
 Documentation = "https://magql.autoinvent.dev"
-Changes = "https://magql.autoinvent.dev/changes.html"
+Changes = "https://magql.autoinvent.dev/page/changes/"
 Source = "https://github.com/autoinvent/magql"
 
 [build-system]
 requires = ["flit_core<4"]
 build-backend = "flit_core.buildapi"
 
-[tool.flit.sdist]
-include = [
-    "docs/",
-    "requirements/",
-    "tests/",
-    "CHANGES.md",
-    "tox.ini",
-]
-exclude = ["docs/_build/"]
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 filterwarnings = [
     "error",
+    # fixed in graphql-core 3.3.0a5
+    "ignore:'typing\\.ByteString':DeprecationWarning:graphql"
 ]
 
 [tool.coverage.run]
@@ -55,5 +47,22 @@ pythonVersion = "3.10"
 include = ["src/magql", "tests"]
 typeCheckingMode = "basic"
 
-[tool.black]
-target-version = ["py310", "py311"]
+[tool.ruff]
+src = ["src"]
+fix = true
+show-fixes = true
+output-format = "full"
+
+[tool.ruff.lint]
+select = [
+    "B",  # flake8-bugbear
+    "E",  # pycodestyle error
+    "F",  # pyflakes
+    "I",  # isort
+    "UP",  # pyupgrade
+    "W",  # pycodestyle warning
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+order-by-type = false

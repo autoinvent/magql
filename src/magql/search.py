@@ -35,8 +35,7 @@ class SearchResult:
 class SearchProvider(t.Protocol):
     """The signature that all search provider functions must have."""
 
-    def __call__(self, context: t.Any, value: str) -> list[SearchResult]:
-        ...
+    def __call__(self, context: t.Any, value: str) -> list[SearchResult]: ...
 
 
 _SearchProvider = t.TypeVar("_SearchProvider", bound=SearchProvider)

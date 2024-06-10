@@ -1,9 +1,9 @@
 Magql
 =====
 
-Magql is a [GraphQL][] framework for Python. It's pronounced "magical", and it is!
+Magql is a [GraphQL] framework for Python. It's pronounced "magical", and it is!
 
-Magql wraps the [GraphQL-Core][] library to make it easier to work with. Magql
+Magql wraps the [GraphQL-Core] library to make it easier to work with. Magql
 provides three big features over GraphQL-Core:
 
 -   The schema is mutable. It can be defined (or generated) then modified to
