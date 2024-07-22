@@ -4,17 +4,23 @@ import typing as t
 from pathlib import Path
 
 import flask_magql
+from flask import Blueprint
+from flask import current_app
+from flask import Flask
+from flask import send_file
+from flask import url_for
+from flask_sqlalchemy_lite import SQLAlchemy
 from graphql import GraphQLResolveInfo
 from magql_sqlalchemy import ModelManager
-from magql_sqlalchemy.resolvers import CreateResolver, UpdateResolver
+from magql_sqlalchemy.resolvers import CreateResolver
+from magql_sqlalchemy.resolvers import UpdateResolver
 from sqlalchemy import orm
-from flask import Flask, url_for, current_app, Blueprint, send_file
-from flask_sqlalchemy_lite import SQLAlchemy
 from werkzeug import Response
 from werkzeug.datastructures import FileStorage
 
 import magql
-from magql import Field, Argument
+from magql import Argument
+from magql import Field
 
 db = SQLAlchemy()
 schema = magql.Schema()
@@ -64,7 +70,9 @@ default_document_update = UpdateResolver(Document)
 
 
 @document_manager.create_field.resolver
-def resolve_document_create(parent: t.Any, info: GraphQLResolveInfo, **kwargs: t.Any) -> Document:
+def resolve_document_create(
+    parent: t.Any, info: GraphQLResolveInfo, **kwargs: t.Any
+) -> Document:
     """Create the document in the database and save the file."""
     # Remove file from args, it will be handled separately.
     file: FileStorage = kwargs.pop("file")
@@ -77,7 +85,9 @@ def resolve_document_create(parent: t.Any, info: GraphQLResolveInfo, **kwargs: t
 
 
 @document_manager.update_field.resolver
-def resolve_document_update(parent: t.Any, info: GraphQLResolveInfo, **kwargs: t.Any) -> Document:
+def resolve_document_update(
+    parent: t.Any, info: GraphQLResolveInfo, **kwargs: t.Any
+) -> Document:
     """Update the document in the database, optional save a new file."""
     file: FileStorage | None = kwargs.pop("file", None)
     doc: Document = default_document_update(parent, info, **kwargs)

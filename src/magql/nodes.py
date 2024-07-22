@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+import inspect
 import typing as t
 from functools import cached_property
 
@@ -350,7 +351,7 @@ class _BaseObject(NamedType):
         be the name of a type defined elsewhere.
         """
 
-        self.description: str | None = description
+        self.description: str | None = maybe_cleandoc(description)
         """Help text to show in the schema."""
 
     def field(
@@ -371,17 +372,22 @@ class _BaseObject(NamedType):
             string name of a type, or a type instance, instead of the full argument
             instance.
         :param validators: Data validators applied to the collection of arguments.
-        :param description: Help text to show in the schema.
+        :param description: Help text to show in the schema. By default, the decorated
+            function's docstring is used.
         :param deprecation: Deprecation message to show in the schema.
+
+        .. versionchanged:: 1.1
+            Use docstring as description.
         """
 
         def decorator(f: ResolverCallable) -> ResolverCallable:
+            desc = obj_cleandoc(f) if description is None else description
             self.fields[name] = Field(
                 type=type,
                 args=args,
                 validators=validators,
                 resolve=f,
-                description=description,
+                description=desc,
                 deprecation=deprecation,
             )
             return f
@@ -403,7 +409,7 @@ class _BaseObject(NamedType):
                 v._to_graphql()  # type: ignore[union-attr]
                 for v in self.interfaces
             ],
-            description=self.description,
+            description=maybe_cleandoc(self.description),
             extensions={"magql_node": self},
         )
 
@@ -470,7 +476,7 @@ class Union(NamedType):
         Use :meth:`add_type` instead of modifying this directly.
         """
 
-        self.description: str | None = description
+        self.description: str | None = maybe_cleandoc(description)
         """Help text to show in the schema."""
 
         if types is not None:
@@ -521,7 +527,7 @@ class Union(NamedType):
             name=self.name,
             types=[o._to_graphql() for o in self.types],  # type: ignore[union-attr]
             resolve_type=self.resolve_type,  # type: ignore[arg-type]
-            description=self.description,
+            description=maybe_cleandoc(self.description),
             extensions={"magql_node": self},
         )
 
@@ -572,10 +578,10 @@ class Field(_DataValidatorNode):
         self._pre_resolve: ResolverCallable | None = None
         self._resolve: ResolverCallable = resolve
 
-        self.description: str | None = description
+        self.description: str | None = maybe_cleandoc(description)
         """Help text to show in the schema."""
 
-        self.deprecation: str | None = deprecation
+        self.deprecation: str | None = maybe_cleandoc(deprecation)
         """Deprecation message to show in the schema."""
 
     def pre_resolver(self, f: ResolverCallable) -> ResolverCallable:
@@ -592,7 +598,16 @@ class Field(_DataValidatorNode):
         """Call the decorated function to resolve the value of the field.
 
         Raise a :exc:`ValidationError` to stop with an error instead.
+
+        If the field does not have a description, the decorated function's
+        docstring is used.
+
+        .. versionchanged:: 1.1
+            Use docstring as description.
         """
+        if self.description is None:
+            self.description = obj_cleandoc(f)
+
         self._resolve = f
         return f
 
@@ -641,8 +656,8 @@ class Field(_DataValidatorNode):
             type_=self.type._to_graphql(),  # type: ignore[union-attr]
             args={name: arg._to_graphql() for name, arg in self.args.items()},
             resolve=self.resolve,
-            description=self.description,
-            deprecation_reason=self.deprecation,
+            description=maybe_cleandoc(self.description),
+            deprecation_reason=maybe_cleandoc(self.deprecation),
             extensions={"magql_node": self},
         )
 
@@ -677,7 +692,7 @@ class Argument(_ValueValidatorNode):
         not be passed to the resolver, which is not the same as a default of ``None``.
         """
 
-        self.description: str | None = description
+        self.description: str | None = maybe_cleandoc(description)
         """Help text to show in the schema."""
 
         self.deprecation: str | None = deprecation
@@ -693,8 +708,8 @@ class Argument(_ValueValidatorNode):
         return graphql.GraphQLArgument(
             type_=self.type._to_graphql(),  # type: ignore[union-attr]
             default_value=self.default,
-            description=self.description,
-            deprecation_reason=self.deprecation,
+            description=maybe_cleandoc(self.description),
+            deprecation_reason=maybe_cleandoc(self.deprecation),
             extensions={"magql_node": self},
         )
 
@@ -726,7 +741,7 @@ class InputObject(NamedType, _DataValidatorNode):
         converted to full input field instances.
         """
 
-        self.description: str | None = description
+        self.description: str | None = maybe_cleandoc(description)
         """Help text to show in the schema."""
 
     @property
@@ -743,7 +758,7 @@ class InputObject(NamedType, _DataValidatorNode):
         return graphql.GraphQLInputObjectType(
             name=self.name,
             fields=lambda: {k: v._to_graphql() for k, v in self.fields.items()},
-            description=self.description,
+            description=maybe_cleandoc(self.description),
             extensions={"magql_node": self},
         )
 
@@ -778,10 +793,10 @@ class InputField(_ValueValidatorNode):
         not be present in the dict, which is not the same as a default of ``None``.
         """
 
-        self.description: str | None = description
+        self.description: str | None = maybe_cleandoc(description)
         """Help text to show in the schema."""
 
-        self.deprecation: str | None = deprecation
+        self.deprecation: str | None = maybe_cleandoc(deprecation)
         """Deprecation message to show in the schema."""
 
     def _find_nodes(self) -> t.Iterable[str | Node]:
@@ -794,8 +809,8 @@ class InputField(_ValueValidatorNode):
         return graphql.GraphQLInputField(
             type_=self.type._to_graphql(),  # type: ignore[union-attr]
             default_value=self.default,
-            description=self.description,
-            deprecation_reason=self.deprecation,
+            description=maybe_cleandoc(self.description),
+            deprecation_reason=maybe_cleandoc(self.deprecation),
             extensions={"magql_node": self},
         )
 
@@ -832,7 +847,7 @@ class Enum(NamedType):
         list or :class:`~enum.Enum` passed in has been converted to a dict.
         """
 
-        self.description: str | None = description
+        self.description: str | None = maybe_cleandoc(description)
         """Help text to show in the schema."""
 
     def _find_nodes(self) -> t.Iterator[str | Node]:
@@ -887,10 +902,10 @@ class Scalar(NamedType):
         self.parse_value: t.Callable[[t.Any], t.Any] = parse_value
         """Convert a value in the input serialization format to Python."""
 
-        self.description: str | None = description
+        self.description: str | None = maybe_cleandoc(description)
         """Help text to show in the schema."""
 
-        self.specified_by: str | None = specified_by
+        self.specified_by: str | None = maybe_cleandoc(specified_by)
         """A reference to the specification defining this type. Shown alongside
         :attr:`description` in the schema.
         """
@@ -906,8 +921,8 @@ class Scalar(NamedType):
             name=self.name,
             serialize=self.serialize,
             parse_value=self.parse_value,
-            description=self.description,
-            specified_by_url=self.specified_by,
+            description=maybe_cleandoc(self.description),
+            specified_by_url=maybe_cleandoc(self.specified_by),
             extensions={"magql_node": self},
         )
 
@@ -1049,3 +1064,20 @@ def _list_to_types(
     """
     for i, value in enumerate(values):
         values[i] = _to_type(value, type_map)
+
+
+def maybe_cleandoc(value: str | None) -> str | None:
+    """Return :func:`inspect.cleandoc` on the ``value`` if it's not ``None``,
+    otherwise return ``None``.
+    """
+    if value is None:
+        return None
+
+    return inspect.cleandoc(value)
+
+
+def obj_cleandoc(obj: t.Any) -> str | None:
+    """Return :func:`inspect.cleandoc` on ``obj.__doc__`` if it's set, otherwise
+    return ``None``.
+    """
+    return maybe_cleandoc(getattr(obj, "__doc__", None))

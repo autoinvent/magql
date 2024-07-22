@@ -3,6 +3,10 @@ Version 1.1.0
 
 Unreleased
 
+-   `@object.field` and `@field.resolver` decorators use the decorated
+    function's docstring as the description for the field if it's not otherwise
+    set. {issue}`112`
+
 
 Version 1.0.1
 -------------
