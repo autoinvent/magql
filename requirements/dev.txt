@@ -32,7 +32,7 @@ charset-normalizer==3.3.2
     #   requests
 colorama==0.4.6
     # via tox
-coverage==7.5.4
+coverage==7.6.0
     # via -r tests.txt
 distlib==0.3.8
     # via virtualenv
@@ -46,11 +46,11 @@ exceptiongroup==1.2.1
     #   -r tests.txt
     #   -r typing.txt
     #   pytest
-filelock==3.14.0
+filelock==3.15.4
     # via
     #   tox
     #   virtualenv
-furo==2024.5.6
+furo==2024.7.18
     # via -r docs.txt
 identify==2.5.36
     # via pre-commit
@@ -89,7 +89,7 @@ mdurl==0.1.2
     # via
     #   -r docs.txt
     #   markdown-it-py
-mypy==1.10.1
+mypy==1.11.1
     # via -r typing.txt
 mypy-extensions==1.0.0
     # via
@@ -121,18 +121,18 @@ pluggy==1.5.0
     #   -r typing.txt
     #   pytest
     #   tox
-pre-commit==3.7.1
+pre-commit==3.8.0
     # via -r dev.in
 pygments==2.18.0
     # via
     #   -r docs.txt
     #   furo
     #   sphinx
-pyproject-api==1.6.1
+pyproject-api==1.7.1
     # via tox
-pyright==1.1.369
+pyright==1.1.374
     # via -r typing.txt
-pytest==8.2.2
+pytest==8.3.2
     # via
     #   -r tests.txt
     #   -r typing.txt
@@ -153,7 +153,7 @@ soupsieve==2.5
     # via
     #   -r docs.txt
     #   beautifulsoup4
-sphinx==7.3.7
+sphinx==7.4.7
     # via
     #   -r docs.txt
     #   furo
@@ -200,7 +200,7 @@ tomli==2.0.1
     #   pytest
     #   sphinx
     #   tox
-tox==4.15.1
+tox==4.16.0
     # via -r dev.in
 types-python-dateutil==2.9.0.20240316
     # via -r typing.txt
@@ -212,7 +212,7 @@ urllib3==2.2.2
     # via
     #   -r docs.txt
     #   requests
-virtualenv==20.26.2
+virtualenv==20.26.3
     # via
     #   pre-commit
     #   tox
