@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import graphql
 
 import magql
+from magql.testing import expect_data
 
 
 @dataclasses.dataclass()
@@ -21,8 +22,8 @@ def test_default_resolve() -> None:
     root.user = User(1, "abc")
     s = magql.Schema(types=[magql.Object("User", fields={"name": "String"})])
     s.query.fields["user"] = magql.Field("User")
-    result = s.execute("{ user { name } }", root)
-    assert result.data == {"user": {"name": "abc"}}
+    result = expect_data(s, "{ user { name } }", root=root)
+    assert result == {"user": {"name": "abc"}}
 
 
 def test_arg() -> None:
@@ -36,9 +37,8 @@ def test_arg() -> None:
     ) -> User | None:
         return users.get(kwargs["id"])
 
-    result = s.execute("{ user(id: 1) { name } }")
-    assert result.errors is None
-    assert result.data == {"user": {"name": "abc"}}
+    result = expect_data(s, "{ user(id: 1) { name } }")
+    assert result == {"user": {"name": "abc"}}
 
 
 def test_resolver_decorator() -> None:
@@ -53,6 +53,5 @@ def test_resolver_decorator() -> None:
     ) -> User | None:
         return users.get(kwargs["id"])
 
-    result = s.execute("{ user(id: 1) { name } }")
-    assert result.errors is None
-    assert result.data == {"user": {"name": "abc"}}
+    result = expect_data(s, "{ user(id: 1) { name } }")
+    assert result == {"user": {"name": "abc"}}

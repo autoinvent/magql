@@ -6,6 +6,8 @@ Unreleased
 -   `@object.field` and `@field.resolver` decorators use the decorated
     function's docstring as the description for the field if it's not otherwise
     set. {issue}`112`
+-   Added the `testing` module with functions to execute a query and expect
+    data, errors, a single error, or a validation error. {issue}`86`
 
 
 Version 1.0.1
