@@ -6,6 +6,9 @@ from dataclasses import dataclass
 import graphql
 
 import magql.validators
+from magql.testing import expect_data
+from magql.testing import expect_error
+from magql.testing import expect_validation_error
 
 
 @dataclass
@@ -61,43 +64,37 @@ query($u: String!, $h: [String!]!) {
 
 def test_valid() -> None:
     """Valid input does not have errors."""
-    result = schema.execute(valid_op, variables={"u": "valid", "h": ["read", "swim"]})
-    assert result.errors is None
-    assert result.data == {"user": {"username": "valid", "hobbies": ["read", "swim"]}}
+    result = expect_data(
+        schema, valid_op, variables={"u": "valid", "h": ["read", "swim"]}
+    )
+    assert result == {"user": {"username": "valid", "hobbies": ["read", "swim"]}}
 
 
 def test_invalid() -> None:
     """Multiple arguments can be invalid, and each argument can have have
     multiple errors.
     """
-    result = schema.execute(valid_op, variables={"u": "A", "h": []})
-    assert result.errors is not None and len(result.errors) == 1
-    error = result.errors[0]
-    assert error.message == "magql argument validation"
-    assert error.extensions is not None
-    assert error.extensions["username"][0] == "Must be lowercase."
-    assert error.extensions["username"][1].startswith("Length must be between")
-    assert error.extensions["hobbies"][0].startswith("Length must be at least")
+    result = expect_validation_error(schema, valid_op, variables={"u": "A", "h": []})
+    assert result["username"][0] == "Must be lowercase."
+    assert result["username"][1].startswith("Length must be between")
+    assert result["hobbies"][0].startswith("Length must be at least")
 
 
 def test_list_validate_item() -> None:
     """Validators can apply to list value or individual items."""
-    result = schema.execute(valid_op, variables={"u": "aa", "h": ["A"]})
-    assert result.errors is not None and len(result.errors) == 1
-    error = result.errors[0]
-    assert error.message == "magql argument validation"
-    assert error.extensions is not None
-    assert error.extensions["hobbies"][0].startswith("Length must be at least")
-    assert error.extensions["hobbies"][1] == ["Must be lowercase."]
+    result = expect_validation_error(
+        schema, valid_op, variables={"u": "aa", "h": ["A"]}
+    )
+    assert result["hobbies"][0].startswith("Length must be at least")
+    assert result["hobbies"][1] == ["Must be lowercase."]
 
 
 def test_list_mixed_valid() -> None:
     """Valid list values have None placeholder in errors."""
-    result = schema.execute(valid_op, variables={"u": "aa", "h": ["a", "B"]})
-    assert result.errors is not None and len(result.errors) == 1
-    assert result.errors[0].message == "magql argument validation"
-    assert result.errors[0].extensions is not None
-    assert result.errors[0].extensions["hobbies"][0] == [None, "Must be lowercase."]
+    result = expect_validation_error(
+        schema, valid_op, variables={"u": "aa", "h": ["a", "B"]}
+    )
+    assert result["hobbies"][0] == [None, "Must be lowercase."]
 
 
 def test_invalid_missing_arg() -> None:
@@ -105,9 +102,8 @@ def test_invalid_missing_arg() -> None:
     trigger input validation.
     """
     # username is required, hobbies isn't
-    result = schema.execute("{ user { username } }", variables={"h": ["a", "b"]})
-    assert result.errors is not None and len(result.errors) == 1
-    assert "'username' of type 'String!' is required" in result.errors[0].message
+    result = expect_error(schema, "{ user { username } }", variables={"h": ["a", "b"]})
+    assert "'username' of type 'String!' is required" in result.message
 
 
 def test_invalid_null_value() -> None:
@@ -115,22 +111,23 @@ def test_invalid_null_value() -> None:
     input validation.
     """
     # username is non-null, hobbies is null
-    result = schema.execute("{ user(username: null, hobbies: null) { username } }")
-    assert result.errors is not None and len(result.errors) == 1
-    assert "'String!', found null" in result.errors[0].message
+    result = expect_error(
+        schema, "{ user(username: null, hobbies: null) { username } }"
+    )
+    assert "'String!', found null" in result.message
 
 
 def test_invalid_type_value() -> None:
     """Value with incorrect type will be caught by GraphQL type validation and
     won't trigger input validation.
     """
-    result = schema.execute("{ user(username: 1) { username } }")
-    assert result.errors is not None and len(result.errors) == 1
-    assert "non string value: 1" in result.errors[0].message
+    result = expect_error(schema, "{ user(username: 1) { username } }")
+    assert "non string value: 1" in result.message
 
 
 def test_unhandled_error() -> None:
     """A Python error raised during validation is reported as a general error."""
-    result = schema.execute("""{ user(username: "aa", hobbies: null) { username } }""")
-    assert result.errors is not None and len(result.errors) == 1
-    assert "'NoneType' has no len()" in result.errors[0].message
+    result = expect_error(
+        schema, """{ user(username: "aa", hobbies: null) { username } }"""
+    )
+    assert "'NoneType' has no len()" in result.message

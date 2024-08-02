@@ -103,3 +103,14 @@ This API is typically implemented and managed by a data source integration.
 .. currentmodule:: magql.filters
 .. autodata:: filter_item
 ```
+
+
+## Testing
+
+```{eval-rst}
+.. currentmodule:: magql.testing
+.. autofunction:: expect_data
+.. autofunction:: expect_errors
+.. autofunction:: expect_error
+.. autofunction:: expect_validation_error
+```
