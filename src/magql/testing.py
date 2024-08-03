@@ -35,15 +35,11 @@ def expect_data(schema: Schema, source: str, **kwargs: t.Any) -> dict[str, t.Any
 
 def expect_errors(schema: Schema, source: str, **kwargs: t.Any) -> list[GraphQLError]:
     """Call :meth:`.Schema.execute` and return the errors portion of the result.
-    Raise an error if there is any data in the result, or if there are no errors.
+    Raise an error if there are no errors.
 
     .. versionadded:: 1.1
     """
     result = schema.execute(source=source, **kwargs)
-
-    if result.data is not None:
-        raise ValueError("Expected query to return an error, but it returned data.")
-
     assert result.errors is not None
     return result.errors
 
