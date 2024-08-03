@@ -1,7 +1,7 @@
 Version 1.1.0
 -------------
 
-Unreleased
+Released 2024-08-03
 
 -   `@object.field` and `@field.resolver` decorators use the decorated
     function's docstring as the description for the field if it's not otherwise
