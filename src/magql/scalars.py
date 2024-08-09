@@ -88,6 +88,13 @@ graphql_default_scalars: list[Scalar] = [String, Int, Float, Boolean, ID]
 # magql provided scalars
 
 
+def serialize_datetime(value: datetime) -> str:
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+
+    return value.isoformat()
+
+
 def parse_datetime(value: str) -> datetime:
     try:
         out = isoparse(value)
@@ -102,13 +109,13 @@ def parse_datetime(value: str) -> datetime:
 
 DateTime: Scalar = Scalar(
     "DateTime",
-    serialize=datetime.isoformat,
+    serialize=serialize_datetime,
     parse_value=parse_datetime,
     description="A date, time, and timezone in ISO 8601 format.",
     specified_by="ISO 8601",
 )
-"""Date, time, and timezone in ISO 8601 format. Uses dateutil's ``isoparse``. Input
-without a timezone is assumed to be UTC. Always returns a timezone-aware
+"""Date, time, and timezone in ISO 8601 format. Uses dateutil's ``isoparse``. Values
+without a timezone are assumed to be UTC. Always returns a timezone-aware
 :class:`~datetime.DateTime` value.
 """
 
