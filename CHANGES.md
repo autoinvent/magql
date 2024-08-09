@@ -1,7 +1,7 @@
 Version 1.1.1
 -------------
 
-Unreleased
+Released 2024-08-09
 
 -   `DateTime` scalar returns a value that includes a timezone. Naive values are
     assumed to be UTC. This matches what was already documented. {issue}`120`
